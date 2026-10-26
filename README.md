@@ -26,6 +26,8 @@ Beyond the MVP, the vision includes new goods, used goods, door-to-door flights,
 
 ## Documentation and GitHub
 
+For a high-level view of the expected system, see [Architecture](Architecture.md).
+
 The README and `docs/` are the source of truth: versionable, readable outside GitHub, and reviewable through pull requests; application code can live alongside them later. A Wiki has history separate from the repository and a less natural review workflow; availability for private repositories depends on the plan. Organization Projects are planning views, not documentation. Pages, Discussions, Issues/Projects, and an organization profile can be considered later without automatically creating sites, wikis, or boards. See [documentation choices](docs/PROPOSAL.md#12-github-documentation).
 
 ## Meta hackathon
