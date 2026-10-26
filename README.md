@@ -1,37 +1,37 @@
 # FairBuy
 
-**Scegliere l’acquisto migliore, non solo il prezzo più basso.**
+**Choose the best purchase, not just the lowest price.**
 
-FairBuy è una proposta di shopping assistant personale: confronta alternative fattibili considerando costo totale, compatibilità e adeguatezza alle preferenze. Distingue i fatti verificati dalle dichiarazioni dei venditori, mostra fonti e incertezze e lascia all’utente la decisione finale.
+FairBuy is a personal shopping assistant concept: it compares feasible options based on total cost, compatibility, and fit with a person’s preferences. It distinguishes verified facts from seller claims, shows sources and uncertainty, and leaves the final decision to the user.
 
-> **Stato:** concept e documentazione; non è un’applicazione funzionante e non presenta offerte attuali. I numeri d’esempio sono sintetici. Nessun acquisto, contatto con venditori o prenotazione viene effettuato.
+> **Status:** concept and documentation only; this is not a working application and does not show current offers. All example figures are synthetic. No purchases, seller contacts, or bookings are made.
 
-## MVP proposto
+## Proposed MVP
 
-Un confronto circoscritto di elettronica nuova e usata in una sola città, a partire da URL o screenshot forniti dall’utente. Estrazione strutturata (con visione Meta solo dopo averne verificato l’accesso), specifiche normalizzate, filtro di fattibilità e graduatoria deterministica spiegabile. Un connettore live legittimo, se davvero disponibile; altrimenti fixture chiaramente etichettate.
+A focused comparison of new and used electronics in one city, starting from URLs or screenshots submitted by the user. Structured extraction (using Meta vision only after access has been verified), normalized specifications, deterministic feasibility filtering, and an explainable ranking. Use one legitimate live connector if genuinely available; otherwise use clearly labeled fixtures.
 
-La proposta completa include flussi, architettura, schema, sicurezza, demo di tre minuti, tabella comparativa sintetica, criteri di accettazione, casi avversari e piano di dieci giorni: [leggi la proposta](docs/PROPOSAL.md).
+The full proposal covers flows, architecture, schema, security, a three-minute demo, a synthetic comparison table, acceptance criteria, adversarial cases, and a ten-day plan: [read the proposal](docs/PROPOSAL.md).
 
-## Principi
+## Principles
 
-- **Fattibilità prima del punteggio:** vincoli rigidi (compatibilità, budget massimo, orari) escludono le opzioni non praticabili.
-- **Costo totale e adeguatezza:** prezzo consegnato, oneri applicabili, garanzia, resi, supporto e costi/rischi pertinenti.
-- **Provenienza visibile:** fonte, ora di acquisizione, disponibilità, valuta, livello di confidenza e dati mancanti.
-- **AI assistiva, non autoritaria:** il modello estrae e chiarisce; regole deterministiche filtrano e ordinano. L’utente può correggere i dati.
-- **Nessuna azione irreversibile:** niente checkout, messaggi ai venditori o prenotazioni automatiche.
+- **Feasibility before scoring:** hard constraints (compatibility, maximum budget, schedule) eliminate options that cannot work.
+- **Total cost and suitability:** delivered price, applicable charges, warranty, returns, support, and relevant costs/risks.
+- **Visible provenance:** source, retrieval time, availability, currency, confidence, and missing data.
+- **AI assists, but does not decide:** the model extracts and clarifies; deterministic rules filter and rank. Users can correct the data.
+- **No irreversible actions:** no checkout, seller messages, or automatic bookings.
 
-## Orizzonte del prodotto
+## Product vision
 
-Oltre all’MVP, la visione comprende beni nuovi, usati, voli porta-a-porta e consegna di cibo. Sono verticali futuri, non integrazioni promesse. Per i voli si escludono prima le partenze incompatibili con i vincoli; per il cibo si confronta lo stesso carrello e si rispettano copertura e promozioni effettivamente disponibili. Dettagli e limiti sono nella [proposta](docs/PROPOSAL.md#2-verticali-del-prodotto).
+Beyond the MVP, the vision includes new goods, used goods, door-to-door flights, and food delivery. These are future verticals, not promised integrations. For flights, departures that violate constraints are excluded first; for food, the same basket is compared while respecting actual coverage and applicable promotions. See [the proposal](docs/PROPOSAL.md#2-product-verticals) for details and limitations.
 
-## Documentazione e pubblicazione
+## Documentation and GitHub
 
-README e `docs/` sono la fonte di verità: versionabili, leggibili fuori da GitHub e revisionabili via pull request; in futuro il codice può convivere nello stesso repository. La Wiki è separata dalla cronologia del repository e offre un flusso di revisione meno naturale; disponibilità per repository privati dipendente dal piano. I Projects dell’organizzazione sono viste di pianificazione, non documentazione. Pages, Discussions, Issues/Projects e profilo organizzativo possono essere valutati in seguito, senza creare automaticamente siti, wiki o board. Vedi [scelte di documentazione](docs/PROPOSAL.md#12-documentazione-su-github).
+The README and `docs/` are the source of truth: versionable, readable outside GitHub, and reviewable through pull requests; application code can live alongside them later. A Wiki has history separate from the repository and a less natural review workflow; availability for private repositories depends on the plan. Organization Projects are planning views, not documentation. Pages, Discussions, Issues/Projects, and an organization profile can be considered later without automatically creating sites, wikis, or boards. See [documentation choices](docs/PROPOSAL.md#12-github-documentation).
 
-## Hackathon Meta
+## Meta hackathon
 
-Il tema “Build for Your World” è coerente con un assistente che traduce vincoli quotidiani in scelte comprensibili. Modelli, crediti partner, scadenza e verifiche richieste sono riportati con fonti e riserve nella [sezione hackathon](docs/PROPOSAL.md#10-meta-hackathon-e-fornitori-di-inferenza). Partecipazione e idoneità del team non sono date per scontate.
+The “Build for Your World” theme fits an assistant that turns everyday constraints into understandable choices. Models, partner credits, the deadline, and required checks are covered: with sources and caveats: in the [hackathon section](docs/PROPOSAL.md#10-meta-hackathon-and-inference-providers). Participation and team eligibility are not assumed.
 
-## Stato e contributi
+## Status and contributions
 
-Questo repository contiene soltanto documentazione di progetto; non è un impegno di rilascio. Prima di implementare occorre validare accesso ai dati, condizioni d’uso, account/modelli, privacy, regole dell’evento e fattibilità del connettore. Non inserire credenziali, dati personali o offerte non verificate.
+This repository contains project documentation only; it is not a commitment to release. Before implementation, validate data access, terms of use, account/model access, privacy, event rules, and connector feasibility. Do not add credentials, personal data, or unverified offers.

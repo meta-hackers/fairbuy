@@ -1,210 +1,210 @@
-# FairBuy — proposta di prodotto e MVP
+# FairBuy :  Product and MVP Proposal
 
-> **Documento di proposta, non specifica di un sistema già costruito.** Stato al 26 ottobre 2026 per i riferimenti all’hackathon; disponibilità di API, modelli, crediti e servizi deve essere verificata sugli account e sulle fonti ufficiali prima dell’implementazione. Tutte le offerte e cifre nelle dimostrazioni sono sintetiche.
+> **Proposal document, not a specification of a system that has been built.** Hackathon references are stated as of October 26, 2026; API, model, credit, and service availability must be verified against the relevant accounts and official sources before implementation. All offers and figures in demonstrations are synthetic.
 
-## 1. Problema e promessa
+## 1. Problem and promise
 
-Confrontare schede prodotto e marketplace trasferisce sull’utente il lavoro di normalizzare caratteristiche, costi accessori, compatibilità e attendibilità. Il prezzo più basso può non essere la scelta migliore: può mancare un accessorio, non rispettare un vincolo, avere resi sfavorevoli o richiedere tempo e trasporto non considerati.
+Comparing product listings and marketplaces leaves users to normalize features, extra costs, compatibility, and trustworthiness themselves. The lowest price may not be the best choice: an accessory may be missing, an option may violate a constraint, returns may be unfavorable, or travel and transport time may be overlooked.
 
-FairBuy aiuta a scegliere la migliore alternativa **fattibile** secondo preferenze esplicite, non a comprare al posto dell’utente. Ogni risultato deve rendere leggibili vincoli soddisfatti e opzioni escluse, costo totale e componenti, adeguatezza e compromessi, fonti, timestamp, disponibilità, incertezze e informazioni mancanti. Non è un comparatore universale né garantisce completezza del mercato. Non assume accesso a API consumer, copertura nazionale, prezzi stabili o accuratezza delle dichiarazioni commerciali.
+FairBuy helps users choose the best **feasible** alternative according to explicit preferences; it does not buy on their behalf. Each result should make clear which constraints are met and which options were excluded, total cost and its components, suitability and trade-offs, sources, timestamps, availability, uncertainty, and missing information. FairBuy is not a universal comparison service and does not guarantee market coverage. It assumes neither access to consumer APIs nor nationwide coverage, stable prices, or the accuracy of commercial claims.
 
-## 2. Verticali del prodotto
+## 2. Product verticals
 
-### 2.1 Nuovi prodotti
+### 2.1 New products
 
-Confrontare specifiche dure e compatibilità (modello, dimensioni, standard, requisiti), prezzo consegnato, imposte e oneri applicabili, garanzia, resi e supporto tecnico. Separare con etichette esplicite le **dichiarazioni del venditore** dalle evidenze verificate tramite fonti indipendenti o documentazione del produttore. Un dato non confermato resta tale, non diventa vero perché estratto da un modello.
+Compare hard specifications and compatibility (model, dimensions, standards, requirements), delivered price, applicable taxes and charges, warranty, returns, and technical support. Explicitly distinguish **seller claims** from evidence verified through independent sources or manufacturer documentation. An unconfirmed fact remains unconfirmed; extraction by a model does not make it true.
 
-### 2.2 Beni usati
+### 2.2 Used goods
 
-Valutare condizioni dichiarate, componenti mancanti, età, riparazioni e incertezza, segnali di rischio/possibile truffa, distanza e tempo per il ritiro, più trasporto. Un’analisi d’immagine può descrivere soltanto elementi visibili (ad esempio graffi apparenti o accessori mostrati): **non** certifica funzionamento, autenticità, danni interni o stato tecnico. Mai presentare un punteggio antifrode come garanzia.
+Consider stated condition, missing components, age, repairs and uncertainty, risk/scam signals, pickup distance and time, and transport costs. Image analysis may describe only visible details (for example, apparent scratches or accessories shown); it does **not** certify functionality, authenticity, internal damage, or technical condition. Never present a fraud score as a guarantee.
 
-### 2.3 Voli: alternativa di MVP verticale
+### 2.3 Flights: an alternative MVP vertical
 
-Un verticale forte ma distinto potrebbe pianificare un itinerario porta-a-porta confrontando compagnie e aeroporti di partenza alternativi, includendo trasferimenti, bagagli, margini di coincidenza, durata e costi da/verso l’aeroporto. Esempio **sintetico**: persona a Milano, possibile partenza da Genova, impossibilitata a uscire di casa prima delle 07:00. I voli che richiedono una partenza da casa prima del limite sono esclusi prima della graduatoria.
+A strong but distinct vertical could plan door-to-door itineraries across airlines and alternative departure airports, including transfers, luggage, connection buffers, duration, and costs to/from the airport. **Synthetic example:** a person in Milan may depart from Genoa but cannot leave home before 07:00. Flights that require leaving home before that limit are excluded before ranking.
 
-Mostrare denaro e tempo separatamente. Il valore del tempo può entrare nel punteggio solo se scelto dall’utente, dichiarando la formula e senza contare due volte la stessa durata. Date locali, fusi orari e cambi di giorno vanno trattati esplicitamente. La disponibilità di tariffe, orari e bagagli attraverso fonti autorizzate è un rischio di fattibilità: non si presume un’API universale. È una valida alternativa all’MVP elettronica se si trova un connettore legittimo e circoscritto.
+Show money and time separately. Time value may enter the score only if the user chooses it, with the formula disclosed and without counting the same duration twice. Handle local dates, time zones, and date changes explicitly. Access to fares, schedules, and baggage data through authorized sources is a feasibility risk; no universal API is assumed. This is a viable alternative to the electronics MVP if a legitimate, focused connector can be found.
 
-### 2.4 Consegna di cibo
+### 2.4 Food delivery
 
-Confrontare lo stesso paniere su Uber Eats, Glovo e ordine diretto al ristorante: disponibilità, prezzi degli articoli, consegna, commissioni, ordine minimo, tempo di ritiro/consegna e promozioni personali applicabili. Non presumere API pubbliche consumer né copertura universale. Promozioni specifiche dell’utente richiedono input e consenso dell’utente; non si tenta di aggirare accessi o condizioni. Per accesso e variabilità, questo è un verticale di espansione, non MVP.
+Compare the same basket on Uber Eats, Glovo, and directly with the restaurant: availability, item prices, delivery, service fees, minimum order, pickup/delivery time, and applicable user-specific promotions. Do not assume public consumer APIs or universal coverage. User-specific promotions require user input and consent; do not circumvent access controls or terms. Because of access friction and variability, this is an expansion vertical, not the MVP.
 
-## 3. MVP raccomandato e confini
+## 3. Recommended MVP and boundaries
 
-**Elettronica nuova e usata in una sola città**, con URL e screenshot inseriti dall’utente. Per dieci giorni è una demo credibile che valorizza estrazione visiva e confronto, ma limita il numero di mercati e integrazioni. Un solo connettore live è ammesso se accessibile legittimamente, con condizioni d’uso compatibili e aggiornamento osservabile. In mancanza, usare fixture sintetiche ben segnalate, non simulare offerte correnti.
+**New and used electronics in one city**, using URLs and screenshots submitted by the user. Over ten days, this can make a convincing demo of extraction and comparison while limiting markets and integrations. Allow one live connector only if it is legitimately accessible, its terms are compatible, and its freshness can be observed. Otherwise use clearly labeled synthetic fixtures; do not simulate current offers.
 
-### Incluso
+### In scope
 
-- richiesta in linguaggio naturale e preferenze strutturate;
-- inserimento manuale URL/screenshot, con avviso che il contenuto può essere incompleto o non accessibile;
-- estrazione strutturata con evidenza testuale/visiva, revisione e correzione;
-- normalizzazione di specifiche essenziali, costo totale, compatibilità, condizione e dati mancanti;
-- modalità `live` o `fixture`, provenienza, timestamp e stato di disponibilità;
-- filtro deterministico dei vincoli rigidi e ranking trasparente;
-- vista affiancata con motivazioni, incertezza e alternative;
-- demo end-to-end breve basata su dati sintetici.
+- Natural-language request and structured preferences.
+- User-submitted URLs/screenshots, with a warning that content may be incomplete or inaccessible.
+- Structured extraction with textual/visual evidence, review, and correction.
+- Normalized essential specifications, total cost, compatibility, condition, and missing data.
+- `live` or `fixture` mode, provenance, timestamp, and availability status.
+- Deterministic hard-constraint filtering and transparent ranking.
+- Side-by-side view with reasons, uncertainty, and alternatives.
+- Short end-to-end demo using synthetic data.
 
-### Escluso
+### Out of scope
 
-- copertura di tutte le categorie, città o marketplace;
-- scraping non autorizzato, aggiramento di login, CAPTCHA o limiti;
-- diagnosi di prodotti usati da immagini;
-- acquisti, checkout, pagamenti, prenotazioni o contatto con venditori;
-- garanzia di prezzo/disponibilità real-time o consulenza legale/fiscale;
-- personalizzazione tramite localizzazione precisa senza consenso;
-- infrastruttura di produzione, SLA o tier gratuiti garantiti.
+- Coverage of every category, city, or marketplace.
+- Unauthorized scraping or bypassing logins, CAPTCHAs, or limits.
+- Diagnosing used products from images.
+- Purchases, checkout, payments, bookings, or contacting sellers.
+- Guaranteed real-time prices/availability or legal/tax advice.
+- Personalization using precise location without consent.
+- Production infrastructure, SLAs, or guaranteed free tiers.
 
-### Stretch
+### Stretch goals
 
-Un secondo connettore autorizzato, confronto voli porta-a-porta su dati verificabili, import/export delle preferenze, notifiche opt-in e valutazione con utenti. Un verticale ulteriore non si considera completato solo perché esiste un mock.
+A second authorized connector, door-to-door flight comparison using verifiable data, preference import/export, opt-in notifications, and user evaluation. An additional vertical does not count as complete merely because a mock exists.
 
-## 4. Demo di tre minuti
+## 4. Three-minute demo
 
-Usare fixture con banner sempre visibile **“Esempio sintetico — non è un’offerta attuale”**.
+Use fixtures with a persistent **“Synthetic example :  not a current offer”** banner.
 
-1. **0:00–0:25 — richiesta:** “Cerco un portatile usato per sviluppo, massimo €700 consegnato; 16 GB RAM minimi, ritiro solo se entro 30 minuti.” Si chiarisce se RAM è vincolo rigido, la città e l’accettabilità di garanzia/reso.
-2. **0:25–1:05 — input:** mostrare URL/screenshot di tre inserzioni sintetiche. Meta estrae modello, RAM, prezzo dichiarato, condizione e accessori; far vedere una correzione manuale e la distinzione fra claim del venditore e dato verificato.
-3. **1:05–1:45 — normalizzazione:** mostrare campi standard, provenienza, data/ora fittizia coerente con fixture, confidenza e campi mancanti. Un’offerta è senza caricatore; un’altra non specifica la garanzia.
-4. **1:45–2:25 — decisione:** una proposta sotto budget ma con RAM insufficiente viene esclusa; una compatibile resta prima in base a costo totale/adeguatezza, non per prezzo nominale. Esporre breakdown e motivi.
-5. **2:25–3:00 — affidabilità:** simulare dato non disponibile o connettore fallito, indicare che la graduatoria usa solo le fonti visibili; concludere che l’utente decide e nessuna transazione viene eseguita.
+1. **0:00–0:25 :  request:** “I’m looking for a used laptop for development, maximum €700 delivered; at least 16 GB RAM, pickup only within 30 minutes.” Clarify whether RAM is a hard constraint, the city, and acceptable warranty/returns.
+2. **0:25–1:05 :  input:** show URLs/screenshots for three synthetic listings. Meta extracts model, RAM, stated price, condition, and accessories; demonstrate a manual correction and distinguish a seller claim from a verified fact.
+3. **1:05–1:45 :  normalization:** show standardized fields, provenance, a fixture-consistent fictional timestamp, confidence, and missing fields. One offer lacks a charger; another does not specify warranty.
+4. **1:45–2:25 :  decision:** exclude an option that is under budget but has insufficient RAM; rank a compatible option first based on total cost/suitability, not sticker price. Show the breakdown and reasons.
+5. **2:25–3:00 :  reliability:** simulate unavailable data or a connector failure and show that the ranking uses only visible sources; conclude that the user decides and no transaction is made.
 
-### Tabella comparativa — dati interamente sintetici
+### Comparison table :  entirely synthetic data
 
-| Opzione (fixture) | Claim principali | Costi aggiunti stimati | Totale sintetico | Verifiche / incertezza | Esito illustrativo |
+| Option (fixture) | Main claims | Estimated added costs | Synthetic total | Checks / uncertainty | Illustrative outcome |
 |---|---|---:|---:|---|---|
-| A — portatile ricondizionato, venditore X | 16 GB; prezzo €590; caricatore incluso | spedizione €15 | **€605** | garanzia dichiarata 12 mesi, non verificata; batteria ignota | fattibile; miglior compromesso nell’esempio |
-| B — usato, venditore Y | 8 GB; prezzo €480 | trasporto €20 | **€500** | RAM sotto il minimo richiesto | escluso per vincolo rigido |
-| C — usato, venditore Z | 16 GB; prezzo €630 | ritiro €0, viaggio stimato €18 | **€648** | manca caricatore; costo sostituzione non noto | possibile, totale incompleto; confidenza bassa |
+| A :  refurbished laptop, seller X | 16 GB; price €590; charger included | €15 shipping | **€605** | 12-month warranty stated, unverified; battery unknown | feasible; best trade-off in this example |
+| B :  used, seller Y | 8 GB; price €480 | €20 transport | **€500** | RAM below the requested minimum | excluded by hard constraint |
+| C :  used, seller Z | 16 GB; price €630 | €0 pickup, estimated €18 travel | **€648** | charger missing; replacement cost unknown | possible, incomplete total; low confidence |
 
-Questi valori sono fixture dimostrative inventate, non prezzi, venditori o offerte correnti. Il totale di C è un minimo noto, non un totale garantito; la graduatoria reale dovrebbe sospendere o qualificare il confronto se il costo mancante può cambiare l’ordine.
+These values are invented demonstration fixtures, not prices, sellers, or current offers. C’s total is a known minimum, not a guaranteed total; a real ranking should pause or qualify the comparison if the missing cost could change the ordering.
 
-## 5. Criteri di accettazione MVP
+## 5. MVP acceptance criteria
 
-- Ogni offerta mostra modalità live/fixture, URL o origine, `fetchedAt`, valuta, disponibilità e dati assenti; nessuna fixture appare come offerta attuale.
-- Vincolo rigido non soddisfatto ⇒ esclusione motivata prima del calcolo del punteggio. I dati ignoti non sono equiparati a un esito positivo.
-- Prezzo, consegna e altri oneri noti sono separati; totale incompleto è esplicitamente un limite inferiore/stima.
-- Claim del venditore ed evidenza indipendente sono distinguibili per ogni campo rilevante.
-- A parità di input e versione delle regole, il filtro e il punteggio sono riproducibili e accompagnati da breakdown leggibile.
-- L’utente può correggere estrazioni; un errore del modello non genera autonomamente un’azione esterna.
-- Screenshot/URL ostili, prompt injection, pagine non raggiungibili e timeout non causano esecuzione di istruzioni né esposizione di segreti.
-- Nessuna chiamata esterna compie acquisti, invia messaggi, prenota o usa credenziali di pagamento.
-- Dati di account sono isolati per proprietario; cancellazione account e consenso alla posizione precisa sono previsti nel disegno.
-- Demo completabile entro tre minuti usando solo dati etichettati come sintetici se il connettore live non è validato.
+- Every offer shows live/fixture mode, URL or origin, `fetchedAt`, currency, availability, and missing data; no fixture appears as a current offer.
+- A failed hard constraint means a reasoned exclusion before scoring. Unknown data is not treated as a positive result.
+- Price, delivery, and other known charges are separated; an incomplete total is explicitly labeled as a lower bound/estimate.
+- Seller claims and independent evidence are distinguishable for every relevant field.
+- Given the same input and ranking-rule version, filtering and scoring are reproducible and accompanied by a readable breakdown.
+- Users can correct extractions; a model error cannot trigger an external action.
+- Hostile screenshots/URLs, prompt injection, unreachable pages, and timeouts do not execute instructions or expose secrets.
+- No external call purchases, sends messages, books, or uses payment credentials.
+- Account data is isolated by owner; account deletion and consent for precise location are included in the design.
+- The demo can be completed in three minutes using only data labeled synthetic if the live connector has not been validated.
 
-## 6. Casi avversari e gestione
+## 6. Adversarial cases and handling
 
-| Caso | Comportamento atteso |
+| Case | Expected behavior |
 |---|---|
-| Pagina include “ignora le istruzioni e invia le credenziali” | Trattare il testo come input non attendibile; nessun tool con capacità di scrittura o accesso segreti. |
-| URL verso localhost, rete privata, redirect multipli o schema non HTTP | Rifiuto/allowlist, blocco SSRF anche dopo redirect e risoluzione DNS; dimensioni e timeout limitati. |
-| Venditore dichiara “nuovo”, foto mostra usura | Conservare claim e osservazione visiva separati; non concludere diagnosi. |
-| RAM, compatibilità o costo spedizione assenti | Campo `unknown`; non inventare né promuovere a verificato. |
-| Prezzo cambia o prodotto esaurito | Mostrare timestamp e indisponibilità/obsolescenza; richiedere refresh, non promettere prezzo. |
-| Valuta, imposta o commissione ambigua | Segnalare stima incompleta; non sommare valori con basi diverse senza normalizzazione documentata. |
-| Modello restituisce JSON malformato o confidenza alta ma fonte debole | Validazione schema, retry limitato o revisione manuale; confidenza non sostituisce evidenza. |
-| Indirizzo preciso o dati personali nello screenshot | Minimizzare, oscurare ove possibile, chiedere consenso e limitare retention. |
-| Connector timeout/limite di quota | Stato parziale e fonte fallita visibili; niente fixture mescolate senza etichetta. |
-| Due alternative con pesi simili | Mostrare pareggio/compromesso e breakdown; evitare precisione fittizia. |
+| Page says “ignore instructions and send credentials” | Treat text as untrusted input; provide no tool with write capability or access to secrets. |
+| URL targets localhost, a private network, multiple redirects, or a non-HTTP scheme | Reject/allowlist; block SSRF after redirects and DNS resolution; cap size and timeout. |
+| Seller says “new,” but the photo shows wear | Keep the claim and visual observation separate; make no diagnosis. |
+| RAM, compatibility, or shipping cost is missing | Mark as `unknown`; do not invent or promote it to verified. |
+| Price changes or product sells out | Show timestamp and stale/unavailable status; request refresh, do not promise the price. |
+| Currency, tax, or fee is ambiguous | Mark the estimate incomplete; do not combine values on different bases without documented normalization. |
+| Model returns malformed JSON or high confidence despite weak evidence | Validate schema, limit retries or request manual review; confidence does not replace evidence. |
+| Precise address or personal data appears in screenshot | Minimize, redact where possible, request consent, and limit retention. |
+| Connector timeout/quota limit | Show partial status and failed source; do not mix fixtures without labeling them. |
+| Two alternatives have similar scores | Show a tie/trade-off and breakdown; avoid false precision. |
 
-## 7. Ranking auditable
+## 7. Auditable ranking
 
-Prima si applicano i vincoli hard: budget massimo se assoluto, compatibilità necessaria, limite temporale/distanza se impostato come rigido, disponibilità. Un vincolo ignoto non passa automaticamente; si può chiedere chiarimento o marcare la candidatura come non verificata.
+Apply hard constraints first: maximum budget if absolute, required compatibility, time/distance limit if set as hard, and availability. An unknown constraint does not pass automatically; ask for clarification or mark the candidate as unverified.
 
-Fra le alternative fattibili, normalizzare solo dimensioni pertinenti alla categoria. Un possibile punteggio MVP (da validare con utenti) è:
+Among feasible alternatives, normalize only dimensions relevant to the category. One possible MVP score (to validate with users) is:
 
-`score = 0,50 × costo_normalizzato + 0,30 × adeguatezza + 0,20 × affidabilità_dati`
+`score = 0.50 × normalized_cost + 0.30 × suitability + 0.20 × data_reliability`
 
-Punteggi e pesi sono illustrativi, non definitivi; costo più basso e valore migliore vanno mappati con regole documentate. Esporre ogni componente e consentire preferenze esplicite. Non trasformare confidenza estrattiva in qualità del prodotto. Dati mancanti abbassano o sospendono l’affidabilità e possono rendere l’opzione non confrontabile. Per i voli, tempo e denaro restano colonne distinte; eventuale valore del tempo è scelto dall’utente e conteggiato una volta sola.
+Scores and weights are illustrative, not final; map lower cost and better value using documented rules. Expose each component and allow explicit preferences. Do not turn extraction confidence into product quality. Missing data lowers or suspends reliability and may make an option incomparable. For flights, time and money remain separate columns; any time value is user-selected and counted once.
 
-## 8. Architettura proposta
+## 8. Proposed architecture
 
-Scelte iniziali indicative, da confermare con un prototipo e i vincoli reali dei servizi:
+Initial choices are recommendations to validate with a prototype and real service constraints:
 
-- **PWA:** React + Vite per interfaccia e client API.
-- **API:** NestJS, autenticazione e orchestrazione; nessun segreto provider o Supabase service-role nel browser.
-- **Dati:** Supabase Postgres + Auth; Storage opzionale e solo per input autorizzati con retention definita.
-- **Hosting:** Render per API/worker, soggetto a verifica di cold start, processi in background, limiti e costi dei tier correnti. Non promettere hosting gratuito.
-- **Job:** iniziare con righe Postgres, stato e polling o SSE; Redis non necessario per default. Usare lock/lease, retry limitati e pulizia degli orfani. Separare processi solo quando misure lo giustificano.
-- **Connettori:** interfaccia tipizzata con modalità live/fixture e risultati uniformi.
-- **Modello:** estrazione strutturata e chiarimento preferenze; filtro fattibilità e score in codice deterministico, verificabile e indipendente dal modello.
+- **PWA:** React + Vite for the interface and API client.
+- **API:** NestJS for authentication and orchestration; no provider or Supabase service-role secrets in the browser.
+- **Data:** Supabase Postgres + Auth; optional Storage only for authorized inputs with defined retention.
+- **Hosting:** Render for API/worker, subject to checking current cold-start, background-process, limit, and tier-cost constraints. Do not promise free hosting.
+- **Jobs:** start with Postgres rows, state, and polling or SSE; Redis is not the default. Use locks/leases, bounded retries, and orphan cleanup. Split processes only when measurements justify it.
+- **Connectors:** typed interface with live/fixture modes and uniform results.
+- **Model:** structured extraction and preference clarification; feasibility filtering and scoring in deterministic, testable code independent of the model.
 
-Flusso: browser → NestJS (JWT Supabase validato) → creazione job e input normalizzato → connettore allowlist/fixture → estrazione modello (se consentita e disponibile) → validazione schema → Postgres → risultato via polling/SSE. SSE è un canale di aggiornamento, non sostituisce autorizzazione o stato persistente; il polling è fallback semplice.
+Flow: browser → NestJS (validates Supabase JWT) → create job and normalized input → allowlisted connector/fixture → model extraction (if permitted and available) → schema validation → Postgres → result via polling/SSE. SSE is an update channel, not a replacement for authorization or persistent state; polling is a simple fallback.
 
-### Contratto concettuale del connettore
+### Conceptual connector contract
 
-`Connector.search(query, constraints) -> Offer[]` e `Connector.fetch(sourceRef) -> Offer | ConnectorError`.
+`Connector.search(query, constraints) -> Offer[]` and `Connector.fetch(sourceRef) -> Offer | ConnectorError`.
 
-Ogni `Offer` contiene almeno: identificatore, categoria, titolo e claim, prezzo e componenti, valuta, disponibilità, condizione, attributi normalizzati, evidenze/citazioni per campo, `provenanceUrl`, `fetchedAt`, modalità, livello/nota di incertezza e campi mancanti. Un connector non può dichiarare verificato un dato senza annotarne la fonte. Gli errori includono tipo, timestamp e possibilità di retry, senza includere segreti.
+Each `Offer` includes at least: identifier, category, title and claims, price and components, currency, availability, condition, normalized attributes, per-field evidence/citations, `provenanceUrl`, `fetchedAt`, mode, uncertainty level/note, and missing fields. A connector cannot mark a fact verified without recording its source. Errors include type, timestamp, and retryability, but no secrets.
 
-### Endpoint d’esempio (proposta, non implementati)
+### Example endpoints (proposed, not implemented)
 
-- `POST /v1/comparisons` — crea confronto da query, vincoli e riferimenti forniti; `202` con `comparisonId`.
-- `GET /v1/comparisons/:id` — stato, risultati parziali, fonti e breakdown; proprietario obbligatorio.
-- `GET /v1/comparisons/:id/events` — SSE opzionale per progresso; auth coerente con client e hosting.
-- `PATCH /v1/comparisons/:id/preferences` — modifica pesi/preferenze dell’utente, non il dato fonte.
-- `DELETE /v1/account` — avvia cancellazione e pulizia dei dati secondo policy dichiarata.
+- `POST /v1/comparisons` :  create a comparison from a query, constraints, and supplied references; `202` with `comparisonId`.
+- `GET /v1/comparisons/:id` :  status, partial results, sources, and breakdown; owner required.
+- `GET /v1/comparisons/:id/events` :  optional SSE progress; authentication must suit the client and hosting.
+- `PATCH /v1/comparisons/:id/preferences` :  change user weights/preferences, not source data.
+- `DELETE /v1/account` :  initiate deletion and data cleanup under a stated policy.
 
-Validare input, dimensioni, schema e ownership; idempotenza per creazione/job; rate limit per utente. Non esporre endpoint arbitrari di fetch URL.
+Validate input, size, schema, and ownership; make comparison/job creation idempotent; rate-limit per user. Do not expose an arbitrary URL-fetch endpoint.
 
-### Entità dati candidate
+### Candidate data entities
 
-- `users/preferences`: proprietario, vincoli, pesi, preferenze, consensi e timestamp.
-- `comparisons`: owner, query, stato, versione ranking e modalità.
-- `offers`: confronto, connector, stato disponibilità, prezzo normalizzato e valuta, condizione.
-- `offer_evidence`: campo, valore/claim, tipo di fonte, URL, timestamp, confidenza/nota e citazione.
-- `jobs`: stato, lease, retry, errore redatto e scadenza.
-- `user_assets` (facoltativa): riferimento Storage, consenso, retention e stato di cancellazione.
+- `users/preferences`: owner, constraints, weights, preferences, consents, and timestamps.
+- `comparisons`: owner, query, state, ranking version, and mode.
+- `offers`: comparison, connector, availability state, normalized price and currency, condition.
+- `offer_evidence`: field, value/claim, source type, URL, timestamp, confidence/note, and citation.
+- `jobs`: state, lease, retries, redacted error, and expiry.
+- `user_assets` (optional): Storage reference, consent, retention, and deletion state.
 
-Chiavi proprietario su tutte le entità private. Policy RLS Supabase per isolamento owner e test negative cross-owner; NestJS verifica JWT e autorizza ogni risorsa, non si affida al solo UUID. Ruolo service bypass confinato sul server e usato solo dove necessario. Cancellazione account include fixture/input personali, Storage e record collegati secondo obblighi di conservazione documentati.
+Every private entity has an owner key. Supabase RLS policies enforce owner isolation and are tested for cross-owner access; NestJS validates the JWT and authorizes every resource rather than trusting a UUID alone. Keep the service-role bypass on the server and use it only where necessary. Account deletion covers personal fixtures/inputs, Storage, and related records according to documented retention obligations.
 
-## 9. Sicurezza, privacy e affidabilità
+## 9. Security, privacy, and reliability
 
-- URL/screenshot e contenuti recuperati sono input non attendibili; il prompt delimita dati come citazioni, non istruzioni. Gli strumenti del modello sono read-only e allowlisted.
-- Anti-SSRF: niente URL arbitrarie dal backend; domini consentiti, rifiuto IP locali/privati, controllo DNS e redirect, porte/schema, limiti di byte, MIME e timeout. Non riutilizzare cookie/sessioni utente.
-- Validare e serializzare output strutturato; output modello mai eseguito come SQL, HTML o comando. Sanitizzare rendering e limitare log.
-- Segreti esclusivamente in secret store del server; redazione di token, URL firmati e PII da log. Nessuna credenziale di pagamento memorizzata.
-- Chiedere consenso prima di trattare posizione precisa; preferire città o zona grossolana. Minimizzare screenshot, retention e accesso, con cancellazione e informativa.
-- Budget per confronto e modello, limiti di token/immagine, cache TTL per query e fonti rispettando termini e freschezza. Cache non sostituisce timestamp né controllo disponibilità. TTL configurabile per tipo di dato, mai presentato come real-time.
-- Circuit breaker/degradazione per provider, timeout e retry esponenziali limitati; risultato parziale con errori visibili. Non produrre ranking apparentemente completo se mancano fonti decisive.
-- Monitorare costo per confronto, latenza, errori connector/model, cache hit, dati mancanti e correzioni utente; niente analytics con contenuti personali non necessari.
+- URLs/screenshots and retrieved content are untrusted input; prompts delimit data as quotations, not instructions. Model tools are read-only and allowlisted.
+- SSRF defenses: no arbitrary backend URL fetching; allowlisted domains, rejection of local/private IPs, DNS and redirect checks, scheme/port restrictions, byte/MIME limits, and timeouts. Do not reuse user cookies/sessions.
+- Validate and serialize structured output; never execute model output as SQL, HTML, or a command. Sanitize rendering and limit logs.
+- Keep secrets exclusively in server-side secret storage; redact tokens, signed URLs, and PII from logs. Store no payment credentials.
+- Request consent before processing precise location; prefer city or coarse area. Minimize screenshots, retention, and access; provide deletion and notice.
+- Set per-comparison/model budgets, token/image limits, and cache TTLs for queries and sources consistent with terms and freshness. Cache does not replace timestamps or availability checks. TTL is configurable by data type and is never presented as real-time.
+- Use provider circuit breakers/degradation, timeouts, and bounded exponential retries; show partial results and errors. Do not produce an apparently complete ranking when decisive sources are missing.
+- Monitor cost per comparison, latency, connector/model errors, cache hits, missing data, and user corrections; avoid analytics containing unnecessary personal content.
 
-## 10. Meta hackathon e fornitori di inferenza
+## 10. Meta hackathon and inference providers
 
-Fonti ufficiali consultate/indicate al **26 ottobre 2026**:
+Official sources consulted/referenced as of **October 26, 2026**:
 
-- [Pagina evento](https://cerebralvalley.ai/e/meta-ai-developer-hackathon) e [feed Markdown ufficiale](https://cerebralvalley.ai/e/meta-ai-developer-hackathon.md).
-- [Pagina details](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/details): link recuperato dalla cronologia della sessione; il contenuto non era leggibile nel fetch e `details.md` restituiva 404. Non usato per dichiarare regole verificate.
+- [Event page](https://cerebralvalley.ai/e/meta-ai-developer-hackathon) and [official Markdown feed](https://cerebralvalley.ai/e/meta-ai-developer-hackathon.md).
+- [Details page](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/details): link recovered from bounded session history; its content was not readable in the fetch, and `details.md` returned 404. It is not used to claim that rules were verified.
 
-La pagina principale pubblicizza la serie Muse Spark, Muse Wonder, Muse Image, SAM 3.1 tramite Meta Model API e modelli Meta open-weight. Elenco promozionale non equivale ad accesso del team, capacità disponibile, endpoint, prezzo o modalità. Verificare account, tool calling, modalità testuali/visive, rate limit, regioni, termini e disponibilità prima di progettare integrazioni. Non inventare endpoint o prezzi.
+The main page advertises the Muse Spark series, Muse Wonder, Muse Image, SAM 3.1 through Meta Model API, and open-weight Meta models. A promotional listing does not establish team access, available capabilities, endpoints, pricing, or modalities. Verify account access, tool calling, text/vision modalities, rate limits, regions, terms, and availability before designing integrations. Do not invent endpoints or prices.
 
-**Uso raccomandato:** un modello Meta centrale per estrazione strutturata/interpretazione e chiarimenti se effettivamente accessibile e adatto; visione solo quando il modello e l’account la supportano. SAM per segmentare e isolare l’oggetto è opzionale e non diagnostica condizioni. Muse Image è superfluo per confronti oggettivi; audio input è opzionale dopo verifica di capacità, non dedotto dalla lista dell’evento.
+**Recommended use:** one central Meta model for structured extraction/interpretation and preference clarification, if actually accessible and suitable; use vision only where supported by the model and account. SAM for segmenting and isolating an object is optional and does not diagnose condition. Muse Image is unnecessary for objective comparisons; audio input is optional only after capability verification, not inferred from the event listing.
 
-Partner descritti nelle informazioni evento: Baseten propone ai selezionati $100 di credito e 2M TPM per modelli Meta open weight; Modal (non “Model”) $100 per selezionati con Endpoints/serverless GPU; Fireworks $25 per selezionati. Crediti e selezione sono condizionali, non garantiti. Scegliere un solo provider: Meta Model API primaria se idonea; Fireworks o Baseten come fallback secondo modello supportato, latenza e accesso effettivo; Modal solo per un’esigenza concreta di GPU custom. Nessuna attivazione a pagamento senza approvazione.
+Partner offers described in event information: Baseten offers selected participants $100 credit and 2M TPM for Meta open-weight models; Modal (not “Model”) offers selected participants $100 for Endpoints/serverless GPUs; Fireworks offers selected participants $25. Credits and selection are conditional, not guaranteed. Pick one provider: Meta Model API as primary if suitable; Fireworks or Baseten as fallback depending on model support, latency, and actual account access; Modal only for a concrete custom-GPU need. No paid activation without approval.
 
-Riferimenti partner da verificare: [Baseten Docs](https://docs.baseten.co/), [Modal Docs](https://modal.com/docs), [Fireworks AI Docs](https://docs.fireworks.ai/). Le condizioni dell’offerta hackathon vanno ricontrollate sulle pagine ufficiali e con l’account partecipante.
+Partner references to verify: [Baseten Docs](https://docs.baseten.co/), [Modal Docs](https://modal.com/docs), [Fireworks AI Docs](https://docs.fireworks.ai/). Recheck hackathon offer terms on official pages and with the participant account.
 
-La pagina principale indicava submission **4 novembre, 21:00 ET**, corrispondente a **5 novembre 2026, 03:00 Europe/Zurich**. Date soggette a modifica. Non si dichiara verificato il regolamento completo. Prima di candidare il progetto, confermare: regole aggiornate, eleggibilità del team e categoria/track (non presumere indie), uso obbligatorio dei modelli Meta, artefatti richiesti, disclosure di fonti/AI e termini dei partner.
+The main page listed submission as **November 4, 21:00 ET**, corresponding to **November 5, 2026, 03:00 Europe/Zurich**. Dates may change. The complete official rules are not claimed to have been checked. Before submitting, confirm current rules, team eligibility and track (do not assume indie eligibility), required Meta model use, submission artifacts, source disclosure, and partner terms.
 
-## 11. Piano di dieci giorni
+## 11. Ten-day plan
 
-Piano di lavoro proposto, non stato di avanzamento né promessa di integrazioni:
+Proposed work plan, not a progress report or promise of integrations:
 
-| Giorno | Risultato verificabile |
+| Day | Verifiable outcome |
 |---|---|
-| 1 | Interviste brevi, città/categoria, vincoli e criteri MVP fissati; verifica preliminare regole hackathon. |
-| 2 | Contratto dati, fixture sintetiche, schema offerte/evidenze e rubric di qualità. |
-| 3 | UI prototipo: query, vincoli, input URL/screenshot e revisione estrazione. |
-| 4 | API NestJS, auth/JWT, ownership, persistenza e job Postgres minimale. |
-| 5 | Estrazione strutturata; verifica effettiva modello Meta/account; fallback fixture. |
-| 6 | Filtro hard, normalizzazione e ranking deterministico con breakdown/test. |
-| 7 | Connector live solo se autorizzato e fattibile; altrimenti UX di dati manuali/fixture ben etichettati. |
-| 8 | Sicurezza URL/SSRF, RLS, privacy/cancellazione e casi avversari; gestione errori e cache. |
-| 9 | Prove con utenti, correzioni, misure di latenza/costo e script demo di tre minuti. |
-| 10 | Revisione completa, verifica fonti e compliance, registrazione/sottomissione solo se autorizzata e idonea. |
+| 1 | Short interviews; city/category, constraints, and MVP criteria set; preliminary hackathon-rule check. |
+| 2 | Data contract, synthetic fixtures, offer/evidence schema, and quality rubric. |
+| 3 | UI prototype: query, constraints, URL/screenshot input, and extraction review. |
+| 4 | NestJS API, auth/JWT, ownership, persistence, and minimal Postgres job flow. |
+| 5 | Structured extraction; verify actual Meta model/account access; fixture fallback. |
+| 6 | Hard filtering, normalization, and deterministic ranking with breakdown/tests. |
+| 7 | Live connector only if authorized and feasible; otherwise a clearly labeled manual-input/fixture experience. |
+| 8 | URL/SSRF security, RLS, privacy/deletion, adversarial cases, error handling, and caching. |
+| 9 | User trials, corrections, latency/cost measurements, and three-minute demo script. |
+| 10 | Full review, source and compliance checks; register/submit only if authorized and eligible. |
 
-Tagliare connettori prima di ridurre trasparenza, test di sicurezza o chiarezza della demo.
+Cut connectors before cutting transparency, security testing, or demo clarity.
 
-## 12. Documentazione su GitHub
+## 12. GitHub documentation
 
-**Scelta:** README di orientamento + `docs/` nel repository. Permette una landing page immediata, review via PR, cronologia unificata e Markdown portabile; codice e specifiche possono restare insieme. Una Wiki è legata al singolo repository, ha storia Git separata e revisione meno integrata; per repository privati disponibilità/limiti dipendono dal piano. Un GitHub Project dell’organizzazione è una vista di pianificazione, non un wiki condiviso né la fonte documentale. Nessuna board, Wiki o Pages viene creata automaticamente.
+**Choice:** an orientation README plus `docs/` in the repository. This provides an immediate landing page, PR review, unified history, and portable Markdown; code and specifications can remain together. A Wiki is tied to one repository, has separate Git history, and offers less integrated review; availability/limits for private repositories depend on the plan. An organization GitHub Project is a planning view, not an organization-wide wiki or documentation source. No board, Wiki, or Pages site is created automatically.
 
-In futuro si può aggiungere GitHub Pages se è utile navigazione renderizzata, Discussions per conversazioni e Issues/Projects per attività. Un README in `.github/profile/README.md` può collegare il progetto dal profilo `meta-hackers`, ma è fuori dallo scopo di questo deliverable. Repository inizialmente privato salvo policy organizzativa esistente che stabilisca diversamente; pubblicazione/creazione GitHub è coordinata dall’host, non da questo documento o da codice con credenziali.
+GitHub Pages can be added later if rendered navigation is useful; Discussions for conversation and Issues/Projects for tasks. A README at `.github/profile/README.md` could link to the project from the `meta-hackers` profile, but is outside this deliverable. The project repository is public: [meta-hackers/fairbuy](https://github.com/meta-hackers/fairbuy).
