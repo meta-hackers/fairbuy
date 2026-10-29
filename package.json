@@ -2,10 +2,12 @@
   "name": "fairbuy",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "backend"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "start:backend": "npm run start -w @fairbuy/backend"
   }
 }

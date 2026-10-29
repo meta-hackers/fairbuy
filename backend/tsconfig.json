@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    // Nest decorators. Dependencies are injected with explicit @Inject tokens,
+    // so the code does not rely on emitted type metadata (tsx/vitest use esbuild).
+    "experimentalDecorators": true
+  },
+  "include": ["src", "test"]
+}
