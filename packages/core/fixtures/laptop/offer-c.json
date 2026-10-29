@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-c",
+  "category": "laptop",
+  "mode": "fixture",
+  "provenanceUrl": "fixture://laptop/offer-c",
+  "fetchedAt": "2026-01-15T10:00:00Z",
+  "availability": "available",
+  "title": "Synthetic example: used laptop, seller Z",
+  "condition": {
+    "status": "seller_claim",
+    "value": "used",
+    "evidence": [{ "sourceType": "url", "ref": "fixture://laptop/offer-c", "snippet": "Used", "at": "2026-01-15T10:00:00Z" }]
+  },
+  "price": {
+    "currency": "EUR",
+    "components": [
+      { "kind": "item", "amountCents": 63000, "status": "seller_claim" },
+      { "kind": "travel", "amountCents": 1800, "status": "estimate", "label": "Pickup travel" }
+    ],
+    "totalIsLowerBound": true
+  },
+  "attributes": {
+    "ramGb": {
+      "status": "seller_claim",
+      "value": { "kind": "number", "value": 16, "unit": "GB" },
+      "evidence": [{ "sourceType": "url", "ref": "fixture://laptop/offer-c", "snippet": "16 GB RAM", "at": "2026-01-15T10:00:00Z" }]
+    },
+    "chargerIncluded": {
+      "status": "seller_claim",
+      "value": { "kind": "bool", "value": false },
+      "evidence": [{ "sourceType": "url", "ref": "fixture://laptop/offer-c", "snippet": "Charger not included", "at": "2026-01-15T10:00:00Z" }]
+    }
+  },
+  "missing": ["chargerReplacementCost", "warranty"]
+}

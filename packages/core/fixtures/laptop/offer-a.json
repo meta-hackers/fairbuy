@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-a",
+  "category": "laptop",
+  "mode": "fixture",
+  "provenanceUrl": "fixture://laptop/offer-a",
+  "fetchedAt": "2026-01-15T10:00:00Z",
+  "availability": "available",
+  "title": "Synthetic example: refurbished laptop, seller X",
+  "condition": {
+    "status": "seller_claim",
+    "value": "refurbished",
+    "evidence": [{ "sourceType": "url", "ref": "fixture://laptop/offer-a", "snippet": "Refurbished, grade A", "at": "2026-01-15T10:00:00Z" }]
+  },
+  "price": {
+    "currency": "EUR",
+    "components": [
+      { "kind": "item", "amountCents": 59000, "status": "seller_claim" },
+      { "kind": "shipping", "amountCents": 1500, "status": "seller_claim" }
+    ],
+    "totalIsLowerBound": false
+  },
+  "attributes": {
+    "ramGb": {
+      "status": "seller_claim",
+      "value": { "kind": "number", "value": 16, "unit": "GB" },
+      "evidence": [{ "sourceType": "url", "ref": "fixture://laptop/offer-a", "snippet": "16 GB RAM", "at": "2026-01-15T10:00:00Z" }]
+    },
+    "chargerIncluded": {
+      "status": "seller_claim",
+      "value": { "kind": "bool", "value": true },
+      "evidence": [{ "sourceType": "url", "ref": "fixture://laptop/offer-a", "snippet": "Original charger included", "at": "2026-01-15T10:00:00Z" }]
+    },
+    "warrantyMonths": {
+      "status": "seller_claim",
+      "value": { "kind": "number", "value": 12, "unit": "months" },
+      "evidence": [{ "sourceType": "url", "ref": "fixture://laptop/offer-a", "snippet": "12-month warranty", "at": "2026-01-15T10:00:00Z" }]
+    }
+  },
+  "missing": ["batteryHealth"]
+}
