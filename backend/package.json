@@ -1,0 +1,31 @@
+{
+  "name": "@fairbuy/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FairBuy NestJS API.",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^12.3.2",
+    "@types/node": "^24.19.2",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "@fairbuy/core": "*",
+    "@nestjs/common": "^12.3.2",
+    "@nestjs/core": "^12.3.2",
+    "@nestjs/platform-express": "^12.3.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.7"
+  }
+}
