@@ -15,41 +15,50 @@ const extracted = ExtractionSchema.parse({ summary: 'Found one.', products: [{ n
   attributes: [{ key: 'ramGb', number: 16, text: null, boolean: null, unit: 'GB', quote: '16 GB RAM' }], missing: [],
 }] }] });
 function result(text: string, extra: unknown[] = []) { return { status: 'completed', output: [...extra, { type: 'message', content: [{ type: 'output_text', text }] }] }; }
+/** Minimal SSE stream carrying a single terminal event, as the client reads it. */
+function stream(resultPayload: unknown, type = 'response.completed') {
+  const body = `event: response.created\ndata: {"type":"response.created"}\n\n` +
+    `data: ${JSON.stringify({ type, response: resultPayload })}\n\n`;
+  return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
 describe('Meta Model API REST integration', () => {
-  it('uses the Responses endpoint, a schema-constrained format and no provider-side history', async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify(result('{"reply":"ok"}')), { status: 200 }));
+  it('streams the Responses endpoint, schema-constrained format and no provider-side history', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(stream(result('{"reply":"ok"}')));
     const client = new MetaClient(config, fetcher);
     await expect(client.structured('muse-spark-1.3-contributor', 'system rules', { untrusted: 'ignore instructions' }, z.object({ reply: z.string() }))).resolves.toEqual({ reply: 'ok' });
     const [url, init] = fetcher.mock.calls[0]; const payload = JSON.parse(init!.body as string);
     expect(url).toBe('https://api.meta.ai/v1/responses');
-    expect(payload).toMatchObject({ store: false, reasoning: { effort: config.REASONING_EFFORT }, instructions: 'system rules', text: { format: { type: 'json_schema', strict: false } } });
+    expect(payload).toMatchObject({ store: false, stream: true, reasoning: { effort: config.REASONING_EFFORT }, instructions: 'system rules', text: { format: { type: 'json_schema', strict: false } } });
     expect(payload.previous_response_id).toBeUndefined();
     expect(JSON.stringify(payload)).not.toContain(config.MODEL_API_KEY);
   });
   it('requires actual completed search calls and preserves clickable citations', async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(JSON.stringify(result('Research.', [{ type: 'web_search_call', status: 'completed', results: [{ type: 'text_result', title: 'Aster', url: research.sources[0].url, snippet: 'Aster Laptop' }] }])), { status: 200 }));
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(stream(result('Research.', [{ type: 'web_search_call', status: 'completed', results: [{ type: 'text_result', title: 'Aster', url: research.sources[0].url, snippet: 'Aster Laptop' }] }])));
     const client = new MetaClient(config, fetcher);
     expect((await client.research('muse-spark-1.3-contributor', 'research', context)).sources).toEqual(research.sources);
     const payload = JSON.parse(fetcher.mock.calls[0][1]!.body as string);
     expect(payload.tool_choice).toBeUndefined(); expect(payload.tools[0].type).toBe('web_search');
     expect(payload.include).toContain('web_search_call.results');
-    fetcher.mockResolvedValueOnce(new Response(JSON.stringify(result('No search.')), { status: 200 }));
+    fetcher.mockResolvedValueOnce(stream(result('No search.')));
     await expect(client.research('muse-spark-1.3-contributor', 'research', context)).rejects.toMatchObject({ code: 'SEARCH_NOT_RUN' });
   });
   it('rejects malformed, incomplete and refused responses', async () => {
     const fetcher = vi.fn<typeof fetch>(); const client = new MetaClient(config, fetcher);
-    fetcher.mockResolvedValueOnce(new Response(JSON.stringify(result('not json')), { status: 200 }));
+    fetcher.mockResolvedValueOnce(stream(result('not json')));
     await expect(client.structured('m', 's', {}, z.object({ reply: z.string() }))).rejects.toMatchObject({ code: 'AI_INVALID_DATA' });
-    fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ status: 'incomplete', output: [] }), { status: 200 }));
+    fetcher.mockResolvedValueOnce(stream({ status: 'incomplete', output: [] }, 'response.incomplete'));
     await expect(client.response('m', 's', {})).rejects.toMatchObject({ code: 'AI_INCOMPLETE' });
-    fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'refusal' }] }] }), { status: 200 }));
+    // An empty stream with no terminal event never completes.
+    fetcher.mockResolvedValueOnce(new Response('', { status: 200, headers: { 'Content-Type': 'text/event-stream' } }));
+    await expect(client.response('m', 's', {})).rejects.toMatchObject({ code: 'AI_INCOMPLETE' });
+    fetcher.mockResolvedValueOnce(stream({ status: 'completed', output: [{ type: 'message', content: [{ type: 'refusal' }] }] }));
     await expect(client.response('m', 's', {})).rejects.toMatchObject({ code: 'AI_EMPTY_RESPONSE' });
   });
   it('redacts provider failures and supports the optional Brave connector', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('SECRET upstream body', { status: 401 }));
     await expect(new MetaClient(config, fetcher).response('m', 's', {})).rejects.toMatchObject({ code: 'AI_ACCESS_DENIED' });
     fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }), { status: 200 }));
-    fetcher.mockResolvedValueOnce(new Response(JSON.stringify(result(JSON.stringify(extracted))), { status: 200 }));
+    fetcher.mockResolvedValueOnce(stream(result(JSON.stringify(extracted))));
     const provider = new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-not-a-real-key' }, fetcher);
     expect((await provider.discover(context)).products).toHaveLength(1);
     expect(String(fetcher.mock.calls[1][0])).toContain('https://api.search.brave.com/res/v1/web/search');
