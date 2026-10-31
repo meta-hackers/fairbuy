@@ -1,39 +1,86 @@
 # FairBuy
 
-**Choose the best purchase, not just the lowest price.**
+**Find what fits. Choose the best purchase, not just the lowest price.**
 
-FairBuy is a personal shopping assistant concept: it compares feasible options based on total cost, compatibility, and fit with a person’s preferences. It distinguishes verified facts from seller claims, shows sources and uncertainty, and leaves the final decision to the user.
+A full-stack AI shopping research application combining [Alberto’s demo](https://github.com/meta-hackers/fairbuy-alberto-demo) and [Alessandro’s demo](https://github.com/meta-hackers/fairbuy-alessandro-demo).
 
-> **Status:** concept and documentation only; this is not a working application and does not show current offers. All example figures are synthetic. No purchases, seller contacts, or bookings are made.
+## Ask → Configure → Discovery ↔ Learn → Buy
 
-## Proposed MVP
+- **Ask:** a real AI conversation collects enough context to search, asking useful follow-ups rather than enforcing a fixed number of answers.
+- **Configure:** edit the extracted brief, budget, country and soft preferences/must-haves. A separate smaller AI helps incorporate extra requirements.
+- **Discovery:** a new AI session researches products on the web, extracts source-backed offers and explains fit and trade-offs. Deterministic rules handle hard constraints and numerical ranking.
+- **Learn:** reject a product or add feedback. Every submission starts fresh discovery with the original configuration, current brief, all prior products, discarded products and accumulated feedback. Undo preserves unrelated edits and starts another search.
+- **Buy:** inspect the chosen product’s seller offers and visit a source page yourself. **No automatic checkout or payment.**
 
-A focused comparison of new and used electronics in one city, starting from URLs or screenshots submitted by the user. Structured extraction (using Meta vision only after access has been verified), normalized specifications, deterministic feasibility filtering, and an explainable ranking. Use one legitimate live connector if genuinely available; otherwise use clearly labeled fixtures.
+React/Vite frontend, TypeScript/Express backend, shared Zod contracts, PostgreSQL session storage and a durable leased job queue. Meta Model API (Muse Spark 1.3, Contributor mode) is called through its REST Responses API. By default its hosted web search means **only a `MODEL_API_KEY` is needed**; Brave is optional.
 
-The full proposal covers flows, architecture, schema, security, a three-minute demo, a synthetic comparison table, acceptance criteria, adversarial cases, and a ten-day plan: [read the proposal](docs/PROPOSAL.md).
+## Run locally
 
-## Principles
+Node **24.22.1** is the tested runtime (`.node-version`).
 
-- **Feasibility before scoring:** hard constraints (compatibility, maximum budget, schedule) eliminate options that cannot work.
-- **Total cost and suitability:** delivered price, applicable charges, warranty, returns, support, and relevant costs/risks.
-- **Visible provenance:** source, retrieval time, availability, currency, confidence, and missing data.
-- **AI assists, but does not decide:** the model extracts and clarifies; deterministic rules filter and rank. Users can correct the data.
-- **No irreversible actions:** no checkout, seller messages, or automatic bookings.
+```bash
+npm ci
+cp .env.example .env
+docker compose up -d
+```
 
-## Product vision
+Set `MODEL_API_KEY` in `.env`, then:
 
-Beyond the MVP, the vision includes new goods, used goods, door-to-door flights, and food delivery. These are future verticals, not promised integrations. For flights, departures that violate constraints are excluded first; for food, the same basket is compared while respecting actual coverage and applicable promotions. See [the proposal](docs/PROPOSAL.md#2-product-verticals) for details and limitations.
+```bash
+npm run db:migrate
+npm run dev
+```
 
-## Documentation and GitHub
+Open **http://localhost:5173**. Vite proxies the API to port 3001. The example database password is for local development only.
 
-For a high-level view of the expected system, see [Architecture](Architecture.md).
+### No-key preview
 
-The README and `docs/` are the source of truth: versionable, readable outside GitHub, and reviewable through pull requests; application code can live alongside them later. A Wiki has history separate from the repository and a less natural review workflow; availability for private repositories depends on the plan. Organization Projects are planning views, not documentation. Pages, Discussions, Issues/Projects, and an organization profile can be considered later without automatically creating sites, wikis, or boards. See [documentation choices](docs/PROPOSAL.md#12-github-documentation).
+```bash
+npm ci
+FAIRBUY_MODE=demo DATABASE_URL= npm run dev
+```
 
-## Meta hackathon
+This explicitly uses a **scripted assistant and invented laptop catalog**, prominently labelled in the UI. Try “A laptop for coding”, then “Italy, budget €700”. There is no live AI, current offer or functional seller link in demo mode. Without PostgreSQL, preview data is lost on server restart. Live mode never silently falls back to fixtures.
 
-The “Build for Your World” theme fits an assistant that turns everyday constraints into understandable choices. Models, partner credits, the deadline, and required checks are covered: with sources and caveats: in the [hackathon section](docs/PROPOSAL.md#10-meta-hackathon-and-inference-providers). Participation and team eligibility are not assumed.
+### Build and verify
 
-## Status and contributions
+```bash
+npm run build
+npm test
+npm run check:blueprint
+npx playwright install chromium
+npm run test:e2e
+npm audit
+```
 
-This repository contains project documentation only; it is not a commitment to release. Before implementation, validate data access, terms of use, account/model access, privacy, event rules, and connector feasibility. Do not add credentials, personal data, or unverified offers.
+To include database integration tests, set `TEST_DATABASE_URL` to a **dedicated test PostgreSQL database**. CI does this automatically. Browser tests run the compiled full stack in explicit demo mode on desktop and 390/320 px mobile viewports. API/provider tests use controlled HTTP mocks, not paid calls.
+
+For a production-style local server, `npm run build && npm start` serves everything on port 3001 using `.env`.
+
+## Deploy on Render
+
+The root [`render.yaml`](render.yaml) is a validated Blueprint for **one paid web service and one private PostgreSQL database** in Frankfurt. Review Render pricing before creating resources.
+
+1. Push this implementation to `git@github.com:meta-hackers/fairbuy.git`.
+2. In Render, create a **Blueprint** from that repository and review the resource plans.
+3. Supply `MODEL_API_KEY`, either during setup or later in the web service’s Environment settings. No key is bundled in the frontend. Without it, health checks still work and the UI explains setup.
+4. Copy the generated `APP_ACCESS_TOKEN` from Render’s web-service environment and enter it in the app. This gate protects your AI credits.
+
+Build, migrations, startup, health checks and the database connection are configured in the Blueprint. See [deployment instructions and environment variables](docs/DEPLOYMENT.md).
+
+## Trust and limitations
+
+- Every live offer links to a provider-returned source, includes retrieved time and retains evidence. AI extraction is **not independent verification**; search snippets may be stale or incomplete.
+- Unknown shipping, taxes, stock, compatibility and warranty remain unknown. An incomplete cost is a known minimum, not a delivered price. No exchange rates are invented.
+- No arbitrary URL crawler, payment, booking, seller-message or order endpoint exists. Meta Model API and Brave calls use fixed provider endpoints.
+- Anonymous, cookie-isolated searches expire after **7 days**. “New search” deletes the active search. There is no login or cross-device recovery. Avoid sensitive personal information.
+- There are bounded model calls, job concurrency and rate limits, but configure provider billing limits too. There is no promise of exhaustive market coverage or guaranteed savings.
+- Live integration code is implemented and tested with mocked provider responses. **Actual Meta Model API/model/web-search access must be checked with your key after deployment.** Contributor mode pricing means Meta may use submitted content to train its models; prefer non-sensitive data and configure billing limits. No Render resources have been created by this implementation.
+
+## Documentation
+
+- [Architecture and AI session lifecycle](Architecture.md)
+- [Render deployment and operations](docs/DEPLOYMENT.md)
+- [API routes](docs/API.md)
+- [Demo integration notes](docs/INTEGRATION.md)
+- [Original product proposal](docs/PROPOSAL.md) — historical planning; not a statement of current integrations or event eligibility.

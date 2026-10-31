@@ -1,0 +1,6 @@
+{
+  "name": "@fairbuy/frontend", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": { "dev": "vite --host 0.0.0.0", "build": "vite build", "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@fairbuy/core": "*", "react": "^19.2.0", "react-dom": "^19.2.0" },
+  "devDependencies": { "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "@vitejs/plugin-react": "^5.1.0", "vite": "^7.2.0" }
+}

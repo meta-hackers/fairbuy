@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+# Paid, always-on resources. Review Render prices before creating this Blueprint.
+services:
+  - type: web
+    name: fairbuy
+    runtime: node
+    repo: https://github.com/meta-hackers/fairbuy
+    region: frankfurt
+    plan: 0.5c-512mb
+    numInstances: 1
+    buildCommand: npm ci --include=dev && npm run build
+    preDeployCommand: npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 300
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.1
+      - key: NODE_ENV
+        value: production
+      - key: FAIRBUY_MODE
+        value: live
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fairbuy-db
+          property: connectionString
+      - key: MODEL_API_KEY
+        sync: false
+      - key: ASK_MODEL
+        value: muse-spark-1.3-contributor
+      - key: CONFIGURE_MODEL
+        value: muse-spark-1.3-contributor
+      - key: DISCOVERY_MODEL
+        value: muse-spark-1.3-contributor
+      - key: REASONING_EFFORT
+        value: medium
+      - key: SEARCH_PROVIDER
+        value: meta
+      - key: APP_ACCESS_TOKEN
+        generateValue: true
+databases:
+  - name: fairbuy-db
+    region: frankfurt
+    plan: 0.1c-256mb
+    postgresMajorVersion: "18"
+    databaseName: fairbuy
+    user: fairbuy
+    diskSizeGB: 5
+    ipAllowList: []

@@ -1,0 +1,53 @@
+import type { AIProvider, ConversationResult } from './provider';
+import { productId } from './provider';
+import type { ChatMessage, DiscoveryContext, Product, ShoppingConfig } from '@fairbuy/core';
+
+// An explicit, offline scripted preview, NEVER an automatic fallback for live AI.
+export class DemoAIProvider implements AIProvider {
+  ensureConfigured() {}
+  async converse(phase: 'ask' | 'configure', messages: ChatMessage[], current: ShoppingConfig): Promise<ConversationResult> {
+    const config = structuredClone(current);
+    const users = messages.filter(m => m.role === 'user');
+    const text = users.map(m => m.content).join(' ');
+    config.category = 'laptop'; config.purpose = users[0]?.content.slice(0, 500) ?? 'Everyday development';
+    if (/italy|italia|milan/i.test(text)) config.country = 'IT';
+    if (/switzerland|zurich|swiss/i.test(text)) { config.country = 'CH'; config.currency = 'CHF'; }
+    const budget = text.match(/(?:€|EUR|CHF|budget|max|under)\s*(\d{2,5})/i) ?? text.match(/(\d{2,5})\s*(?:€|EUR|CHF)/i);
+    if (budget) config.budgetMax = Number(budget[1]);
+    if (!config.requirements.length) config.requirements = [{ label: 'At least 16 GB RAM', hard: false, attribute: 'ramGb', op: '>=', value: 16, unit: 'GB' }];
+    return {
+      config, ready: !!config.country, missing: config.country ? [] : ['Country'],
+      reply: phase === 'configure' ? 'Scripted preview: your manual settings are preserved. In live mode a smaller AI model incorporates this additional requirement.'
+        : config.country ? 'Your example brief is ready. Review the budget and requirements in Configure, then explore the fictional laptop catalog.'
+        : 'This is a scripted preview with fictional laptops, not a live AI. In which country will you shop? Try “Italy, budget €700”.',
+    };
+  }
+  async learn(_context: DiscoveryContext, reason: string) {
+    return { summary: 'Feedback added to the fresh search.', requirements: [{ label: reason.slice(0, 300), hard: false, attribute: null, op: null, value: null, unit: null }] };
+  }
+  async discover(context: DiscoveryContext) {
+    const names = ['Aster 14', 'Kite Studio 15', 'Nori Air 13', 'Vale Pro 14'];
+    const discarded = new Set(context.discardedProducts.map(p => p.id));
+    const products: Product[] = names.map((name, i) => ({
+      id: productId(name), name, summary: ['A balanced refurbished notebook for everyday work.', 'More memory and a larger screen, with extra weight.', 'A small, light notebook with less memory.', 'A premium notebook with room to grow.'][i],
+      why: i === 0 ? 'Its stated 16 GB RAM aligns with the example preference, with a complete fictional delivered cost.' : 'An alternative trade-off in the synthetic catalog. No live recommendation is implied.',
+      tradeoffs: [i === 2 ? 'Only 8 GB RAM; below the example preference.' : 'Battery health is unknown; verify it with the seller.'],
+      offers: [0, 1].map(seller => {
+        const evidence = [{ sourceType: 'user_input' as const, ref: 'Synthetic fixture — invented for offline preview', at: '2026-01-01T00:00:00.000Z' }];
+        return {
+          schemaVersion: 1 as const, id: `demo-${i}-${seller}`, category: 'laptop', mode: 'fixture' as const, provenanceUrl: '',
+          fetchedAt: '2026-01-01T00:00:00.000Z', title: name, seller: seller ? 'Bright Parcel (fictional)' : 'Lantern Lane (fictional)', availability: 'available' as const,
+          condition: { status: 'seller_claim' as const, value: 'refurbished' as const, evidence },
+          price: { currency: context.config.currency, totalIsLowerBound: false, components: [
+            { kind: 'item' as const, amountCents: [59000, 67000, 48000, 82000][i] + seller * 1800, status: 'seller_claim' as const },
+            { kind: 'shipping' as const, amountCents: 1500, status: 'seller_claim' as const },
+            { kind: 'other' as const, amountCents: 0, status: 'seller_claim' as const, label: 'Fees' },
+          ] },
+          attributes: { ramGb: { status: 'seller_claim' as const, value: { kind: 'number' as const, value: [16, 32, 8, 32][i], unit: 'GB' }, evidence } },
+          missing: ['Battery health', 'Warranty and returns'], evidence,
+        };
+      }),
+    })).filter(p => !discarded.has(p.id));
+    return { products, sources: [], summary: `Synthetic catalog, not current offers. Fresh discovery session with ${context.previousProducts.length} previously found products and ${context.feedback.length} feedback entries.` };
+  }
+}
