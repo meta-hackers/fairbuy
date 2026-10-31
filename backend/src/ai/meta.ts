@@ -6,15 +6,15 @@ import type { Source } from '@fairbuy/core';
 
 const ResponseSchema = z.object({
   status: z.string(),
-  incomplete_details: z.object({ reason: z.string().optional() }).passthrough().optional(),
+  incomplete_details: z.object({ reason: z.string().nullish() }).passthrough().nullish(),
   output: z.array(z.object({
-    type: z.string(), status: z.string().optional(),
-    action: z.object({ sources: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional() }).passthrough().optional(),
-    results: z.array(z.object({ type: z.string().optional(), url: z.string(), title: z.string().optional(), snippet: z.string().optional() }).passthrough()).optional(),
+    type: z.string(), status: z.string().nullish(),
+    action: z.object({ sources: z.array(z.object({ url: z.string(), title: z.string().nullish() })).nullish() }).passthrough().nullish(),
+    results: z.array(z.object({ type: z.string().nullish(), url: z.string(), title: z.string().nullish(), snippet: z.string().nullish() }).passthrough()).nullish(),
     content: z.array(z.object({
-      type: z.string(), text: z.string().optional(),
-      annotations: z.array(z.object({ type: z.string(), url: z.string().optional(), title: z.string().optional() }).passthrough()).optional(),
-    }).passthrough()).optional(),
+      type: z.string(), text: z.string().nullish(),
+      annotations: z.array(z.object({ type: z.string(), url: z.string().nullish(), title: z.string().nullish() }).passthrough()).nullish(),
+    }).passthrough()).nullish(),
   }).passthrough()),
 });
 export interface Research { text: string; sources: Source[] }
@@ -83,7 +83,10 @@ export class MetaClient {
             try { message = JSON.parse(payload); } catch { continue; }
             if (message.type === 'response.completed' || message.type === 'response.failed' || message.type === 'response.incomplete') {
               try { return ResponseSchema.parse(message.response); }
-              catch { throw new AppError(502, 'The AI provider returned an invalid response. Please retry.', 'AI_INVALID_RESPONSE'); }
+              catch (error) {
+                if (error instanceof z.ZodError) console.error('AI provider response failed validation', { issues: error.issues.map(i => ({ path: i.path.join('.'), code: i.code })) });
+                throw new AppError(502, 'The AI provider returned an invalid response. Please retry.', 'AI_INVALID_RESPONSE');
+              }
             }
           }
         }
