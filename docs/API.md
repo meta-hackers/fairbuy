@@ -2,13 +2,13 @@
 
 Same-origin JSON API; no CORS. All writes require `X-Fairbuy-Request: 1`. Browser cookies are sent automatically. POST/PUT bodies use `Content-Type: application/json`; requests are limited to 32 KiB. Errors have `{ "error": "safe message", "code": "..." }`.
 
-`GET /api/bootstrap` establishes a random HttpOnly owner cookie and returns deployment mode, setup/access status, persistence status and the most recently created owned search. It does not reveal keys. Searches are private to this cookie; a UUID alone does not grant access. A configured deployment access token is additionally required.
+`GET /api/bootstrap` establishes a random HttpOnly owner cookie and returns deployment mode, setup/access status, persistence status and the most recently created owned search. It does not reveal keys. Searches are private to this cookie; a UUID alone does not grant access. A configured app password is additionally required.
 
 | Method | Path | Body / behavior |
 |---|---|---|
 | GET | `/healthz` | Database readiness, no AI call. |
 | GET | `/api/bootstrap` | Setup status and latest owned search (only after access gate). |
-| POST | `/api/access` | `{token}`: validate deployment access token; set HttpOnly access cookie. |
+| POST | `/api/access` | `{token}`: validate app password; set HttpOnly access cookie. |
 | POST | `/api/sessions` | Create an empty owned search; returns `201`. |
 | GET | `/api/sessions/:id` | Complete owned state, or `404`. Poll only while queued/running. |
 | DELETE | `/api/sessions/:id` | Delete owned search and cascading jobs; `204`. |

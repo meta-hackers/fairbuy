@@ -39,7 +39,7 @@ services:
       - key: SEARCH_PROVIDER
         value: meta
       - key: APP_ACCESS_TOKEN
-        generateValue: true
+        sync: false # set a fixed, memorable app password in Render; do not commit it
 # No databases: section on purpose. Render allows a single free PostgreSQL
 # database per workspace and the live one already exists outside this
 # Blueprint, so DATABASE_URL above is wired manually to it.

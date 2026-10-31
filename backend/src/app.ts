@@ -57,11 +57,11 @@ export function createApp(service: ShoppingService, config: Settings) {
   });
   app.post('/api/access', rateLimit({ windowMs: 15 * 60000, limit: 10, message: { error: 'Too many access attempts. Try again later.' } }), (req, res) => {
     const { token } = z.object({ token: z.string().min(1).max(500) }).parse(req.body);
-    if (config.APP_ACCESS_TOKEN && !equal(token, config.APP_ACCESS_TOKEN)) throw new AppError(401, 'Incorrect access token.');
+    if (config.APP_ACCESS_TOKEN && !equal(token, config.APP_ACCESS_TOKEN)) throw new AppError(401, 'Incorrect app password.');
     res.cookie('fairbuy_access', hash(`${config.APP_ACCESS_TOKEN}:${res.locals.ownerToken}`), { httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 86400000, path: '/' });
     res.json({ ok: true });
   });
-  app.use('/api', (_req, res, next) => res.locals.access ? next() : next(new AppError(401, 'Enter the deployment access token to continue.', 'ACCESS_REQUIRED')));
+  app.use('/api', (_req, res, next) => res.locals.access ? next() : next(new AppError(401, 'Enter the app password to continue.', 'ACCESS_REQUIRED')));
   const aiLimit = rateLimit({ windowMs: 60 * 60000, limit: 45, keyGenerator: (_req, res) => res.locals.owner, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'AI request limit reached. Try again in an hour.' } });
   const dailyLimit = rateLimit({ windowMs: 86400000, limit: 150, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Daily AI limit reached for this network.' } });
   app.post('/api/sessions', aiLimit, async (_req, res) => { res.status(201).json(await service.create(res.locals.owner)); });

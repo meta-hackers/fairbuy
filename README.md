@@ -64,7 +64,7 @@ The root [`render.yaml`](render.yaml) is a validated free-tier Blueprint for the
 1. Push this implementation to `git@github.com:meta-hackers/fairbuy.git`.
 2. In Render, create a **Blueprint** from that repository and review the resource plans.
 3. Supply `MODEL_API_KEY`, either during setup or later in the web service’s Environment settings. No key is bundled in the frontend. Without it, health checks still work and the UI explains setup.
-4. Copy the generated `APP_ACCESS_TOKEN` from Render’s web-service environment and enter it in the app. This gate protects your AI credits.
+4. Set `APP_ACCESS_TOKEN` in Render to a fixed app password you choose, then enter that password in the app. This gate protects your AI credits.
 
 Build, migrations, startup, health checks and the database connection are configured in the Blueprint. See [deployment instructions and environment variables](docs/DEPLOYMENT.md).
 

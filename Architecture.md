@@ -57,7 +57,7 @@ Ranking version `1.0.0`: **30% normalized complete cost + 50% matched soft const
 - Schema initialization is idempotent and serialized with a PostgreSQL advisory lock. Startup reruns it; `db:migrate` is also a Blueprint pre-deploy step. Add versioned migrations for future incompatible schema changes.
 - Random 256-bit anonymous-owner capability in an HttpOnly, SameSite=Lax cookie (Secure in production), with only its SHA-256 hash in PostgreSQL. Resource IDs do not confer ownership. This is not an account system or multi-device authentication.
 - Custom request header + origin checks on writes, no cross-origin API access, Helmet/CSP, input/body limits, sanitized errors and no conversation/provider-body logging.
-- Render generates a deployment access token by default. Per-owner AI rate limits and a per-IP daily limit help cap abuse; provider billing caps must also be configured. These limiters are process-local: Blueprint intentionally runs one instance. Shared rate-limit storage is required before horizontal scaling.
+- A fixed deployment app password (`APP_ACCESS_TOKEN`) gates the app. Per-owner AI rate limits and a per-IP daily limit help cap abuse; provider billing caps must also be configured. These limiters are process-local: Blueprint intentionally runs one instance. Shared rate-limit storage is required before horizontal scaling.
 - Sessions are inaccessible immediately on expiry; hourly cleanup removes expired data. “New search” deletes the active search. Backups and provider retention are separate policies.
 
 ## Deployment boundaries
