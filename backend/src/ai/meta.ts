@@ -39,7 +39,16 @@ export class MetaClient {
     } catch { throw new AppError(502, 'The AI provider timed out or could not be reached. Please retry.', 'AI_UNREACHABLE'); }
     if (!response.ok || !response.body) {
       // Do not log/return upstream bodies: they can contain prompts, credentials or PII.
-      await response.body?.cancel();
+      // Log only provider error metadata so production failures are diagnosable in Render logs.
+      let providerError: { code?: string; type?: string; param?: string } = {};
+      try {
+        const body = JSON.parse(await response.text()) as { error?: { code?: string; type?: string; param?: string } };
+        providerError = body.error ?? {};
+      } catch { /* non-JSON error body: status alone is enough */ }
+      console.error('AI provider request failed', {
+        status: response.status, model, code: providerError.code ?? null, type: providerError.type ?? null,
+        param: providerError.param ?? null, requestId: response.headers.get('x-request-id'),
+      });
       if (response.status === 429) throw new AppError(503, 'The AI provider is rate-limited or out of credit. Check your Meta Model API account and retry.', 'AI_RATE_LIMITED');
       if (response.status === 401 || response.status === 403) throw new AppError(503, 'Meta Model API rejected the configured credentials or model access. Check the Render settings.', 'AI_ACCESS_DENIED');
       if (response.status === 504) throw new AppError(502, 'The AI provider timed out before finishing. Please retry; a shorter request is more likely to complete.', 'AI_TIMED_OUT');
