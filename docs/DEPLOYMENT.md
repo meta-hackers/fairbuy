@@ -3,20 +3,20 @@
 ## Prerequisites
 
 - The implementation is committed/pushed to `meta-hackers/fairbuy` on the branch you intend to deploy. Local changes alone are not visible to Render.
-- A Render account connected to that GitHub repository, with permission to create paid resources.
+- A Render account connected to that GitHub repository, with permission to create resources.
 - A Meta Model API key from [dev.meta.ai](https://dev.meta.ai) with billing, access to the configured model (`muse-spark-1.3-contributor`), the Responses API (search grounding) and structured output. Pay-as-you-go Contributor mode is lower cost in exchange for Meta possibly using submitted content to train its models.
 
 ## Blueprint
 
 1. Render Dashboard → **New → Blueprint** → connect `https://github.com/meta-hackers/fairbuy`.
 2. Select the branch containing `render.yaml`. The service follows the Blueprint branch; there is no hardcoded `main` override.
-3. Review the always-on web plan `0.5c-512mb` and PostgreSQL plan `0.1c-256mb`, 5 GB, both in Frankfurt. **These are paid resources.** Adjust before creation if needed; this is not an authorization to incur charges automatically.
+3. Review the free web plan in **Virginia**. Do not move the web service to Frankfurt/EU for Meta calls: in testing, Meta Model API returned `404 model_not_found` for both `muse-spark-1.3-contributor` and `muse-spark-1.3` from Frankfurt, while the same key worked from Switzerland and from Render Virginia. The existing free PostgreSQL instance is in Frankfurt and is not Blueprint-managed (one free database per workspace).
 4. Set `MODEL_API_KEY` as a secret. If setting it later, leave it empty if the Dashboard permits, or add it before first synchronization. With no valid key, the app serves setup guidance and never substitutes demo results.
 5. Create/sync the Blueprint. Render runs `npm ci --include=dev && npm run build`, `npm run db:migrate`, then `npm start`. The app also safely initializes schema at startup. `/healthz` checks database availability, not paid AI access.
 6. In the web service’s Environment page, copy the generated `APP_ACCESS_TOKEN`. Open the deployment URL and enter that token. Share it only with intended users; it protects your provider credits, but is not a per-user account.
 7. Smoke-test live Ask → Configure → Discovery → Learn → Buy using a small request. Check clickable citations and the live/preview banner. Confirm that prices/charges/stock not found in evidence remain unknown. Watch API billing/latency.
 
-The database has no public IP allowlist entries and is connected through Render’s internal URL. Do not disable TLS certificate verification; if connecting to a different PostgreSQL provider, configure the connection string’s supported verified SSL settings.
+If the web service and database are in the same Render region, use the database internal URL. For the current cross-region setup (Virginia web, Frankfurt database), use the database **external** connection string with `?sslmode=require`, and add the web service’s shared outbound IP ranges (Render service → Networking / outbound IPs) to the database IP allowlist. Do not disable TLS certificate verification; if connecting to a different PostgreSQL provider, configure the connection string’s supported verified SSL settings.
 
 Automatic deploys wait for GitHub checks to pass. This repository supplies CI with typechecking, build, PostgreSQL tests, Blueprint validation, dependency audit and mobile/desktop browser tests. On first deploy or if no checks run, use Render’s manual deploy controls as needed.
 
@@ -53,7 +53,7 @@ Add `BRAVE_API_KEY`, change `SEARCH_PROVIDER` to `brave`, and redeploy/restart. 
 - Database retention: searches are inaccessible after seven days, physically pruned hourly. Current-search deletion cascades to jobs. Configure Render backups/recovery according to your own privacy/reliability policy.
 - Set Meta Model API/Brave project billing budgets/alerts. Rate limits, output tokens, search tool limits and two concurrent jobs reduce usage but are **not a dollar-denominated spending guarantee**. Rotate `APP_ACCESS_TOKEN` and API keys if exposed.
 - Custom domain: set `APP_ORIGIN=https://your-domain.example` exactly. Browser writes from other origins are rejected. API and frontend must stay on the same origin.
-- Logs intentionally omit request bodies, chat text and upstream error bodies. Do not add secret/prompt logging during troubleshooting.
+- Logs intentionally omit request bodies, chat text and upstream error bodies. Provider failures log only HTTP status, model, provider error code/type/param and request id. Do not add secret/prompt logging during troubleshooting.
 
 ## What is not deployed by the code
 

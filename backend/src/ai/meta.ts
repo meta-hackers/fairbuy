@@ -52,6 +52,7 @@ export class MetaClient {
       if (response.status === 429) throw new AppError(503, 'The AI provider is rate-limited or out of credit. Check your Meta Model API account and retry.', 'AI_RATE_LIMITED');
       if (response.status === 401 || response.status === 403) throw new AppError(503, 'Meta Model API rejected the configured credentials or model access. Check the Render settings.', 'AI_ACCESS_DENIED');
       if (response.status === 504) throw new AppError(502, 'The AI provider timed out before finishing. Please retry; a shorter request is more likely to complete.', 'AI_TIMED_OUT');
+      if (response.status === 404 && providerError.code === 'model_not_found') throw new AppError(503, 'The configured Meta model is not available for this API key or deployment region. Meta Model API is not enabled in every region; deploy in a supported region or check the model names.', 'AI_MODEL_UNAVAILABLE');
       throw new AppError(502, 'The AI provider rejected the request. Check that the configured model supports Responses and the requested tools.', 'AI_PROVIDER_ERROR');
     }
     const data = await this.readStream(response.body);

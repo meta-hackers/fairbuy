@@ -57,6 +57,8 @@ describe('Meta Model API REST integration', () => {
   it('redacts provider failures and supports the optional Brave connector', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('SECRET upstream body', { status: 401 }));
     await expect(new MetaClient(config, fetcher).response('m', 's', {})).rejects.toMatchObject({ code: 'AI_ACCESS_DENIED' });
+    fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'model_not_found', type: 'invalid_request_error' } }), { status: 404, headers: { 'Content-Type': 'application/json' } }));
+    await expect(new MetaClient(config, fetcher).response('muse-spark-1.3-contributor', 's', {})).rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' });
     fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }), { status: 200 }));
     fetcher.mockResolvedValueOnce(stream(result(JSON.stringify(extracted))));
     const provider = new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-not-a-real-key' }, fetcher);

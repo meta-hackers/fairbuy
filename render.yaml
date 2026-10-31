@@ -1,13 +1,15 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
-# Free-tier Blueprint matching the live deployment. The PostgreSQL instance is
-# NOT Blueprint-managed: only one free database per workspace is allowed and the
-# live data already sits on it, so paste its internal connection string below.
+# Free-tier Blueprint matching the live deployment. Deploy the web service in
+# Virginia: Meta Model API returned model_not_found from Frankfurt (it is not
+# enabled for EU-hosted callers yet). The PostgreSQL instance is NOT
+# Blueprint-managed: only one free database per workspace is allowed and the
+# live data already sits on it, so paste its connection string below.
 services:
   - type: web
     name: fairbuy
     runtime: node
     repo: https://github.com/meta-hackers/fairbuy
-    region: frankfurt
+    region: virginia
     plan: free
     numInstances: 1
     buildCommand: npm ci --include=dev && npm run build
@@ -23,7 +25,7 @@ services:
       - key: FAIRBUY_MODE
         value: live
       - key: DATABASE_URL
-        sync: false # paste the internal connection string of the existing free PostgreSQL instance (dbname fairbuy)
+        sync: false # same-region DB: paste its internal connection string. Cross-region (e.g. existing Frankfurt DB): paste the external string + ?sslmode=require and allow this service's outbound IPs on the database.
       - key: MODEL_API_KEY
         sync: false
       - key: ASK_MODEL

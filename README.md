@@ -59,7 +59,7 @@ For a production-style local server, `npm run build && npm start` serves everyth
 
 ## Deploy on Render
 
-The root [`render.yaml`](render.yaml) is a validated Blueprint for **one paid web service and one private PostgreSQL database** in Frankfurt. Review Render pricing before creating resources.
+The root [`render.yaml`](render.yaml) is a validated free-tier Blueprint for the web service in **Virginia** (Meta Model API is not enabled for EU-hosted callers yet; Frankfurt returned `model_not_found`). The existing free PostgreSQL database is wired manually via `DATABASE_URL`. Review Render pricing before creating resources.
 
 1. Push this implementation to `git@github.com:meta-hackers/fairbuy.git`.
 2. In Render, create a **Blueprint** from that repository and review the resource plans.
