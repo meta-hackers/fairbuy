@@ -1,19 +1,20 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
-# Paid, always-on resources. Review Render prices before creating this Blueprint.
+# Free-tier Blueprint matching the live deployment. The PostgreSQL instance is
+# NOT Blueprint-managed: only one free database per workspace is allowed and the
+# live data already sits on it, so paste its internal connection string below.
 services:
   - type: web
     name: fairbuy
     runtime: node
     repo: https://github.com/meta-hackers/fairbuy
     region: frankfurt
-    plan: 0.5c-512mb
+    plan: free
     numInstances: 1
     buildCommand: npm ci --include=dev && npm run build
     preDeployCommand: npm run db:migrate
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeployTrigger: checksPass
-    maxShutdownDelaySeconds: 300
     envVars:
       - key: NODE_VERSION
         value: 24.22.1
@@ -22,9 +23,7 @@ services:
       - key: FAIRBUY_MODE
         value: live
       - key: DATABASE_URL
-        fromDatabase:
-          name: fairbuy-db
-          property: connectionString
+        sync: false # paste the internal connection string of the existing free PostgreSQL instance (dbname fairbuy)
       - key: MODEL_API_KEY
         sync: false
       - key: ASK_MODEL
@@ -39,12 +38,6 @@ services:
         value: meta
       - key: APP_ACCESS_TOKEN
         generateValue: true
-databases:
-  - name: fairbuy-db
-    region: frankfurt
-    plan: 0.1c-256mb
-    postgresMajorVersion: "18"
-    databaseName: fairbuy
-    user: fairbuy
-    diskSizeGB: 5
-    ipAllowList: []
+# No databases: section on purpose. Render allows a single free PostgreSQL
+# database per workspace and the live one already exists outside this
+# Blueprint, so DATABASE_URL above is wired manually to it.
