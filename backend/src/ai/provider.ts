@@ -92,7 +92,10 @@ export class LiveAIProvider implements AIProvider {
     const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context)
       : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
     if (!research.sources.length) return { products: [], sources: [], summary: 'No usable web sources were returned. Try broadening your requirements or refreshing.' };
-    const extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema);
+    const extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema, {
+      // Extraction is mechanical: spend fewer tokens reasoning and more on the JSON result.
+      max_output_tokens: 16000, reasoning: { effort: 'low' },
+    });
     return normalizeExtraction(extracted, research, context);
   }
   private async braveResearch(context: DiscoveryContext): Promise<Research> {

@@ -6,6 +6,7 @@ import type { Source } from '@fairbuy/core';
 
 const ResponseSchema = z.object({
   status: z.string(),
+  incomplete_details: z.object({ reason: z.string().optional() }).passthrough().optional(),
   output: z.array(z.object({
     type: z.string(), status: z.string().optional(),
     action: z.object({ sources: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional() }).passthrough().optional(),
@@ -56,7 +57,10 @@ export class MetaClient {
       throw new AppError(502, 'The AI provider rejected the request. Check that the configured model supports Responses and the requested tools.', 'AI_PROVIDER_ERROR');
     }
     const data = await this.readStream(response.body);
-    if (data.status !== 'completed') throw new AppError(502, 'The AI response was incomplete. Try a shorter request.', 'AI_INCOMPLETE');
+    if (data.status !== 'completed') {
+      console.error('AI provider response not completed', { status: data.status, model, reason: data.incomplete_details?.reason ?? null });
+      throw new AppError(502, 'The AI response was incomplete. Try a shorter request.', 'AI_INCOMPLETE');
+    }
     const content = data.output.flatMap(o => o.content ?? []);
     const text = content.filter(c => c.type === 'output_text').map(c => c.text ?? '').join('\n');
     if (!text) throw new AppError(502, 'The AI could not answer this request. Try rephrasing it.', 'AI_EMPTY_RESPONSE');
@@ -88,12 +92,13 @@ export class MetaClient {
     } finally { reader.releaseLock(); }
     throw new AppError(502, 'The AI response stream ended before completion. Please retry.', 'AI_INCOMPLETE');
   }
-  async structured<T extends z.ZodType>(model: string, instructions: string, input: unknown, schema: T): Promise<z.infer<T>> {
+  async structured<T extends z.ZodType>(model: string, instructions: string, input: unknown, schema: T, extra: Record<string, unknown> = {}): Promise<z.infer<T>> {
     const jsonSchema = z.toJSONSchema(schema, { target: 'draft-7' });
     delete jsonSchema.$schema;
     // Decoding is always constrained to the schema. strict:true additionally enforces a subset
     // (required must list every property) that our Zod schemas with optional fields violate.
     const { text } = await this.response(model, instructions, input, {
+      ...extra,
       text: { format: { type: 'json_schema', name: 'fairbuy_result', strict: false, schema: jsonSchema } },
     });
     try { return schema.parse(JSON.parse(text)); }
@@ -103,6 +108,8 @@ export class MetaClient {
     const { data, text, content } = await this.response(model, instructions, context, {
       tools: [{ type: 'web_search', search_context_size: 'medium' }],
       include: ['web_search_call.results'],
+      // Research answers are long; give reasoning + visible output more room than chat turns.
+      max_output_tokens: 16000,
     });
     if (!data.output.some(o => o.type === 'web_search_call' && o.status === 'completed')) throw new AppError(502, 'No completed web search was returned. No unsourced products were accepted.', 'SEARCH_NOT_RUN');
     const sources = [
