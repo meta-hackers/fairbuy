@@ -63,8 +63,8 @@ describe('Meta Model API REST integration', () => {
     fetcher.mockResolvedValueOnce(stream(result(JSON.stringify(extracted))));
     const provider = new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-not-a-real-key' }, fetcher);
     expect((await provider.discover(context)).products).toHaveLength(1);
-    expect(String(fetcher.mock.calls[1][0])).toContain('https://api.search.brave.com/res/v1/web/search');
-    expect(JSON.parse(fetcher.mock.calls[2][1]!.body as string).tools).toBeUndefined();
+    expect(String(fetcher.mock.calls[2][0])).toContain('https://api.search.brave.com/res/v1/web/search');
+    expect(JSON.parse(fetcher.mock.calls[3][1]!.body as string).tools).toBeUndefined();
   });
 });
 describe('untrusted search evidence', () => {
