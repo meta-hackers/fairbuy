@@ -16,7 +16,7 @@ export default function LearnModal({ product, busy, error, onClose, onApply }: {
     <form onSubmit={async event => { event.preventDefault(); if (text && !busy && await onApply(text)) onClose(); }}>
       <label htmlFor="feedback-reason">Tell us a little more <span className="optional">{chip ? 'optional' : 'or choose a reason above'}</span></label>
       <textarea id="feedback-reason" autoFocus rows={4} maxLength={1500} value={reason} onChange={e => setReason(e.target.value)} disabled={busy} placeholder="e.g. I cycle to work, so it needs to weigh less than 1.5 kg." />
-      <div className="learn-note"><span aria-hidden="true">✳</span><p>A fresh AI search will keep your original brief, earlier products, discarded options, and all your feedback.{product && ' This product will leave your shortlist.'}</p></div>
+      <div className="learn-note"><span aria-hidden="true">✳</span><p>A fresh AI search will keep your original brief, earlier products, discarded options, and all your feedback.{product && ' This product will move to “Other discovered results” and stay available for reference.'}</p></div>
       <div className="modal-actions"><button type="button" className="text-button" disabled={busy} onClick={onClose}>Keep exploring</button><button className="button primary" disabled={busy || !text.trim()}>{busy ? 'Learning…' : 'Apply & search again'} <span aria-hidden="true">↗</span></button></div>
     </form>
   </dialog>;

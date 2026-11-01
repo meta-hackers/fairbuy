@@ -24,6 +24,9 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   await page.getByLabel('My budget is a hard limit').check();
   await page.getByRole('button', { name: 'Find products' }).click();
   await expect(page.getByTestId('product-card')).toHaveCount(5);
+  await page.getByText('Other discovered results (1)', { exact: true }).click();
+  await expect(page.getByTestId('archived-product')).toHaveCount(1);
+  await expect(page.getByTestId('archived-product')).toContainText('Excluded from current recommendations');
   const first = page.getByTestId('product-card').first();
   const firstName = await first.getByRole('heading').textContent();
   await first.getByRole('button', { name: 'Not for me' }).click();
@@ -37,11 +40,15 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByTestId('product-card')).toHaveCount(4);
   await expect(page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: firstName!, exact: true }) })).toHaveCount(0);
+  await expect(page.getByTestId('archived-product').filter({ has: page.getByRole('heading', { name: firstName!, exact: true }) })).toBeVisible();
   await page.reload();
   await expect(page.getByTestId('product-card')).toHaveCount(4);
   await expect(page.getByText('I need it to weigh less than 1.5 kg', { exact: true })).toBeVisible();
+  await page.getByText('Other discovered results (2)', { exact: true }).click();
+  await expect(page.getByTestId('archived-product').filter({ has: page.getByRole('heading', { name: firstName!, exact: true }) })).toBeVisible();
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByTestId('product-card')).toHaveCount(5);
+  await expect(page.getByTestId('archived-product')).toHaveCount(1);
   await page.getByTestId('product-card').first().getByRole('button', { name: 'Purchase options' }).click();
   await expect(page.getByText('Nothing has been purchased.', { exact: false })).toBeVisible();
   await expect(page.getByText('Fictional seller — no purchase link')).toHaveCount(2);
@@ -76,6 +83,8 @@ test('discovery shows the first product while searching and preserves partial re
   await expect(page.getByText('1 option ready to explore. More on the way.')).toBeVisible();
   await expect(page.getByText('Searching for at least 4 distinct products', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Purchase options' })).toBeDisabled();
+  await page.getByLabel('Steer your results').fill('Include Moulinex products too');
+  await expect(page.getByRole('button', { name: 'Update results' })).toBeDisabled();
   await page.getByText('Trade-offs & evidence', { exact: false }).click();
   await expect(page.getByText('Battery health is unknown; verify it with the seller.')).toBeVisible();
   await expect(page.getByText('No grounded matches this time.')).toHaveCount(0);
@@ -88,6 +97,7 @@ test('discovery shows the first product while searching and preserves partial re
   current = structuredClone(complete); current.version += 2;
   await expect(page.getByTestId('product-card')).toHaveCount(6);
   await expect(page.getByTestId('product-card').first().getByRole('button', { name: 'Purchase options' })).toBeEnabled();
+  await expect(page.getByLabel('Steer your results')).toHaveValue('');
 
   // A later provider failure must not hide products that were already grounded.
   current.rounds.at(-1).status = 'failed'; current.rounds.at(-1).error = 'Later research failed.';
@@ -95,6 +105,36 @@ test('discovery shows the first product while searching and preserves partial re
   await page.reload();
   await expect(page.getByTestId('product-card')).toHaveCount(1);
   await expect(page.getByRole('alert')).toContainText('Later research failed.');
+});
+
+test('earlier products stay accessible during a fresh search and after failure', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await page.getByRole('button', { name: 'Continue to Configure' }).click();
+  await page.getByRole('button', { name: 'Find products' }).click();
+  await expect(page.getByTestId('product-card')).toHaveCount(6);
+  const boot = await (await page.request.get('/api/bootstrap')).json();
+  const session = structuredClone(boot.session);
+  const next = structuredClone(session.rounds.at(-1));
+  next.id = 'next-round'; next.number++; next.status = 'queued';
+  next.products = []; next.ranking = null; next.summary = ''; next.finishedAt = null; next.durationMs = null;
+  session.rounds.push(next);
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: { ...boot, session } }));
+  await page.route(`**/api/sessions/${session.id}`, route => route.fulfill({ json: session }));
+  await page.reload();
+  await expect(page.getByTestId('product-card')).toHaveCount(0);
+  await page.getByText('Other discovered results (6)', { exact: true }).click();
+  await expect(page.getByTestId('archived-product')).toHaveCount(6);
+  await expect(page.getByTestId('archived-product').first()).toBeVisible();
+  await page.getByTestId('archived-product').first().getByText('Details & sources', { exact: true }).click();
+  await expect(page.getByTestId('archived-product').first()).toContainText('Historical offer');
+  next.status = 'failed'; next.error = 'Search interrupted.';
+  await page.reload();
+  await page.getByText('Other discovered results (6)', { exact: true }).click();
+  await expect(page.getByTestId('archived-product')).toHaveCount(6);
+  await expect(page.getByRole('alert')).toContainText('Search interrupted.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
 });
 
 test('configuration helper and unstructured requirements keep manual changes', async ({ page }) => {
@@ -111,4 +151,36 @@ test('configuration helper and unstructured requirements keep manual changes', a
   await expect(page.getByText('A matte screen', { exact: true })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
+});
+
+test('discovery accepts steering requests and preserves drafts on failure', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await page.getByRole('button', { name: 'Continue to Configure' }).click();
+  await page.getByRole('button', { name: 'Find products' }).click();
+  const update = page.getByRole('button', { name: 'Update results' });
+  const input = page.getByLabel('Steer your results');
+  await expect(update).toBeDisabled();
+  await input.fill('   ');
+  await expect(update).toBeDisabled();
+  await input.fill('Include Moulinex products too');
+  await expect(update).toBeEnabled();
+  await page.route('**/api/sessions/*/learn', route => route.fulfill({ status: 503, json: { error: 'Please try again.' } }));
+  await update.click();
+  await expect(page.getByRole('alert')).toContainText('Please try again.');
+  await expect(input).toHaveValue('Include Moulinex products too');
+  await page.unroute('**/api/sessions/*/learn');
+  const request = page.waitForRequest(request => request.url().endsWith('/learn') && request.method() === 'POST');
+  await update.click();
+  expect((await request).postDataJSON()).toEqual({ productId: null, reason: 'Include Moulinex products too' });
+  await expect(input).toHaveValue('');
+  await expect(page.getByText('Include Moulinex products too', { exact: true })).toBeVisible();
+  await expect(update).toBeDisabled();
+  await page.reload();
+  await expect(page.getByText('Include Moulinex products too', { exact: true })).toBeVisible();
+  const boot = await (await page.request.get('/api/bootstrap')).json();
+  expect(boot.session.rounds.at(-1).context.feedback.at(-1).reason).toBe('Include Moulinex products too');
+  expect(boot.session.rounds.at(-1).context.config.budgetMax).toBe(700);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
 });
