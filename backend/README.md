@@ -7,4 +7,4 @@ Express + TypeScript API, PostgreSQL persistence and leased discovery worker. Li
 - [`src/store.ts`](src/store.ts): PostgreSQL ownership, transactions, job leases and seven-day retention. Memory storage is demo/test only.
 - [`src/app.ts`](src/app.ts): authenticated anonymous-owner API, optional access gate, validation, security headers and throttles.
 
-Run commands from the repository root. See [local setup](../README.md), [API](../docs/API.md), [architecture](../Architecture.md) and [deployment](../docs/DEPLOYMENT.md).
+Run commands from the repository root. See [local setup](../README.md), [API](../docs/API.md), [architecture](../docs/Architecture.md) and [deployment](../docs/DEPLOYMENT.md).

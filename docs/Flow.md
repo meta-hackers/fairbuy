@@ -1,6 +1,21 @@
 # Shopping flow
 
-The live Ask → Configure → Discovery ↔ Learn → Buy flow. Cloudflare draft hints are optional and never change the confirmed shopping brief. The `dev.meta.ai` actor represents Meta Model API; backend requests use `https://api.meta.ai/v1/responses`.
+## Ask → Configure → Discovery ↔ Learn → Buy
+
+- **Ask:** a real AI conversation collects enough context to search, asking useful follow-ups rather than enforcing a fixed number of answers.
+- **Instant classifier (optional):** Cloudflare-hosted Meta Llama shows provisional category, explicit budget, condition and requirement hints while typing in Ask. Nothing updates the brief until you send the message to the existing Ask conversation. See [instant classifier setup and limitations](INSTANT_CLASSIFIER.md).
+- **Configure:** edit the extracted brief, budget, country and soft preferences/must-haves. A separate smaller AI helps incorporate extra requirements.
+- **Discovery:** a new AI session researches products on the web, extracts source-backed offers and explains fit and trade-offs. Compare final listed prices without shipping/delivery estimates, see elapsed search time, and view official-site product images when available. Deterministic rules handle hard constraints and numerical ranking.
+- **Learn:** reject a product or add feedback. Every submission starts fresh discovery with the original configuration, current brief, all prior products, discarded products and accumulated feedback. Undo preserves unrelated edits and starts another search.
+- **Buy:** inspect the chosen product’s seller offers and visit a source page yourself. **No automatic checkout or payment.**
+
+## Location
+
+On page load, FairBuy requests browser location permission (HTTPS or localhost required). With permission, a rounded position is reverse-geocoded via OpenStreetMap Nominatim to suggest the city, country and supported local currency (EUR, CHF, USD or GBP). Other local currencies require a manual supported-currency choice; no conversion is assumed. Denied/unavailable location never blocks shopping. The location bar and Configure remain editable, and automatic detection never replaces an existing shopping country. No geocoding key is needed; only city/country/currency enter the shopping brief, not precise coordinates or a street address.
+
+## Sequence diagram
+
+Cloudflare draft hints are optional and never change the confirmed shopping brief. The `dev.meta.ai` actor represents Meta Model API; backend requests use `https://api.meta.ai/v1/responses`.
 
 ```mermaid
 sequenceDiagram
