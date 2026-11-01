@@ -59,14 +59,14 @@ For a production-style local server, `npm run build && npm start` serves everyth
 
 ## Deploy on Render
 
-The root [`render.yaml`](render.yaml) describes the existing free-tier web service in **Virginia** and PostgreSQL instance `sample-postgres` in **Frankfurt** for in-place Blueprint adoption. Meta Model API calls require the Virginia service (Frankfurt returned `model_not_found`). The database is declared in the Blueprint, but the cross-region `DATABASE_URL` remains a manually configured secret pointing to the logical database `fairbuy`. Review Render pricing before changing plans.
+The root [`render.yaml`](render.yaml) defines the `fairbuy` project and `production` environment in Render's **fairbuy workspace**, with one free web service in **Virginia**. PostgreSQL is hosted by **Supabase**, not Render. The backend uses a dedicated database login, a private `fairbuy` schema and a verified-TLS Session pooler connection stored in `DATABASE_URL`. Meta Model API calls require the Virginia service (Frankfurt returned `model_not_found`). Review provider pricing before changing plans.
 
 1. Push this implementation to `git@github.com:meta-hackers/fairbuy.git`.
-2. In Render, use **Generate Blueprint** for the existing resources and follow the [adoption checklist](docs/DEPLOYMENT.md#administrative-adoption-of-the-existing-resources). Do not deploy duplicate resources or recreate the database.
-3. Supply `MODEL_API_KEY`, either during setup or later in the web service’s Environment settings. No key is bundled in the frontend. Without it, health checks still work and the UI explains setup.
+2. Set up the private Supabase schema using the [deployment instructions](docs/DEPLOYMENT.md#supabase-postgresql).
+3. Select the **fairbuy workspace** in Render and create/attach its Blueprint from this repository. Supply the Supabase `DATABASE_URL` and `MODEL_API_KEY` as server-only secrets. No key is bundled in the frontend. Without a model key, health checks still work and the UI explains setup.
 4. Set `APP_ACCESS_TOKEN` in Render to a fixed app password you choose, then enter that password in the app. This gate protects your AI credits.
 
-Build, migrations, startup, health checks and database infrastructure are declared in the Blueprint. Initial attachment/sync in Render is still required; committing YAML alone does not make resources Blueprint-managed. See [deployment instructions and environment variables](docs/DEPLOYMENT.md).
+The Blueprint declares the Render project, environment, build, startup and health checks; it deliberately contains no Render database. Supabase is managed separately. Initial attachment/sync in Render is still required; committing YAML alone does not make resources Blueprint-managed. See [deployment instructions and environment variables](docs/DEPLOYMENT.md).
 
 ## Trust and limitations
 
@@ -75,7 +75,7 @@ Build, migrations, startup, health checks and database infrastructure are declar
 - No arbitrary URL crawler, payment, booking, seller-message or order endpoint exists. Meta Model API and Brave calls use fixed provider endpoints.
 - Anonymous, cookie-isolated searches expire after **7 days**. “New search” deletes the active search. There is no login or cross-device recovery. Avoid sensitive personal information.
 - There are bounded model calls, job concurrency and rate limits, but configure provider billing limits too. There is no promise of exhaustive market coverage or guaranteed savings.
-- Live integration code is implemented and tested with mocked provider responses. **Actual Meta Model API/model/web-search access must be checked with your key after deployment.** Contributor mode pricing means Meta may use submitted content to train its models; prefer non-sensitive data and configure billing limits. No Render resources have been created by this implementation.
+- Live integration code is implemented and tested with mocked provider responses. **Actual Meta Model API/model/web-search access must be checked with your key after deployment.** Contributor mode pricing means Meta may use submitted content to train its models; prefer non-sensitive data and configure billing limits. Automated tests do not create cloud resources.
 
 ## Documentation
 

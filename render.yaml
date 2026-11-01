@@ -1,57 +1,47 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
-# Adopt the existing free-tier resources; do not create replacement instances.
-# Keep the web service in Virginia: Meta Model API returned model_not_found
-# from Frankfurt. Keep the existing PostgreSQL instance and data in Frankfurt.
-services:
-  - type: web
-    name: fairbuy
-    runtime: node
-    repo: https://github.com/meta-hackers/fairbuy
-    region: virginia
-    plan: free
-    numInstances: 1
-    buildCommand: npm ci --include=dev && npm run build
-    # Free services do not support preDeployCommand; startup runs migrations.
-    startCommand: npm start
-    healthCheckPath: /healthz
-    autoDeployTrigger: checksPass
-    envVars:
-      - key: NODE_VERSION
-        value: 24.22.1
-      - key: NODE_ENV
-        value: production
-      - key: FAIRBUY_MODE
-        value: live
-      - key: DATABASE_URL
-        # Preserve the existing external URL to the logical database "fairbuy",
-        # including ?sslmode=require. fromDatabase.connectionString is internal,
-        # cannot cross regions, and targets the instance's different default DB.
-        sync: false
-      - key: MODEL_API_KEY
-        sync: false
-      - key: ASK_MODEL
-        value: muse-spark-1.3-contributor
-      - key: CONFIGURE_MODEL
-        value: muse-spark-1.3-contributor
-      - key: DISCOVERY_MODEL
-        value: muse-spark-1.3-contributor
-      - key: REASONING_EFFORT
-        value: medium
-      - key: SEARCH_PROVIDER
-        value: meta
-      - key: APP_ACCESS_TOKEN
-        sync: false # set a fixed, memorable app password in Render; do not commit it
-databases:
-  # Match dpg-db5t7n0473hc73cb6vr0-a exactly for in-place adoption.
-  # These are the existing instance's defaults, NOT the app's logical DB name.
-  - name: sample-postgres
-    region: frankfurt
-    plan: free
-    postgresMajorVersion: "18"
-    databaseName: sample_postgres_baoy
-    user: sample_postgres_baoy_user
-    ipAllowList:
-      - source: 74.220.49.0/24
-        description: fairbuy-us virginia outbound
-      - source: 74.220.57.0/24
-        description: fairbuy-us virginia outbound
+# Select the Render "fairbuy" workspace when creating this Blueprint.
+# Workspace ownership is set in Render, not by the project name below.
+# Keep the web service in Virginia for Meta Model API access.
+# PostgreSQL is hosted by Supabase; do not provision a Render database.
+projects:
+  - name: fairbuy
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: fairbuy
+            runtime: node
+            repo: https://github.com/meta-hackers/fairbuy
+            region: virginia
+            plan: free
+            numInstances: 1
+            buildCommand: npm ci --include=dev && npm run build
+            # Free services do not support preDeployCommand; startup migrates.
+            startCommand: npm start
+            healthCheckPath: /healthz
+            autoDeployTrigger: checksPass
+            envVars:
+              - key: NODE_VERSION
+                value: 24.22.1
+              - key: NODE_ENV
+                value: production
+              - key: FAIRBUY_MODE
+                value: live
+              - key: DATABASE_URL
+                # Supabase Session pooler (IPv4, port 5432), verified TLS,
+                # dedicated fairbuy_app role with the private fairbuy schema.
+                sync: false
+              - key: MODEL_API_KEY
+                sync: false
+              - key: ASK_MODEL
+                value: muse-spark-1.3-contributor
+              - key: CONFIGURE_MODEL
+                value: muse-spark-1.3-contributor
+              - key: DISCOVERY_MODEL
+                value: muse-spark-1.3-contributor
+              - key: REASONING_EFFORT
+                value: medium
+              - key: SEARCH_PROVIDER
+                value: meta
+              - key: APP_ACCESS_TOKEN
+                sync: false # preserve the app password; never commit it

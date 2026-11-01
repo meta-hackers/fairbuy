@@ -5,7 +5,7 @@ This describes the implemented application. The original [proposal](docs/PROPOSA
 ```mermaid
 flowchart LR
   Browser[React + Vite] -->|same-origin cookie| API[Express API on Render]
-  API --> DB[(Render PostgreSQL)]
+  API --> DB[(Supabase PostgreSQL)]
   API --> Ask[Ask / Configure / Learn interpretation]
   Ask --> Meta[Meta Model API Responses REST]
   DB --> Worker[Leased discovery queue]
@@ -62,6 +62,6 @@ Ranking version `1.0.0`: **30% normalized complete cost + 50% matched soft const
 
 ## Deployment boundaries
 
-One free Render Node web service in Virginia serves both compiled API and Vite assets. The existing free Render PostgreSQL instance `sample-postgres` in Frankfurt persists live state in the logical database `fairbuy`. Both resources are declared for in-place Blueprint adoption; the cross-region external TLS `DATABASE_URL` remains a manually configured secret, and the database IP allowlist permits the web service's outbound ranges. See `docs/DEPLOYMENT.md` for the required administrative attachment and free-database expiry warning. No Supabase account, external Redis, cross-origin frontend, or browser provider keys are required. Memory storage is restricted to explicit local demo/test use. PostgreSQL is mandatory in production and live mode.
+One free Render Node web service in Virginia serves both compiled API and Vite assets, grouped under the `fairbuy` project / `production` environment in the **fairbuy workspace**. The Blueprint declares that web deployment and no Render database. Supabase PostgreSQL in Ireland persists live state in the private `fairbuy` schema of its `postgres` database. A dedicated `fairbuy_app` login connects through the IPv4 Session pooler with verified TLS and the bundled public Supabase CA certificate; the connection URL stays in Render's server-only secrets. Supabase browser roles cannot access the schema, and the app does not use Supabase Auth or the Data API. See `docs/DEPLOYMENT.md` for setup and workspace selection. No external Redis, cross-origin frontend, or browser provider keys are required. Memory storage is restricted to explicit local demo/test use. PostgreSQL is mandatory in production and live mode.
 
 This is a working shopping research application, not a promise of production SLAs, universal marketplace coverage, signed-in accounts, offline/PWA behavior or transactional purchasing.
