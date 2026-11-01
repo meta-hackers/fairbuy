@@ -19,6 +19,8 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   await page.getByRole('textbox', { name: 'Your message' }).press('Enter');
   await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeEnabled();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
+  // The step is persisted by an async PATCH; wait before reloading so the restored stage is Configure.
+  await expect(page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Configure/ })).toHaveAttribute('aria-current', 'step');
   await page.reload();
   await expect(page.getByLabel('Budget ceiling')).toHaveValue('700');
   await page.getByLabel('My budget is a hard limit').check();
