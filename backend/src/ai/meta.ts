@@ -24,14 +24,14 @@ export class MetaClient {
     if (!this.config.MODEL_API_KEY) throw new AppError(503, 'Add MODEL_API_KEY in Render to enable the AI assistant. No demo results have been substituted.', 'AI_NOT_CONFIGURED');
     if (this.config.SEARCH_PROVIDER === 'brave' && !this.config.BRAVE_API_KEY) throw new AppError(503, 'Add BRAVE_API_KEY or set SEARCH_PROVIDER=meta.', 'SEARCH_NOT_CONFIGURED');
   }
-  async response(model: string, instructions: string, input: unknown, extra: Record<string, unknown> = {}) {
+  async response(model: string, instructions: string, input: unknown, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>) {
     this.ensureConfigured();
     let response: Response;
     try {
       response = await this.fetcher('https://api.meta.ai/v1/responses', {
         method: 'POST', headers: { 'Authorization': `Bearer ${this.config.MODEL_API_KEY}`, 'Content-Type': 'application/json' },
         // Non-streaming requests are subject to the provider's server-side time limit (HTTP 504);
-        // streaming is exempt, so every call streams and reads the terminal response.completed event.
+        // streaming is exempt, so every call streams through the terminal response.completed event.
         // Reasoning tokens share this budget; keep it above the largest structured result.
         body: JSON.stringify({ model, instructions, input: JSON.stringify(input), store: false, stream: true, max_output_tokens: 10000, reasoning: { effort: this.config.REASONING_EFFORT }, ...extra }),
         // Generous client-side backstop only; normal long generations stream incrementally.
@@ -56,7 +56,7 @@ export class MetaClient {
       if (response.status === 404 && providerError.code === 'model_not_found') throw new AppError(503, 'The configured Meta model is not available for this API key or deployment region. Meta Model API is not enabled in every region; deploy in a supported region or check the model names.', 'AI_MODEL_UNAVAILABLE');
       throw new AppError(502, 'The AI provider rejected the request. Check that the configured model supports Responses and the requested tools.', 'AI_PROVIDER_ERROR');
     }
-    const data = await this.readStream(response.body);
+    const data = await this.readStream(response.body, onText);
     if (data.status !== 'completed') {
       console.error('AI provider response not completed', { status: data.status, model, reason: data.incomplete_details?.reason ?? null });
       throw new AppError(502, 'The AI response was incomplete. Try a shorter request.', 'AI_INCOMPLETE');
@@ -67,20 +67,21 @@ export class MetaClient {
     return { data, text, content };
   }
   /** Read an SSE stream and return the terminal response.completed payload. */
-  private async readStream(body: ReadableStream<Uint8Array>): Promise<z.infer<typeof ResponseSchema>> {
+  private async readStream(body: ReadableStream<Uint8Array>, onText?: (delta: string) => Promise<void>): Promise<z.infer<typeof ResponseSchema>> {
     const reader = body.getReader(); const decoder = new TextDecoder(); let buffer = '';
     try {
       for (;;) {
         const { done, value } = await reader.read();
         if (value) buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split('\n\n'); buffer = events.pop() ?? '';
+        const events = buffer.split(/\r?\n\r?\n/); buffer = events.pop() ?? '';
         for (const event of events) {
           for (const line of event.split('\n')) {
             if (!line.startsWith('data: ')) continue;
             const payload = line.slice(6).trim();
             if (!payload || payload === '[DONE]') continue;
-            let message: { type?: string; response?: unknown };
+            let message: { type?: string; response?: unknown; delta?: string };
             try { message = JSON.parse(payload); } catch { continue; }
+            if (message.type === 'response.output_text.delta' && typeof message.delta === 'string') await onText?.(message.delta);
             if (message.type === 'response.completed' || message.type === 'response.failed' || message.type === 'response.incomplete') {
               try { return ResponseSchema.parse(message.response); }
               catch (error) {
@@ -95,7 +96,7 @@ export class MetaClient {
     } finally { reader.releaseLock(); }
     throw new AppError(502, 'The AI response stream ended before completion. Please retry.', 'AI_INCOMPLETE');
   }
-  async structured<T extends z.ZodType>(model: string, instructions: string, input: unknown, schema: T, extra: Record<string, unknown> = {}): Promise<z.infer<T>> {
+  async structured<T extends z.ZodType>(model: string, instructions: string, input: unknown, schema: T, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>): Promise<z.infer<T>> {
     const jsonSchema = z.toJSONSchema(schema, { target: 'draft-7' });
     delete jsonSchema.$schema;
     // Decoding is always constrained to the schema. strict:true additionally enforces a subset
@@ -103,7 +104,7 @@ export class MetaClient {
     const { text } = await this.response(model, instructions, input, {
       ...extra,
       text: { format: { type: 'json_schema', name: 'fairbuy_result', strict: false, schema: jsonSchema } },
-    });
+    }, onText);
     try { return schema.parse(JSON.parse(text)); }
     catch { throw new AppError(502, 'The AI returned data that failed validation. Nothing was changed; please retry.', 'AI_INVALID_DATA'); }
   }

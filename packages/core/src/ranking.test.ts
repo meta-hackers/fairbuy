@@ -15,7 +15,7 @@ describe('deterministic ranking inherited from Alessandro', () => {
     expect(result.excluded).toHaveLength(5);
     expect(result.ranked.every(r => r.total.cents <= 70000)).toBe(true);
   });
-  it('keeps soft mismatches as trade-offs', () => { expect(rank(offers, false).ranked).toHaveLength(8); });
+  it('keeps soft mismatches as trade-offs', () => { expect(rank(offers, false).ranked).toHaveLength(offers.length); });
   it('is independent of input order', () => { expect(rank([...offers].reverse()).ranked).toEqual(rank(offers).ranked); });
   it('never treats unknown charges as zero or passes an incomplete budget', () => {
     const incomplete = structuredClone(offers[0]);

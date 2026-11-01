@@ -1,21 +1,34 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { OfferSchema, effectiveConfig, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig, type Source, type AttrValue, type Field } from '@fairbuy/core';
+import { DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig, type Source, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeUrl } from '../links';
 import { MetaClient, type Research } from './meta';
 import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, type Extraction } from './schemas';
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT } from './prompts';
+import { streamObjectArray } from './json-stream';
 
 export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
 export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string }
+export type DiscoveryProgress = (result: DiscoveryResult) => Promise<void>;
 export interface AIProvider {
   ensureConfigured(): void;
   converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig): Promise<ConversationResult>;
   learn(context: DiscoveryContext, reason: string, product: Product | null): Promise<LearnedResult>;
-  discover(context: DiscoveryContext): Promise<DiscoveryResult>;
+  discover(context: DiscoveryContext, onProgress?: DiscoveryProgress): Promise<DiscoveryResult>;
+}
+export function mergeDiscoveryResults(current: DiscoveryResult, incoming: DiscoveryResult): DiscoveryResult {
+  const products = new Map(current.products.map(p => [p.id, p]));
+  for (const product of incoming.products) {
+    const existing = products.get(product.id);
+    products.set(product.id, { ...product, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
+  }
+  return {
+    products: [...products.values()], sources: [...new Map([...current.sources, ...incoming.sources].map(s => [s.url, s])).values()],
+    summary: incoming.summary || current.summary,
+  };
 }
 export function productId(name: string) {
   return createHash('sha256').update(name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')).digest('hex').slice(0, 20);
@@ -87,21 +100,53 @@ export class LiveAIProvider implements AIProvider {
   async learn(context: DiscoveryContext, reason: string, product: Product | null) {
     return this.client.structured(this.config.CONFIGURE_MODEL, LEARN_PROMPT, { context, feedback: reason, product }, LearnedResultSchema);
   }
-  async discover(context: DiscoveryContext) {
-    const input = { ...context, effectiveConfig: effectiveConfig(context) };
-    const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context)
-      : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
-    if (!research.sources.length) return { products: [], sources: [], summary: 'No usable web sources were returned. Try broadening your requirements or refreshing.' };
-    const extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema, {
-      // Extraction is mechanical: spend fewer tokens reasoning and more on the JSON result.
-      max_output_tokens: 16000, reasoning: { effort: 'low' },
-    });
-    return normalizeExtraction(extracted, research, context);
+  async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress) {
+    let result: DiscoveryResult = { products: [], sources: [], summary: '' };
+    const eligibleCount = () => {
+      const ranked = new Set(rankProducts(result.products, context).ranked.map(r => r.offerId));
+      return result.products.filter(p => p.offers.some(o => ranked.has(o.id))).length;
+    };
+    // Bounded complementary searches, not retries of failed provider requests.
+    for (let pass = 0; pass < 3 && eligibleCount() < DISCOVERY_MIN_PRODUCTS; pass++) {
+      const input = {
+        ...context, effectiveConfig: effectiveConfig(context), searchPass: pass + 1,
+        minimumProducts: DISCOVERY_MIN_PRODUCTS, productsNeeded: DISCOVERY_MIN_PRODUCTS - eligibleCount(),
+        alreadyFound: result.products, excludedOffers: rankProducts(result.products, context).excluded,
+      };
+      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass)
+        : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
+      if (!research.sources.length) continue;
+      const accept = async (incoming: DiscoveryResult) => {
+        result = mergeDiscoveryResults(result, incoming);
+        await onProgress?.(result);
+      };
+      const streamed = new Set<string>();
+      const onText = streamObjectArray('products', async raw => {
+        const parsed = ExtractionSchema.shape.products.element.safeParse(raw);
+        if (!parsed.success) return;
+        const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context);
+        if (grounded.products.length) {
+          grounded.products.forEach(p => streamed.add(p.id));
+          await accept(grounded);
+        }
+      });
+      const extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema, {
+        // Extraction is mechanical: spend fewer tokens reasoning and more on the JSON result.
+        max_output_tokens: 16000, reasoning: { effort: 'low' },
+      }, onText);
+      // Also handles providers that send only a terminal event, and commits the final summary.
+      const grounded = normalizeExtraction(extracted, research, context);
+      for (const product of grounded.products) if (!streamed.has(product.id)) await accept({ products: [product], sources: grounded.sources, summary: '' });
+      await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
+    }
+    const count = eligibleCount();
+    if (count < DISCOVERY_MIN_PRODUCTS) result.summary = `${result.summary}${result.summary ? ' ' : ''}Only ${count} distinct eligible product${count === 1 ? '' : 's'} could be grounded after additional searches. We could not reach ${DISCOVERY_MIN_PRODUCTS} without relaxing your requirements or inventing offers.`;
+    return result;
   }
-  private async braveResearch(context: DiscoveryContext): Promise<Research> {
+  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number): Promise<Research> {
     this.ensureConfigured();
     const config = effectiveConfig(context);
-    const q = [config.category, ...context.feedback.slice().reverse().flatMap(f => f.learned.map(r => r.label)), ...config.requirements.map(r => r.label), config.purpose,
+    const q = [config.category, pass ? `alternative models ${alreadyFound.slice(0, 4).map(p => `-"${p.name}"`).join(' ')}` : '', ...context.feedback.slice().reverse().flatMap(f => f.learned.map(r => r.label)), ...config.requirements.map(r => r.label), config.purpose,
       config.budgetMax ? `under ${config.budgetMax} ${config.currency}` : '', config.country, config.city, 'buy price'].filter(Boolean).join(' ').slice(0, 400);
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
     url.searchParams.set('q', q); url.searchParams.set('count', '15'); url.searchParams.set('extra_snippets', 'true');

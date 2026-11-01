@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { EMPTY_CONFIG, type DiscoveryContext } from '@fairbuy/core';
+import { EMPTY_CONFIG, rankProducts, type DiscoveryContext } from '@fairbuy/core';
 import { normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
@@ -20,6 +20,22 @@ function stream(resultPayload: unknown, type = 'response.completed') {
   const body = `event: response.created\ndata: {"type":"response.created"}\n\n` +
     `data: ${JSON.stringify({ type, response: resultPayload })}\n\n`;
   return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+function catalog(names: string[]) {
+  const products = names.map(name => {
+    const product = structuredClone(extracted.products[0]);
+    product.name = name;
+    product.offers[0].url = `https://shop.fairbuy-fixture.org/${encodeURIComponent(name)}`;
+    product.offers[0].quote = `${name} costs EUR 590. 16 GB RAM.`;
+    return product;
+  });
+  return {
+    extracted: { summary: 'Grounded models.', products },
+    research: { text: products.map(p => p.offers[0].quote).join('\n'), sources: products.map(p => ({ url: p.offers[0].url, title: p.name })) },
+  };
+}
+function researchStream(data: typeof research) {
+  return stream(result(data.text, [{ type: 'web_search_call', status: 'completed', results: data.sources }]));
 }
 describe('Meta Model API REST integration', () => {
   it('streams the Responses endpoint, schema-constrained format and no provider-side history', async () => {
@@ -59,12 +75,81 @@ describe('Meta Model API REST integration', () => {
     await expect(new MetaClient(config, fetcher).response('m', 's', {})).rejects.toMatchObject({ code: 'AI_ACCESS_DENIED' });
     fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'model_not_found', type: 'invalid_request_error' } }), { status: 404, headers: { 'Content-Type': 'application/json' } }));
     await expect(new MetaClient(config, fetcher).response('muse-spark-1.3-contributor', 's', {})).rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' });
-    fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }), { status: 200 }));
-    fetcher.mockResolvedValueOnce(stream(result(JSON.stringify(extracted))));
+    fetcher.mockImplementation(async url => String(url).startsWith('https://api.search.brave.com/')
+      ? new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }), { status: 200 })
+      : stream(result(JSON.stringify(extracted))));
     const provider = new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-not-a-real-key' }, fetcher);
-    expect((await provider.discover(context)).products).toHaveLength(1);
+    const discovered = await provider.discover(context);
+    expect(discovered.products).toHaveLength(1);
+    expect(discovered.summary).toContain('Only 1 distinct eligible product');
+    expect(fetcher).toHaveBeenCalledTimes(8); // two failures above, then three search/extraction passes
     expect(String(fetcher.mock.calls[2][0])).toContain('https://api.search.brave.com/res/v1/web/search');
+    expect(new URL(String(fetcher.mock.calls[4][0])).searchParams.get('q')).toContain('alternative models');
     expect(JSON.parse(fetcher.mock.calls[3][1]!.body as string).tools).toBeUndefined();
+  });
+});
+describe('progressive multi-product discovery', () => {
+  it('publishes the first grounded product while extraction is still streaming, then stops at four', async () => {
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const encoder = new TextEncoder();
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start(value) { controller = value; } });
+    const send = (message: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(message)}\r\n\r\n`));
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(researchStream(data.research))
+      .mockResolvedValueOnce(new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
+    let firstReady!: () => void;
+    const first = new Promise<void>(resolve => { firstReady = resolve; });
+    const counts: number[] = []; let complete = false;
+    const pending = new LiveAIProvider(config, fetcher).discover(context, async update => {
+      counts.push(update.products.length);
+      if (update.products.length === 1) firstReady();
+    }).finally(() => { complete = true; });
+    send({ type: 'response.output_text.delta', delta: `{"summary":"Grounded models.","products":[${JSON.stringify(data.extracted.products[0])}` });
+    await first;
+    expect(counts).toEqual([1]); expect(complete).toBe(false);
+    const rest = `,${data.extracted.products.slice(1).map(p => JSON.stringify(p)).join(',')}]}`;
+    for (let i = 0; i < rest.length; i += 23) send({ type: 'response.output_text.delta', delta: rest.slice(i, i + 23) });
+    send({ type: 'response.completed', response: result(JSON.stringify(data.extracted)) });
+    controller.close();
+    expect((await pending).products).toHaveLength(4);
+    expect(counts).toEqual([1, 2, 3, 4, 4]);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it('searches for complementary models until four qualify, without counting duplicates or exclusions', async () => {
+    const passes = [catalog(['Aster', 'Unavailable']), catalog(['Aster', 'Birch', 'Cedar']), catalog(['Dune'])];
+    passes[0].extracted.products[1].offers[0].availability = 'sold_out';
+    const fetcher = vi.fn<typeof fetch>();
+    for (const pass of passes) fetcher.mockResolvedValueOnce(researchStream(pass.research)).mockResolvedValueOnce(stream(result(JSON.stringify(pass.extracted))));
+    const discovered = await new LiveAIProvider(config, fetcher).discover(context);
+    expect(discovered.products).toHaveLength(5);
+    expect(discovered.products.find(p => p.name === 'Aster')?.offers).toHaveLength(1);
+    expect(rankProducts(discovered.products, context).ranked).toHaveLength(4);
+    const inputs = [0, 2, 4].map(index => JSON.parse(JSON.parse(fetcher.mock.calls[index][1]!.body as string).input));
+    expect(inputs.map(input => input.productsNeeded)).toEqual([4, 3, 1]);
+    expect(inputs[1].excludedOffers).toHaveLength(1);
+    expect(inputs[2].alreadyFound.map((p: { name: string }) => p.name)).toEqual(['Aster', 'Unavailable', 'Birch', 'Cedar']);
+    expect(discovered.summary).not.toContain('could not reach');
+  });
+  it('does not publish streamed products with ungrounded evidence', async () => {
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const invented = structuredClone(data.extracted.products[0]); invented.name = 'Invented'; invented.offers[0].quote = 'Not in research';
+    const json = JSON.stringify({ ...data.extracted, products: [invented, ...data.extracted.products] });
+    const body = `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: json })}\n\n` +
+      `data: ${JSON.stringify({ type: 'response.completed', response: result(json) })}\n\n`;
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(researchStream(data.research)).mockResolvedValueOnce(new Response(body));
+    const updates: string[][] = [];
+    const discovered = await new LiveAIProvider(config, fetcher).discover(context, async update => { updates.push(update.products.map(p => p.name)); });
+    expect(discovered.products).toHaveLength(4);
+    expect(updates[0]).toEqual(['Aster']);
+    expect(updates.flat()).not.toContain('Invented');
+    expect(discovered.summary).toContain('1 offer(s) were rejected');
+  });
+  it('bounds empty research without making up products or looping forever', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => researchStream({ text: 'No matches.', sources: [] }));
+    const discovered = await new LiveAIProvider(config, fetcher).discover(context);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(discovered.products).toEqual([]);
+    expect(discovered.summary).toContain('Only 0 distinct eligible products');
   });
 });
 describe('untrusted search evidence', () => {

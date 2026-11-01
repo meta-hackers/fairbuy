@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ShoppingConfig } from '@fairbuy/core';
+import { CurrencySchema, currencyForCountry, type ShoppingConfig } from '@fairbuy/core';
 export default function Configure({ config, onChange, onSearch, busy }: {
   config: ShoppingConfig; onChange: (config: ShoppingConfig) => void; onSearch: () => void; busy: boolean;
 }) {
@@ -10,10 +10,10 @@ export default function Configure({ config, onChange, onSearch, busy }: {
     <div className="section-heading"><div><div className="eyebrow">YOUR SEARCH, YOUR TERMS</div><h2>A brief that feels like you.</h2></div><span className="step-mark">02</span></div>
     <fieldset disabled={busy} className="plain-fieldset">
       <div className="field-grid"><label>Product category<input value={config.category ?? ''} maxLength={100} onChange={e => update({ category: e.target.value || null })} placeholder="e.g. laptop" /></label>
-        <label>Country code<input value={config.country ?? ''} maxLength={2} onChange={e => update({ country: e.target.value.toUpperCase() || null })} placeholder="IT" aria-describedby="country-hint" /><span className="micro" id="country-hint">Two letters: IT, CH, GB, US…</span></label></div>
+        <label>Country code<input value={config.country ?? ''} maxLength={2} onChange={e => { const country = e.target.value.toUpperCase(); update({ country: country || null, city: null, currency: currencyForCountry(country) ?? config.currency }); }} placeholder="IT" aria-describedby="country-hint" /><span className="micro" id="country-hint">Two letters: IT, CH, GB, US…</span></label></div>
       <label>What you’ll use it for<textarea rows={2} maxLength={500} value={config.purpose ?? ''} onChange={e => update({ purpose: e.target.value || null })} /></label>
       <div className="field-grid budget-fields"><label>Budget ceiling <span className="optional">optional</span><input type="number" min="1" max="1000000" value={config.budgetMax ?? ''} onChange={e => update({ budgetMax: e.target.value ? Number(e.target.value) : null })} placeholder="No ceiling" /></label>
-        <label>Currency<select value={config.currency} onChange={e => update({ currency: e.target.value as ShoppingConfig['currency'] })}>{['EUR', 'CHF', 'USD', 'GBP'].map(c => <option key={c}>{c}</option>)}</select></label></div>
+        <label>Currency<select value={config.currency} onChange={e => update({ currency: e.target.value as ShoppingConfig['currency'] })}>{CurrencySchema.options.map(c => <option key={c}>{c}</option>)}</select></label></div>
       <label className="check-row"><input type="checkbox" checked={config.budgetHard} onChange={e => update({ budgetHard: e.target.checked })} />My budget is a hard limit, not a preference</label>
       <label>City / region <span className="optional">optional, no exact address needed</span><input value={config.city ?? ''} maxLength={120} onChange={e => update({ city: e.target.value || null })} placeholder="e.g. Milan" /></label>
       <div className="requirements-heading"><h3>What matters to you</h3><span className="micro">Preferences can bend. Must-haves can’t.</span></div>

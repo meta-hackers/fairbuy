@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { CurrencySchema, type Constraint, type Offer } from './contract';
-import type { ComparisonResult } from './ranking';
+import { rankOffers, type ComparisonResult } from './ranking';
+
+export const DISCOVERY_MIN_PRODUCTS = 4;
 
 export const RequirementSchema = z.object({
   label: z.string().min(1).max(300), hard: z.boolean(),
@@ -64,6 +66,13 @@ export function effectiveConfig(context: DiscoveryContext): ShoppingConfig {
   return config;
 }
 export function isConfigReady(config: ShoppingConfig) { return !!(config.category?.trim() && config.purpose?.trim() && config.country); }
+export function rankProducts(products: Product[], context: DiscoveryContext): ComparisonResult {
+  const config = effectiveConfig(context);
+  return rankOffers({
+    offers: products.flatMap(p => p.offers), constraints: constraintsFor(config), currency: config.currency,
+    spec: { id: config.category ?? 'products', attributes: config.requirements.filter(r => r.attribute).map(r => ({ key: r.attribute!, unit: r.unit ?? undefined })) },
+  });
+}
 export function allProducts(session: ShoppingSession): Product[] {
   return [...new Map(session.rounds.flatMap(r => r.products).map(p => [p.id, p])).values()];
 }

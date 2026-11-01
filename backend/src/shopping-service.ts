@@ -1,22 +1,32 @@
 import { randomUUID } from 'node:crypto';
 import {
-  EMPTY_CONFIG, activeProducts, allProducts, constraintsFor, effectiveConfig, isConfigReady, latestRound, rankOffers,
-  type DiscoveryContext, type ShoppingConfig, type ShoppingSession,
+  EMPTY_CONFIG, activeProducts, allProducts, isConfigReady, latestRound, rankProducts,
+  type DiscoveryContext, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
-import type { AIProvider } from './ai/provider';
+import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
 import type { Store, Job } from './store';
 import { AppError, publicError } from './errors';
 
 export class ShoppingService {
   constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo') {}
-  async create(owner: string) {
+  async create(owner: string, location?: ShoppingLocation) {
     const now = new Date().toISOString();
     const session: ShoppingSession = {
       id: randomUUID(), version: 0, mode: this.mode, createdAt: now, updatedAt: now, stage: 'ask',
       askSessionId: randomUUID(), configureSessionId: randomUUID(), askMessages: [], configureMessages: [],
       config: structuredClone(EMPTY_CONFIG), initialConfig: null, ready: false, missing: [], feedback: [], rounds: [], selectedProductId: null,
     };
+    if (location) session.config = { ...session.config, ...location, currency: location.currency ?? session.config.currency };
     await this.store.create(owner, session); return session;
+  }
+  async locate(id: string, owner: string, location: ShoppingLocation, onlyIfMissing = false) {
+    return this.store.mutate(id, owner, session => {
+      this.idle(session);
+      if (onlyIfMissing && session.config.country) return;
+      session.config = { ...session.config, ...location, currency: location.currency ?? session.config.currency };
+      session.selectedProductId = null;
+      if (session.stage === 'buy') session.stage = 'configure';
+    });
   }
   private idle(session: ShoppingSession) {
     if (session.mode !== this.mode) throw new AppError(409, 'This search belongs to a different deployment mode. Start a new search.');
@@ -125,7 +135,7 @@ export class ShoppingService {
       let context: DiscoveryContext | null = null;
       await this.store.mutate(job.sessionId, null, session => {
         const round = session.rounds.find(r => r.id === job.id);
-        if (!round || !['queued', 'running'].includes(round.status)) return;
+        if (!round || !['queued', 'running'].includes(round.status) || round.attempt > job.attempts) return;
         if (session.mode !== this.mode || job.attempts > 2) {
           round.status = 'failed'; round.finishedAt = new Date().toISOString();
           round.error = session.mode !== this.mode ? 'Deployment mode changed. Start a new search.' : 'Search interrupted twice. Please retry.'; return;
@@ -133,20 +143,20 @@ export class ShoppingService {
         round.status = 'running'; round.attempt = job.attempts; context = round.context;
       });
       if (!context) { await this.store.finish(job); return; }
-      const result = await this.ai.discover(context);
-      await this.store.mutate(job.sessionId, null, session => {
-        const round = session.rounds.find(r => r.id === job.id);
-        if (!round || round.status !== 'running' || round.attempt !== job.attempts) return;
-        const discarded = new Set(round.context.discardedProducts.map(p => p.id));
-        round.products = result.products.filter(p => !discarded.has(p.id));
-        round.sources = result.sources; round.summary = result.summary;
-        const effective = effectiveConfig(round.context);
-        round.ranking = rankOffers({
-          offers: round.products.flatMap(p => p.offers), constraints: constraintsFor(effective), currency: effective.currency,
-          spec: { id: effective.category ?? 'products', attributes: effective.requirements.filter(r => r.attribute).map(r => ({ key: r.attribute!, unit: r.unit ?? undefined })) },
+      const save = async (result: DiscoveryResult, complete = false) => {
+        await this.store.mutate(job.sessionId, null, session => {
+          const round = session.rounds.find(r => r.id === job.id);
+          if (!round || round.status !== 'running' || round.attempt !== job.attempts) return;
+          const discarded = new Set(round.context.discardedProducts.map(p => p.id));
+          const merged = mergeDiscoveryResults(round, result);
+          round.products = merged.products.filter(p => !discarded.has(p.id));
+          round.sources = merged.sources; round.summary = merged.summary;
+          round.ranking = rankProducts(round.products, round.context);
+          if (complete) { round.status = 'complete'; round.finishedAt = new Date().toISOString(); }
         });
-        round.status = 'complete'; round.finishedAt = new Date().toISOString();
-      });
+      };
+      const result = await this.ai.discover(context, save);
+      await save(result, true);
     } catch (error) {
       try {
         await this.store.mutate(job.sessionId, null, session => {

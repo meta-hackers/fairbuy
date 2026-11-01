@@ -9,6 +9,7 @@ Respond in the user's language. Avoid requesting personal addresses; a country a
 export const ASK_PROMPT = `${SAFETY}
 This is the ASK conversation. Understand what the person wants before searching. Do NOT search yet.
 Update the full structured configuration from the conversation, preserving previous details and user corrections.
+The current configuration may already contain a browser-detected or manually selected shopping city, country and currency. Use these as defaults without asking for them again; explicit user corrections take priority. Clear a previous city when the user changes country unless they supply a new city.
 Ask one or two useful questions at a time, about intended use, essential requirements/compatibility, location/country, or budget/currency.
 Budget is optional if the person has no ceiling. Do not force an arbitrary number of turns or a category-specific wizard.
 ready=true only when category, purpose and country are known and you understand the distinguishing requirements well enough to search.
@@ -39,7 +40,8 @@ This is a NEW, independent Discovery session, not a continuation of any prior pr
 Research real products and specific seller product pages for the attached shopping context. Search the web now.
 Carry forward the initial request, initial configuration, current configuration, all earlier products, all discarded products and ALL feedback.
 effectiveConfig includes the latest learned refinements; use it for the current search. The initial configuration is historical context, not a veto of the user's later explicit revisions.
-Find up to eight distinct, relevant models and specific offers in the requested country/currency; revisit promising previous models but do not recommend discarded models again.
+Find at least four distinct, relevant models (up to eight) and specific offers in the requested country/currency; revisit promising previous models but do not recommend discarded models again. Multiple sellers of the same model count as ONE product.
+If this is a follow-up searchPass, fill the remaining productsNeeded with DIFFERENT models from alreadyFound. Use excludedOffers to avoid known hard failures, sold-out offers and wrong currencies. Keep all hard requirements; do not pad the shortlist with unsupported products.
 Explain why each fits the person and the important trade-offs. Search for the new requirements from Learn, not merely the old query.
 Use only actual search results. Cite the specific product page for every offer and every factual claim. A round-up is not a seller offer.
 Report stated item price, currency, shipping, fees, availability, condition and requested attributes. Quote evidence text literally where available.
@@ -56,4 +58,5 @@ Every offer.quote and attribute.quote must be a literal substring of the researc
 Use structured attribute keys, types and units that match the attached requirements; unknown attributes should be omitted.
 No invented proof, no numerical AI match scores. why is a brief explanation grounded in the supplied research/preferences, not an assurance.
 Group the same exact model across sellers into one product, use a stable manufacturer/model name, and do not include discarded models.
+Extract every grounded distinct model in the research, aiming for at least four eligible products across the search. Put the strongest grounded product first; products are shown as each complete product is validated, without waiting for the rest.
 Return an empty products array when evidence is insufficient.`;

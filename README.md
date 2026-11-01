@@ -12,6 +12,8 @@ A full-stack AI shopping research application combining [Alberto’s demo](https
 - **Learn:** reject a product or add feedback. Every submission starts fresh discovery with the original configuration, current brief, all prior products, discarded products and accumulated feedback. Undo preserves unrelated edits and starts another search.
 - **Buy:** inspect the chosen product’s seller offers and visit a source page yourself. **No automatic checkout or payment.**
 
+On page load, FairBuy requests browser location permission (HTTPS or localhost required). With permission, a rounded position is reverse-geocoded via OpenStreetMap Nominatim to suggest the city, country and supported local currency (EUR, CHF, USD or GBP). Other local currencies require a manual supported-currency choice; no conversion is assumed. Denied/unavailable location never blocks shopping. The location bar and Configure remain editable, and automatic detection never replaces an existing shopping country. No geocoding key is needed; only city/country/currency enter the shopping brief, not precise coordinates or a street address.
+
 React/Vite frontend, TypeScript/Express backend, shared Zod contracts, PostgreSQL session storage and a durable leased job queue. Meta Model API (Muse Spark 1.3, Contributor mode) is called through its REST Responses API. By default its hosted web search means **only a `MODEL_API_KEY` is needed**; Brave is optional.
 
 ## Run locally

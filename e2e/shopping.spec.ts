@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'geolocation', { value: {
+    getCurrentPosition: (_success: unknown, failure: (error: { code: number }) => void) => failure({ code: 1 }),
+  } }));
+});
+
 test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -17,36 +23,78 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   await expect(page.getByLabel('Budget ceiling')).toHaveValue('700');
   await page.getByLabel('My budget is a hard limit').check();
   await page.getByRole('button', { name: 'Find products' }).click();
-  await expect(page.getByTestId('product-card')).toHaveCount(3);
+  await expect(page.getByTestId('product-card')).toHaveCount(5);
   const first = page.getByTestId('product-card').first();
   const firstName = await first.getByRole('heading').textContent();
   await first.getByRole('button', { name: 'Not for me' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Apply & search again' })).toBeDisabled();
   await page.getByRole('button', { name: 'Keep exploring' }).click();
-  await expect(page.getByTestId('product-card')).toHaveCount(3);
+  await expect(page.getByTestId('product-card')).toHaveCount(5);
   await first.getByRole('button', { name: 'Not for me' }).click();
   await page.getByLabel('Tell us a little more').fill('I need it to weigh less than 1.5 kg');
   await page.getByRole('button', { name: 'Apply & search again' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByTestId('product-card')).toHaveCount(2);
+  await expect(page.getByTestId('product-card')).toHaveCount(4);
   await expect(page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: firstName!, exact: true }) })).toHaveCount(0);
   await page.reload();
-  await expect(page.getByTestId('product-card')).toHaveCount(2);
+  await expect(page.getByTestId('product-card')).toHaveCount(4);
   await expect(page.getByText('I need it to weigh less than 1.5 kg', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.getByTestId('product-card')).toHaveCount(3);
+  await expect(page.getByTestId('product-card')).toHaveCount(5);
   await page.getByTestId('product-card').first().getByRole('button', { name: 'Purchase options' }).click();
   await expect(page.getByText('Nothing has been purchased.', { exact: false })).toBeVisible();
   await expect(page.getByText('Fictional seller — no purchase link')).toHaveCount(2);
   await page.getByRole('button', { name: 'Back to discovery' }).click();
-  await expect(page.getByTestId('product-card')).toHaveCount(3);
+  await expect(page.getByTestId('product-card')).toHaveCount(5);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
   await page.screenshot({ path: `test-results/${testInfo.project.name}-discovery.png`, fullPage: true });
   expect(errors).toEqual([]);
   await page.getByRole('button', { name: 'New search' }).click();
   await expect(page.getByRole('log')).toContainText('What are you looking for?');
+});
+
+test('discovery shows the first product while searching and preserves partial results across reloads', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await page.getByRole('button', { name: 'Continue to Configure' }).click();
+  await page.getByRole('button', { name: 'Find products' }).click();
+  await expect(page.getByTestId('product-card')).toHaveCount(6);
+  const boot = await (await page.request.get('/api/bootstrap')).json();
+  const complete = structuredClone(boot.session);
+  let current = structuredClone(complete);
+  const round = current.rounds.at(-1);
+  round.status = 'running'; round.finishedAt = null;
+  round.products = round.products.slice(0, 1);
+  round.ranking.ranked = round.ranking.ranked.filter((ranked: { offerId: string }) => round.products[0].offers.some((offer: { id: string }) => offer.id === ranked.offerId));
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: { ...boot, session: current } }));
+  await page.route(`**/api/sessions/${complete.id}`, route => route.fulfill({ json: current }));
+  await page.reload();
+  await expect(page.getByTestId('product-card')).toHaveCount(1);
+  await expect(page.getByText('1 option ready to explore. More on the way.')).toBeVisible();
+  await expect(page.getByText('Searching for at least 4 distinct products', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Purchase options' })).toBeDisabled();
+  await page.getByText('Trade-offs & evidence', { exact: false }).click();
+  await expect(page.getByText('Battery health is unknown; verify it with the seller.')).toBeVisible();
+  await expect(page.getByText('No grounded matches this time.')).toHaveCount(0);
+  current = structuredClone(complete); current.version++;
+  current.rounds.at(-1).status = 'running'; current.rounds.at(-1).finishedAt = null;
+  current.rounds.at(-1).products = current.rounds.at(-1).products.slice(0, 2);
+  await expect(page.getByTestId('product-card')).toHaveCount(2);
+  await page.reload();
+  await expect(page.getByTestId('product-card')).toHaveCount(2);
+  current = structuredClone(complete); current.version += 2;
+  await expect(page.getByTestId('product-card')).toHaveCount(6);
+  await expect(page.getByTestId('product-card').first().getByRole('button', { name: 'Purchase options' })).toBeEnabled();
+
+  // A later provider failure must not hide products that were already grounded.
+  current.rounds.at(-1).status = 'failed'; current.rounds.at(-1).error = 'Later research failed.';
+  current.rounds.at(-1).products = current.rounds.at(-1).products.slice(0, 1);
+  await page.reload();
+  await expect(page.getByTestId('product-card')).toHaveCount(1);
+  await expect(page.getByRole('alert')).toContainText('Later research failed.');
 });
 
 test('configuration helper and unstructured requirements keep manual changes', async ({ page }) => {

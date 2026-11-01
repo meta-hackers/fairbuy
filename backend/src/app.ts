@@ -5,17 +5,18 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { ConfigSchema, LearnInputSchema, MessageInputSchema } from '@fairbuy/core';
+import { ConfigSchema, CoordinatesSchema, LearnInputSchema, MessageInputSchema, ShoppingLocationSchema } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { AppError, publicError } from './errors';
+import { LocationResolver } from './location';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b))); }
 function cookies(req: Request) {
   return Object.fromEntries((req.headers.cookie ?? '').split(';').map(c => c.trim().split('=')).filter(c => c.length === 2));
 }
-export function createApp(service: ShoppingService, config: Settings) {
+export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver()) {
   const app = express();
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
@@ -62,13 +63,24 @@ export function createApp(service: ShoppingService, config: Settings) {
     res.cookie('fairbuy_access', hash(`${config.APP_ACCESS_TOKEN}:${res.locals.ownerToken}`), { httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 86400000, path: '/' });
     res.json({ ok: true });
   });
+  app.post('/api/location/reverse', rateLimit({ windowMs: 60 * 60000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Location lookup limit reached. Please set your location manually.' } }), async (req, res) => {
+    const { latitude, longitude } = CoordinatesSchema.parse(req.body);
+    res.json(await locations.reverse(latitude, longitude));
+  });
   app.use('/api', (_req, res, next) => res.locals.access ? next() : next(new AppError(401, 'Enter the app password to continue.', 'ACCESS_REQUIRED')));
   const aiLimit = rateLimit({ windowMs: 60 * 60000, limit: 45, keyGenerator: (_req, res) => res.locals.owner, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'AI request limit reached. Try again in an hour.' } });
   const dailyLimit = rateLimit({ windowMs: 86400000, limit: 150, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Daily AI limit reached for this network.' } });
-  app.post('/api/sessions', aiLimit, async (_req, res) => { res.status(201).json(await service.create(res.locals.owner)); });
+  app.post('/api/sessions', aiLimit, async (req, res) => {
+    const { location } = z.object({ location: ShoppingLocationSchema.optional() }).strict().parse(req.body ?? {});
+    res.status(201).json(await service.create(res.locals.owner, location));
+  });
   app.param('id', (_req, _res, next, value) => { try { z.uuid().parse(value); next(); } catch { next(new AppError(400, 'Invalid search ID.')); } });
   app.get('/api/sessions/:id', async (req, res) => { res.json(await service.store.get(String(req.params.id), res.locals.owner)); });
   app.delete('/api/sessions/:id', async (req, res) => { await service.store.delete(String(req.params.id), res.locals.owner); res.status(204).end(); });
+  app.patch('/api/sessions/:id/location', async (req, res) => {
+    const { onlyIfMissing, ...location } = ShoppingLocationSchema.extend({ onlyIfMissing: z.boolean().default(false) }).parse(req.body);
+    res.json(await service.locate(String(req.params.id), res.locals.owner, location, onlyIfMissing));
+  });
   app.post('/api/sessions/:id/ask', dailyLimit, aiLimit, async (req, res) => {
     const { message } = MessageInputSchema.parse(req.body);
     res.json(await service.message(String(req.params.id), res.locals.owner, 'ask', message));

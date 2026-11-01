@@ -33,7 +33,7 @@ describe('real backend shopping orchestration', () => {
     expect(nextContext.discoverySessionId).toBe(current.rounds[1].id);
     expect(nextContext.initialConfig).toEqual(initial);
     expect(nextContext.initialRequest).toContain('Laptop for coding');
-    expect(nextContext.previousProducts).toHaveLength(4);
+    expect(nextContext.previousProducts).toHaveLength(6);
     expect(nextContext.discardedProducts.map(p => p.id)).toContain(rejected.id);
     expect(nextContext.feedback[0].reason).toContain('1.5 kg');
     expect(current.rounds[1].products.map(p => p.id)).not.toContain(rejected.id);
@@ -77,6 +77,47 @@ describe('real backend shopping orchestration', () => {
     vi.spyOn(ai, 'learn').mockRejectedValueOnce(new Error('timeout'));
     await expect(service.learn(session.id, 'alice', { productId: null, reason: 'lighter' })).rejects.toThrow();
     expect((await store.get(session.id)).feedback).toHaveLength(0);
+  });
+  it('persists and ranks the first product before discovery finishes', async () => {
+    const { service, store, session, ai } = await setup();
+    const original = ai.discover.bind(ai);
+    let published!: () => void, release!: () => void;
+    const first = new Promise<void>(resolve => { published = resolve; });
+    const remaining = new Promise<void>(resolve => { release = resolve; });
+    vi.spyOn(ai, 'discover').mockImplementation(async (context, onProgress) => {
+      const result = await original(context);
+      await onProgress?.({ ...result, products: result.products.slice(0, 1) });
+      published(); await remaining;
+      return result;
+    });
+    const queued = await service.discover(session.id, 'alice');
+    const pending = run(service);
+    await first;
+    const partial = await store.get(session.id, 'alice');
+    expect(partial.version).toBeGreaterThan(queued.version);
+    expect(partial.rounds[0].status).toBe('running');
+    expect(partial.rounds[0].products).toHaveLength(1);
+    expect(partial.rounds[0].ranking?.ranked).toHaveLength(2);
+    await expect(service.select(session.id, 'alice', partial.rounds[0].products[0].id)).rejects.toMatchObject({ status: 409 });
+    release(); await pending;
+    const complete = await store.get(session.id, 'alice');
+    expect(complete.rounds[0].status).toBe('complete');
+    expect(complete.rounds[0].products).toHaveLength(6);
+    expect(complete.rounds[0].products[0].offers).toHaveLength(2);
+  });
+  it('retains grounded partial products and rankings when a later provider request fails', async () => {
+    const { service, store, session, ai } = await setup();
+    const original = ai.discover.bind(ai);
+    vi.spyOn(ai, 'discover').mockImplementation(async (context, onProgress) => {
+      const result = await original(context);
+      await onProgress?.({ ...result, products: result.products.slice(0, 1) });
+      throw new AppError(502, 'Later research failed');
+    });
+    await service.discover(session.id, 'alice'); await run(service);
+    const round = (await store.get(session.id)).rounds[0];
+    expect(round).toMatchObject({ status: 'failed', error: 'Later research failed' });
+    expect(round.products).toHaveLength(1);
+    expect(round.ranking?.ranked).toHaveLength(2);
   });
   it('rejects stale selections and enforces ownership', async () => {
     const { service, store, session } = await setup();
