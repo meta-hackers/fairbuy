@@ -11,6 +11,22 @@ separate session and must not be treated as endpoints available to shopping user
 
 ## Administrator accounts
 
+For simple setup, set **BACKOFFICE_ADMINS** directly in Render's environment
+settings using a JSON array of usernames and plaintext passwords:
+
+```json
+[{"username":"ExampleAdmin","password":"replace-with-a-long-unique-password"}]
+```
+
+Use a separate entry for each administrator. Do not commit real passwords to
+`render.yaml` or Git. Plaintext configuration is converted to scrypt hashes at
+startup and is never included in API responses. Existing `passwordHash` entries
+remain supported; each entry must contain exactly one of `password` or
+`passwordHash`. Changing a password invalidates existing sessions after restart.
+Plaintext values remain visible to people with access to Render environment
+settings. Prefer long unique passwords, especially for production.
+
+For generated passwords and hash-only configuration, run the following instead.
 From the repository root:
 
 ```sh

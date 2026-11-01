@@ -1,6 +1,18 @@
 import { z } from 'zod';
+import { createHash, scryptSync } from 'node:crypto';
 const ReasoningEffortSchema = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']);
-const AdminsSchema = z.array(z.object({ username: z.string().min(1).max(80).regex(/^[a-zA-Z0-9_.-]+$/), passwordHash: z.string().regex(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/) })).max(100).refine(admins => new Set(admins.map(a => a.username.toLowerCase())).size === admins.length, 'Admin usernames must be unique');
+const AdminUsernameSchema = z.string().min(1).max(80).regex(/^[a-zA-Z0-9_.-]+$/);
+const AdminSchema = z.union([
+  z.object({ username: AdminUsernameSchema, passwordHash: z.string().regex(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/) }).strict(),
+  z.object({ username: AdminUsernameSchema, password: z.string().min(1).max(500) }).strict(),
+]).transform(admin => {
+  if ('passwordHash' in admin) return admin;
+  // Normalize plaintext environment configuration immediately. A stable, per-user
+  // salt preserves login sessions across restarts; plaintext never enters Settings.
+  const salt = createHash('sha256').update(`fairbuy-admin:${admin.username.toLowerCase()}`).digest('hex').slice(0, 32);
+  return { username: admin.username, passwordHash: `scrypt:${salt}:${scryptSync(admin.password, salt, 64).toString('hex')}` };
+});
+const AdminsSchema = z.array(AdminSchema).max(100).refine(admins => new Set(admins.map(a => a.username.toLowerCase())).size === admins.length, 'Admin usernames must be unique');
 const Schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   FAIRBUY_MODE: z.enum(['live', 'demo']).default('live'),

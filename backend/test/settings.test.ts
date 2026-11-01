@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { settings } from '../src/settings';
+import { verifyPassword } from '../src/admin';
 
 const effortKeys = ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'] as const;
+
+describe('administrator password configuration', () => {
+  it('accepts multiple plaintext passwords, hashes them internally, and remains stable across restarts', async () => {
+    const env = { BACKOFFICE_ADMINS: JSON.stringify([{ username: 'FirstAdmin', password: 'first-test-password' }, { username: 'SecondAdmin', password: 'second-test-password' }]) };
+    const config = settings(env);
+    expect(config.BACKOFFICE_ADMINS).toEqual(settings(env).BACKOFFICE_ADMINS);
+    expect(JSON.stringify(config.BACKOFFICE_ADMINS)).not.toContain('first-test-password');
+    expect(await verifyPassword('first-test-password', config.BACKOFFICE_ADMINS[0].passwordHash)).toBe(true);
+    expect(await verifyPassword('second-test-password', config.BACKOFFICE_ADMINS[1].passwordHash)).toBe(true);
+    expect(await verifyPassword('wrong', config.BACKOFFICE_ADMINS[0].passwordHash)).toBe(false);
+  });
+  it('rejects ambiguous credentials, empty passwords, and duplicate usernames', () => {
+    const parse = (admins: unknown) => settings({ BACKOFFICE_ADMINS: JSON.stringify(admins) });
+    expect(() => parse([{ username: 'Admin', password: '' }])).toThrow();
+    expect(() => parse([{ username: 'Admin', password: 'test', passwordHash: `scrypt:${'a'.repeat(32)}:${'b'.repeat(128)}` }])).toThrow();
+    expect(() => parse([{ username: 'Admin', password: 'test' }, { username: 'ADMIN', password: 'other' }])).toThrow();
+    expect(() => parse([{ username: 'Admin' }])).toThrow();
+  });
+});
 
 describe('optional instant classifier settings', () => {
   it('does not require Cloudflare to start or change the main AI models', () => {

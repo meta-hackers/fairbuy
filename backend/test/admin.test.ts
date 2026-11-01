@@ -21,6 +21,16 @@ async function login(client: ReturnType<typeof request.agent>, username = 'Alber
   return client.post('/api/admin/login').set(write).send({ username, password: 'test-password-not-for-production' }).expect(200);
 }
 describe('backoffice authentication and authorization', () => {
+  it('logs in with plaintext environment configuration without returning the password', async () => {
+    const config = settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo', BACKOFFICE_ADMINS: JSON.stringify([{ username: 'PlainAdmin', password: 'test-only-plain-password' }]) });
+    const app = createApp(new ShoppingService(new MemoryStore(), new DemoAIProvider(), 'demo'), config);
+    const client = request.agent(app);
+    const login = await client.post('/api/admin/login').set(write).send({ username: 'PlainAdmin', password: 'test-only-plain-password' }).expect(200);
+    expect(login.body).toEqual({ username: 'PlainAdmin' });
+    const me = await client.get('/api/admin/me').expect(200);
+    expect(JSON.stringify(me.body)).not.toContain('test-only-plain-password');
+    expect(JSON.stringify(me.body)).not.toContain('scrypt:');
+  });
   it('stores salted scrypt hashes and checks passwords', async () => {
     expect(await verifyPassword('test-password-not-for-production', hash)).toBe(true);
     expect(await verifyPassword('wrong', hash)).toBe(false);
