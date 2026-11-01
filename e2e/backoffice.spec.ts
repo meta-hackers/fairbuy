@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('admin can inspect a historical session and sign out', async ({ page }) => {
+test('admin can inspect immutable history, confirm maintenance deletion and sign out', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const created = await page.request.post('/api/sessions', { headers: { 'X-Fairbuy-Request': '1' } });
@@ -23,6 +23,25 @@ test('admin can inspect a historical session and sign out', async ({ page }) => 
   await page.getByText('Complete stored session and usage data', { exact: true }).click();
   await expect(page.locator('details').last().locator('pre')).toContainText(session.id);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect((await page.request.delete(`/api/sessions/${session.id}`, { headers: { 'X-Fairbuy-Request': '1' } })).status()).toBe(204);
+  expect((await page.request.get(`/api/sessions/${session.id}`)).status()).toBe(404);
+  await page.getByRole('button', { name: 'All sessions' }).click();
+  await expect(page.locator('#sessions')).toContainText('Closed');
+  await page.locator('#sessions button').click();
+  await page.getByRole('button', { name: 'Load versions', exact: true }).click();
+  await expect(page.getByText(/Version 0 · created/)).toBeVisible();
+  await expect(page.getByText(/Version 2 · archived/)).toBeVisible();
+  await page.getByText(/Version 0 · created/).click();
+  await expect(page.locator('details[open]').last().locator('pre')).toContainText('"askMessages": []');
+  page.once('dialog', dialog => dialog.accept('not-the-session-id'));
+  await page.getByRole('button', { name: 'Permanently delete this session', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Nothing was deleted');
+  expect((await page.request.get(`/api/admin/sessions/${session.id}`)).status()).toBe(200);
+  page.once('dialog', dialog => dialog.accept(session.id));
+  await page.getByRole('button', { name: 'Permanently delete this session', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Session history' })).toBeVisible();
+  await expect(page.locator('#sessions')).toContainText('No sessions match');
+  expect((await page.request.get(`/api/admin/sessions/${session.id}`)).status()).toBe(404);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   expect((await page.request.get('/api/admin/sessions')).status()).toBe(401);

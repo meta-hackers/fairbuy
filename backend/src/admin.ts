@@ -7,6 +7,7 @@ import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { PostgresStore } from './store';
 import { AppError } from './errors';
+import { logger } from './logger';
 
 const derive = promisify(scrypt);
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -58,7 +59,7 @@ export function adminRouter(service: ShoppingService, config: Settings) {
     res.locals.admin = admin.username; res.locals.adminTokenHash = key;
     next();
   });
-  router.get('/me', (_req, res) => res.json({ username: res.locals.admin, persistent: !!pool, retentionDays: 7, prices: config.AI_PRICE_TABLE }));
+  router.get('/me', (_req, res) => res.json({ username: res.locals.admin, persistent: !!pool, retentionDays: null, prices: config.AI_PRICE_TABLE }));
   router.post('/logout', async (_req, res) => {
     if (pool) await pool.query('DELETE FROM admin_sessions WHERE token_hash = $1', [res.locals.adminTokenHash]);
     else sessions.delete(res.locals.adminTokenHash);
@@ -75,6 +76,20 @@ export function adminRouter(service: ShoppingService, config: Settings) {
     const session = await service.store.get(id);
     const usage = await service.usage.get(id);
     res.json({ session, usage, summary: summarizeUsage(usage) });
+  });
+  router.get('/sessions/:sessionId/history', async (req, res) => {
+    const id = z.uuid().parse(req.params.sessionId);
+    res.json({ revisions: await service.store.history(id) });
+  });
+  router.post('/sessions/:sessionId/purge', async (req, res) => {
+    const id = z.uuid().parse(req.params.sessionId);
+    const { confirmSessionId } = z.object({ confirmSessionId: z.uuid() }).strict().parse(req.body);
+    if (confirmSessionId !== id) throw new AppError(400, 'Confirm the exact session ID to permanently delete its history.', 'CONFIRMATION_REQUIRED');
+    await service.store.get(id);
+    await service.store.purge(id);
+    service.usage.purgeMemory(id);
+    logger.warn('maintenance.session.purge.completed', { sessionId: id, admin: res.locals.admin });
+    res.status(204).end();
   });
   router.use((_req, _res, next) => next(new AppError(404, 'Admin endpoint not found.')));
   return router;

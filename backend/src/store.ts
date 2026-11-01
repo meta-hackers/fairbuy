@@ -11,21 +11,55 @@ import { logger } from './logger';
 import type { SessionStartup } from './session-startup';
 
 export interface Job { id: string; sessionId: string; attempts: number }
+export interface SessionRevision {
+  version: number; parentVersion: number | null; kind: 'created' | 'migrated' | 'changed' | 'archived';
+  archived: boolean; revokedFeedbackIds: string[]; createdAt: string; session: ShoppingSession;
+}
+type Change = (session: ShoppingSession) => undefined;
 export interface Store {
   listSessions(query: { search: string; stage: string; mode: string; page: number }): Promise<{ sessions: SessionSummary[]; total: number }>;
   create(owner: string, session: ShoppingSession, startup: SessionStartup): Promise<void>;
   latest(owner: string): Promise<ShoppingSession | null>;
   get(id: string, owner?: string): Promise<ShoppingSession>;
-  mutate(id: string, owner: string | null, action: (session: ShoppingSession) => Promise<void> | void): Promise<ShoppingSession>;
-  delete(id: string, owner: string): Promise<void>;
+  // Only synchronous, side-effect-free changes may be retried. AI calls run before append.
+  append(id: string, owner: string | null, action: Change, expectedVersion?: number): Promise<ShoppingSession>;
+  history(id: string): Promise<SessionRevision[]>;
+  archive(id: string, owner: string): Promise<void>;
+  purge(id: string): Promise<void>;
   claim(): Promise<Job | null>;
   finish(job: Job): Promise<void>;
-  cleanup(): Promise<void>;
   health(): Promise<void>;
   close(): Promise<void>;
 }
-export interface SessionSummary { id: string; owner: string; stage: string; mode: string; category: string | null; createdAt: string; updatedAt: string }
-const notFound = () => new AppError(404, 'This search was not found or has expired.', 'NOT_FOUND');
+export interface SessionSummary { id: string; owner: string; stage: string; mode: string; category: string | null; createdAt: string; updatedAt: string; archived: boolean }
+const notFound = () => new AppError(404, 'This search was not found or has been closed.', 'NOT_FOUND');
+const conflict = () => new AppError(409, 'This search changed while the operation was running. Review the latest state and retry.', 'SESSION_CONFLICT');
+function revision(previous: ShoppingSession | null, session: ShoppingSession, kind: SessionRevision['kind']): SessionRevision {
+  return {
+    version: session.version, parentVersion: previous?.version ?? null, kind, archived: kind === 'archived',
+    revokedFeedbackIds: previous?.feedback.filter(f => !session.feedback.some(current => current.id === f.id)).map(f => f.id) ?? [],
+    createdAt: session.updatedAt, session: structuredClone(session),
+  };
+}
+function changed(previous: ShoppingSession, action: Change): ShoppingSession | null {
+  const next = structuredClone(previous);
+  const result: unknown = action(next);
+  if (result && typeof (result as Promise<unknown>).then === 'function') throw new Error('Session changes must be synchronous; run external calls before append.');
+  for (const field of ['id', 'version', 'createdAt', 'mode', 'askSessionId', 'configureSessionId'] as const) {
+    if (next[field] !== previous[field]) throw new Error(`Session identity field ${field} is immutable.`);
+  }
+  if (JSON.stringify(next) === JSON.stringify(previous)) return null;
+  next.version++; next.updatedAt = new Date().toISOString();
+  return next;
+}
+function logQueued(previous: ShoppingSession, next: ShoppingSession) {
+  for (const round of next.rounds.filter(r => !previous.rounds.some(prior => prior.id === r.id))) {
+    logger.info('discovery.round.queued', {
+      sessionId: next.id, version: next.version, roundId: round.id, round: round.number, trigger: round.trigger,
+      previousProducts: round.context.previousProducts.length, feedback: round.context.feedback.length,
+    });
+  }
+}
 
 interface SessionRow extends QueryResultRow {
   id: string; owner_hash: string; version: number; mode: 'live' | 'demo'; stage: ShoppingSession['stage'];
@@ -204,14 +238,22 @@ export class PostgresStore implements Store {
         for (const row of legacy.rows) {
           try {
             const session = normalizeLegacySession(row.data as Record<string, any>);
-            await this.writeSession(client, session, row.owner_hash);
+            await this.writeLegacySession(client, session, row.owner_hash);
             migrated++;
           } catch (error) {
-            logger.error('database.legacy_session.skipped', { sessionId: row.id, error: error instanceof Error ? error.name : 'unknown' });
-            await client.query('DELETE FROM shopping_sessions WHERE id = $1', [row.id]);
+            logger.error('database.legacy_session.failed', { sessionId: row.id, error: error instanceof Error ? error.name : 'unknown' });
+            throw error; // Abort the migration instead of silently deleting historical data.
           }
         }
         await client.query('ALTER TABLE shopping_sessions DROP COLUMN IF EXISTS data');
+      }
+      await client.query(await readFile(new URL('../migrations/004_session_versions.sql', import.meta.url), 'utf8'));
+      // A single baseline preserves the state available at upgrade time. Earlier
+      // revisions cannot be reconstructed from the old mutable tables.
+      const baselines = await client.query<{ id: string }>('SELECT id FROM shopping_sessions s WHERE NOT EXISTS (SELECT 1 FROM session_versions v WHERE v.session_id = s.id)');
+      for (const row of baselines.rows) {
+        const session = await this.readLegacySession(client, row.id);
+        if (session) await this.insertRevision(client, revision(null, session, 'migrated'));
       }
       await client.query('COMMIT');
       logger.info('database.migrated', { durationMs: Date.now() - started, legacySessionsMigrated: migrated, droppedLegacyDataColumn: !!legacyColumn.rowCount });
@@ -223,10 +265,16 @@ export class PostgresStore implements Store {
     try {
       await client.query('BEGIN');
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [owner]);
-      const count = await client.query('SELECT count(*) FROM shopping_sessions WHERE owner_hash = $1 AND expires_at > now()', [owner]);
-      if (Number(count.rows[0].count) >= 15) throw new AppError(429, 'Search limit reached. Delete an older search or return after it expires.');
-      await this.writeSession(client, session, owner);
-      await client.query('UPDATE shopping_sessions SET startup_config = $2::jsonb WHERE id = $1 AND startup_config IS NULL', [session.id, JSON.stringify(startup)]);
+      const count = await client.query(`SELECT count(*) FROM shopping_sessions s
+        CROSS JOIN LATERAL (SELECT archived FROM session_versions WHERE session_id = s.id ORDER BY version DESC LIMIT 1) v
+        WHERE owner_hash = $1 AND NOT v.archived`, [owner]);
+      if (Number(count.rows[0].count) >= 15) throw new AppError(429, 'Search limit reached. Close an older search before starting another.');
+      await client.query(`INSERT INTO shopping_sessions
+        (id, owner_hash, version, mode, stage, ask_session_id, configure_session_id, ready, selected_product_id, created_at, updated_at, startup_config)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)`,
+      [session.id, owner, session.version, session.mode, session.stage, session.askSessionId, session.configureSessionId,
+        session.ready, session.selectedProductId, session.createdAt, session.updatedAt, JSON.stringify(startup)]);
+      await this.insertRevision(client, revision(null, session, 'created'));
       await client.query('COMMIT');
       logger.info('database.session.created', { sessionId: session.id, version: session.version });
     } catch (error) { await client.query('ROLLBACK'); throw error; }
@@ -235,71 +283,120 @@ export class PostgresStore implements Store {
   async latest(owner: string) {
     const client = await this.pool.connect();
     try {
-      const result = await client.query<{ id: string }>('SELECT id FROM shopping_sessions WHERE owner_hash = $1 AND expires_at > now() ORDER BY created_at DESC LIMIT 1', [owner]);
+      const result = await client.query<{ state: ShoppingSession }>(`SELECT v.state FROM shopping_sessions s
+        CROSS JOIN LATERAL (SELECT state, archived FROM session_versions WHERE session_id = s.id ORDER BY version DESC LIMIT 1) v
+        WHERE s.owner_hash = $1 AND NOT v.archived ORDER BY s.created_at DESC, s.id DESC LIMIT 1`, [owner]);
       if (!result.rows[0]) return null;
-      return await this.readSession(client, result.rows[0].id, owner);
+      return result.rows[0].state;
     } finally { client.release(); }
   }
   async listSessions(query: { search: string; stage: string; mode: string; page: number }) {
     const values = [query.search, query.stage, query.mode];
-    const where = `FROM shopping_sessions s LEFT JOIN session_configs c ON c.session_id = s.id AND c.scope = 'current'
-      WHERE s.expires_at > now() AND ($1 = '' OR strpos(lower(s.id::text), lower($1)) > 0 OR strpos(lower(s.owner_hash), lower($1)) > 0 OR strpos(lower(COALESCE(c.category, '')), lower($1)) > 0)
-      AND ($2 = '' OR s.stage = $2) AND ($3 = '' OR s.mode = $3)`;
+    const where = `FROM shopping_sessions s
+      CROSS JOIN LATERAL (SELECT state, archived FROM session_versions WHERE session_id = s.id ORDER BY version DESC LIMIT 1) v
+      WHERE ($1 = '' OR strpos(lower(s.id::text), lower($1)) > 0 OR strpos(lower(s.owner_hash), lower($1)) > 0 OR strpos(lower(COALESCE(v.state->'config'->>'category', '')), lower($1)) > 0)
+      AND ($2 = '' OR v.state->>'stage' = $2) AND ($3 = '' OR s.mode = $3)`;
     const total = await this.pool.query(`SELECT count(*) ${where}`, values);
-    const result = await this.pool.query(`SELECT s.id, s.owner_hash AS owner, s.stage, s.mode, c.category, s.created_at AS "createdAt", s.updated_at AS "updatedAt" ${where}
+    const result = await this.pool.query(`SELECT s.id, s.owner_hash AS owner, v.state->>'stage' AS stage, s.mode, v.archived,
+      v.state->'config'->>'category' AS category, s.created_at AS "createdAt", v.state->>'updatedAt' AS "updatedAt" ${where}
       ORDER BY s.created_at DESC, s.id LIMIT 30 OFFSET $4`, [...values, (query.page - 1) * 30]);
     return { sessions: result.rows as SessionSummary[], total: Number(total.rows[0].count) };
   }
   async get(id: string, owner?: string): Promise<ShoppingSession> {
-    const client = await this.pool.connect();
-    try {
-      const session = await this.readSession(client, id, owner ?? null);
-      if (!session) throw notFound();
-      return session;
-    } finally { client.release(); }
+    const result = await this.pool.query<{ state: ShoppingSession; archived: boolean }>(`SELECT v.state, v.archived FROM shopping_sessions s
+      CROSS JOIN LATERAL (SELECT state, archived FROM session_versions WHERE session_id = s.id ORDER BY version DESC LIMIT 1) v
+      WHERE s.id = $1 AND ($2::text IS NULL OR s.owner_hash = $2)`, [id, owner ?? null]);
+    const row = result.rows[0];
+    if (!row || (owner !== undefined && row.archived)) throw notFound();
+    return row.state;
   }
-  async mutate(id: string, owner: string | null, action: (session: ShoppingSession) => Promise<void> | void) {
-    const client = await this.pool.connect();
+  async history(id: string): Promise<SessionRevision[]> {
+    await this.get(id);
+    const result = await this.pool.query(`SELECT version, parent_version AS "parentVersion", kind, archived,
+      revoked_feedback_ids AS "revokedFeedbackIds", created_at AS "createdAt", state AS session
+      FROM session_versions WHERE session_id = $1 ORDER BY version`, [id]);
+    return result.rows.map(row => ({ ...row, createdAt: iso(row.createdAt)! })) as SessionRevision[];
+  }
+  async append(id: string, owner: string | null, action: Change, expectedVersion?: number) {
     const started = Date.now();
-    try {
-      await client.query('BEGIN');
-      const session = await this.readSession(client, id, owner, true);
-      if (!session) throw notFound();
-      await action(session);
-      session.version++; session.updatedAt = new Date().toISOString();
-      await this.writeSession(client, session, null);
-      await this.enqueue(client, session);
-      await client.query('COMMIT');
-      logger.info('database.session.mutated', { sessionId: id, version: session.version, durationMs: Date.now() - started });
-      return session;
-    } catch (error) { await client.query('ROLLBACK'); throw error; }
-    finally { client.release(); }
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const rows = await this.pool.query<{ archived: boolean; state: ShoppingSession }>(`SELECT v.archived, v.state FROM shopping_sessions s
+        CROSS JOIN LATERAL (SELECT archived, state FROM session_versions WHERE session_id = s.id ORDER BY version DESC LIMIT 1) v
+        WHERE s.id = $1 AND ($2::text IS NULL OR s.owner_hash = $2)`, [id, owner]);
+      const current = rows.rows[0];
+      if (!current || current.archived) throw notFound();
+      if (expectedVersion !== undefined && current.state.version !== expectedVersion) throw conflict();
+      const next = changed(current.state, action);
+      if (!next) return current.state;
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+        await this.insertRevision(client, revision(current.state, next, 'changed'));
+        await this.enqueue(client, next);
+        await client.query('COMMIT');
+        logger.info('database.session.appended', { sessionId: id, version: next.version, parentVersion: current.state.version, durationMs: Date.now() - started });
+        logQueued(current.state, next);
+        return next;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        const code = (error as { code?: string }).code;
+        if (code === '23503') throw notFound(); // Purged concurrently; never recreate a session.
+        if (code !== '23505') throw error;
+        if (expectedVersion !== undefined) throw conflict();
+      } finally { client.release(); }
+    }
+    throw conflict();
   }
-  async delete(id: string, owner: string) {
-    const result = await this.pool.query('DELETE FROM shopping_sessions WHERE id = $1 AND owner_hash = $2', [id, owner]);
-    if (result.rowCount) logger.info('database.session.deleted', { sessionId: id });
+  async archive(id: string, owner: string) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const rows = await this.pool.query<{ state: ShoppingSession; archived: boolean }>(`SELECT v.state, v.archived FROM shopping_sessions s
+        CROSS JOIN LATERAL (SELECT state, archived FROM session_versions WHERE session_id = s.id ORDER BY version DESC LIMIT 1) v
+        WHERE s.id = $1 AND s.owner_hash = $2`, [id, owner]);
+      const current = rows.rows[0];
+      if (!current || current.archived) return;
+      const next = structuredClone(current.state); next.version++; next.updatedAt = new Date().toISOString();
+      const client = await this.pool.connect();
+      try {
+        await this.insertRevision(client, revision(current.state, next, 'archived'));
+        logger.info('session.archived', { sessionId: id, version: next.version });
+        return;
+      } catch (error) {
+        const code = (error as { code?: string }).code;
+        if (code === '23503') return;
+        if (code !== '23505') throw error;
+      } finally { client.release(); }
+    }
+    throw conflict();
+  }
+  async purge(id: string) {
+    const result = await this.pool.query('DELETE FROM shopping_sessions WHERE id = $1', [id]);
+    if (result.rowCount) logger.warn('maintenance.session.purged', { sessionId: id });
   }
   async claim(): Promise<Job | null> {
     const result = await this.pool.query(`
       UPDATE discovery_jobs SET state = 'running', attempts = attempts + 1, lease_until = now() + interval '5 minutes'
-      WHERE id = (SELECT id FROM discovery_jobs WHERE state = 'queued' OR (state = 'running' AND lease_until < now())
-        ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1)
+      WHERE id = (SELECT j.id FROM discovery_jobs j
+        CROSS JOIN LATERAL (SELECT archived FROM session_versions WHERE session_id = j.session_id ORDER BY version DESC LIMIT 1) v
+        WHERE NOT v.archived AND (j.state = 'queued' OR (j.state = 'running' AND j.lease_until < now()))
+        ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1)
       RETURNING id, session_id, attempts`);
     const row = result.rows[0];
     return row ? { id: row.id, sessionId: row.session_id, attempts: row.attempts } : null;
   }
   async finish(job: Job) { await this.pool.query("UPDATE discovery_jobs SET state = 'done', lease_until = NULL WHERE id = $1 AND attempts = $2", [job.id, job.attempts]); }
-  async cleanup() {
-    const result = await this.pool.query('DELETE FROM shopping_sessions WHERE expires_at < now()');
-    if (result.rowCount) logger.info('retention.cleanup.completed', { sessions: result.rowCount });
-  }
   async health() { await this.pool.query('SELECT 1'); }
   async close() { await this.pool.end(); }
 
-  private async readSession(client: PoolClient, id: string, owner: string | null, lock = false): Promise<ShoppingSession | null> {
+  private async insertRevision(client: PoolClient, entry: SessionRevision) {
+    await client.query(`INSERT INTO session_versions (session_id, version, parent_version, kind, archived, revoked_feedback_ids, state, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8)`,
+    [entry.session.id, entry.version, entry.parentVersion, entry.kind, entry.archived, JSON.stringify(entry.revokedFeedbackIds), JSON.stringify(entry.session), entry.createdAt]);
+  }
+
+  // Migration-only reader/writer for the former normalized mutable state.
+  private async readLegacySession(client: PoolClient, id: string): Promise<ShoppingSession | null> {
     const result = await client.query<SessionRow>(
-      `SELECT * FROM shopping_sessions WHERE id = $1 AND ($2::text IS NULL OR owner_hash = $2) AND expires_at > now()${lock ? ' FOR UPDATE' : ''}`,
-      [id, owner],
+      'SELECT * FROM shopping_sessions WHERE id = $1', [id],
     );
     const row = result.rows[0];
     if (!row) return null;
@@ -406,9 +503,9 @@ export class PostgresStore implements Store {
     };
   }
 
-  private async writeSession(client: PoolClient, session: ShoppingSession, owner: string | null) {
-    if (owner) {
-      await client.query(`
+  // Used only to upgrade pre-normalization JSONB rows, before immutability guards.
+  private async writeLegacySession(client: PoolClient, session: ShoppingSession, owner: string) {
+    await client.query(`
         INSERT INTO shopping_sessions (id, owner_hash, version, mode, stage, ask_session_id, configure_session_id, ready, selected_product_id, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (id) DO UPDATE SET version = EXCLUDED.version, mode = EXCLUDED.mode, stage = EXCLUDED.stage,
@@ -417,17 +514,10 @@ export class PostgresStore implements Store {
           created_at = EXCLUDED.created_at, updated_at = EXCLUDED.updated_at`,
         [session.id, owner, session.version, session.mode, session.stage, session.askSessionId, session.configureSessionId,
           session.ready, session.selectedProductId, session.createdAt, session.updatedAt]);
-    } else {
-      await client.query(`
-        UPDATE shopping_sessions SET version = $2, mode = $3, stage = $4, ask_session_id = $5, configure_session_id = $6,
-          ready = $7, selected_product_id = $8, created_at = $9, updated_at = $10 WHERE id = $1`,
-        [session.id, session.version, session.mode, session.stage, session.askSessionId, session.configureSessionId,
-          session.ready, session.selectedProductId, session.createdAt, session.updatedAt]);
-    }
-    await this.replaceChildren(client, session);
+    await this.replaceLegacyChildren(client, session);
   }
 
-  private async replaceChildren(client: PoolClient, session: ShoppingSession) {
+  private async replaceLegacyChildren(client: PoolClient, session: ShoppingSession) {
     const id = session.id;
     await client.query('DELETE FROM discovery_rounds WHERE session_id = $1', [id]);
     await client.query('DELETE FROM session_feedback WHERE session_id = $1', [id]);
@@ -610,54 +700,65 @@ function buildAttrValue(attr: AttributeRow): AttrValue | null {
 
 // Deliberately ephemeral; only local demo and automated tests. Production refuses it.
 export class MemoryStore implements Store {
-  private sessions = new Map<string, { owner: string; data: ShoppingSession; startup: SessionStartup }>();
-  private locks = new Map<string, Promise<unknown>>();
+  private sessions = new Map<string, { owner: string; revisions: SessionRevision[]; startup: SessionStartup }>();
   private jobs = new Map<string, Job & { state: 'queued' | 'running' | 'done' }>();
   async listSessions(query: { search: string; stage: string; mode: string; page: number }) {
-    const all = [...this.sessions.values()].map(({ owner, data: s }) => ({ id: s.id, owner, stage: s.stage, mode: s.mode, category: s.config.category, createdAt: s.createdAt, updatedAt: s.updatedAt }))
+    const all = [...this.sessions.values()].map(({ owner, revisions }) => {
+      const s = revisions.at(-1)!.session;
+      return { id: s.id, owner, stage: s.stage, mode: s.mode, category: s.config.category, createdAt: s.createdAt, updatedAt: s.updatedAt, archived: revisions.at(-1)!.archived };
+    })
       .filter(s => (!query.stage || s.stage === query.stage) && (!query.mode || s.mode === query.mode) && [s.id, s.owner, s.category ?? ''].some(value => value.toLowerCase().includes(query.search.toLowerCase())))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { sessions: all.slice((query.page - 1) * 30, query.page * 30), total: all.length };
   }
   async create(owner: string, session: ShoppingSession, startup: SessionStartup) {
-    if ([...this.sessions.values()].filter(s => s.owner === owner).length >= 15) throw new AppError(429, 'Search limit reached.');
-    this.sessions.set(session.id, { owner, data: structuredClone(session), startup: structuredClone(startup) });
+    if ([...this.sessions.values()].filter(s => s.owner === owner && !s.revisions.at(-1)!.archived).length >= 15) throw new AppError(429, 'Search limit reached.');
+    if (this.sessions.has(session.id)) throw conflict();
+    this.sessions.set(session.id, { owner, revisions: [revision(null, session, 'created')], startup: structuredClone(startup) });
   }
-  async latest(owner: string) { return structuredClone([...this.sessions.values()].filter(s => s.owner === owner).at(-1)?.data ?? null); }
+  async latest(owner: string) { return structuredClone([...this.sessions.values()].filter(s => s.owner === owner && !s.revisions.at(-1)!.archived).at(-1)?.revisions.at(-1)!.session ?? null); }
   async get(id: string, owner?: string) {
     const entry = this.sessions.get(id);
-    if (!entry || (owner && entry.owner !== owner)) throw notFound();
-    return structuredClone(entry.data);
+    if (!entry || (owner !== undefined && (entry.owner !== owner || entry.revisions.at(-1)!.archived))) throw notFound();
+    return structuredClone(entry.revisions.at(-1)!.session);
   }
-  async mutate(id: string, owner: string | null, action: (session: ShoppingSession) => Promise<void> | void) {
-    const before = this.locks.get(id) ?? Promise.resolve();
-    const task = before.catch(() => {}).then(async () => {
-      const session = await this.get(id, owner ?? undefined);
-      await action(session);
-      session.version++; session.updatedAt = new Date().toISOString();
-      this.sessions.get(id)!.data = structuredClone(session);
-      for (const round of session.rounds.filter(r => r.status === 'queued')) {
-        if (!this.jobs.has(round.id)) this.jobs.set(round.id, { id: round.id, sessionId: id, attempts: 0, state: 'queued' });
-      }
-      return session;
-    });
-    this.locks.set(id, task);
-    try { return await task; } finally { if (this.locks.get(id) === task) this.locks.delete(id); }
+  async history(id: string) {
+    const entry = this.sessions.get(id);
+    if (!entry) throw notFound();
+    return structuredClone(entry.revisions);
   }
-  async delete(id: string, owner: string) {
-    if (this.sessions.get(id)?.owner === owner) {
-      this.sessions.delete(id);
-      for (const [jobId, job] of this.jobs) if (job.sessionId === id) this.jobs.delete(jobId);
+  async append(id: string, owner: string | null, action: Change, expectedVersion?: number) {
+    const entry = this.sessions.get(id);
+    if (!entry || (owner !== null && entry.owner !== owner) || entry.revisions.at(-1)!.archived) throw notFound();
+    const previous = entry.revisions.at(-1)!.session;
+    if (expectedVersion !== undefined && previous.version !== expectedVersion) throw conflict();
+    const next = changed(previous, action);
+    if (!next) return structuredClone(previous);
+    entry.revisions.push(revision(previous, next, 'changed'));
+    for (const round of next.rounds.filter(r => r.status === 'queued')) {
+      if (!this.jobs.has(round.id)) this.jobs.set(round.id, { id: round.id, sessionId: id, attempts: 0, state: 'queued' });
     }
+    logQueued(previous, next);
+    return structuredClone(next);
+  }
+  async archive(id: string, owner: string) {
+    const entry = this.sessions.get(id);
+    if (!entry || entry.owner !== owner || entry.revisions.at(-1)!.archived) return;
+    const previous = entry.revisions.at(-1)!.session;
+    const next = structuredClone(previous); next.version++; next.updatedAt = new Date().toISOString();
+    entry.revisions.push(revision(previous, next, 'archived'));
+  }
+  async purge(id: string) {
+    this.sessions.delete(id);
+    for (const [jobId, job] of this.jobs) if (job.sessionId === id) this.jobs.delete(jobId);
   }
   async claim() {
-    const job = [...this.jobs.values()].find(j => j.state === 'queued');
+    const job = [...this.jobs.values()].find(j => j.state === 'queued' && !this.sessions.get(j.sessionId)?.revisions.at(-1)?.archived);
     if (!job) return null;
     job.state = 'running'; job.attempts++;
     return { id: job.id, sessionId: job.sessionId, attempts: job.attempts };
   }
-  async finish(job: Job) { const entry = this.jobs.get(job.id); if (entry) entry.state = 'done'; }
-  async cleanup() {}
+  async finish(job: Job) { const entry = this.jobs.get(job.id); if (entry && entry.attempts === job.attempts) entry.state = 'done'; }
   async health() {}
   async close() {}
 }

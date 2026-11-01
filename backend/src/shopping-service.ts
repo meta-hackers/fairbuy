@@ -29,7 +29,7 @@ export class ShoppingService {
     return session;
   }
   async locate(id: string, owner: string, location: ShoppingLocation, onlyIfMissing = false) {
-    const session = await this.store.mutate(id, owner, session => {
+    const session = await this.store.append(id, owner, session => {
       this.idle(session);
       if (onlyIfMissing && session.config.country) return;
       session.config = { ...session.config, ...location, currency: location.currency ?? session.config.currency };
@@ -65,11 +65,6 @@ export class ShoppingService {
       context: this.context(session, id), ranking: null,
     });
     session.stage = 'discovery'; session.selectedProductId = null;
-    logger.info('discovery.round.queued', {
-      sessionId: session.id, roundId: id, round: session.rounds.length, trigger,
-      previousProducts: session.rounds.at(-1)?.context.previousProducts.length ?? 0,
-      feedback: session.feedback.length,
-    });
   }
   async message(id: string, owner: string, phase: 'ask' | 'configure', message: string) {
     return this.usage.capture(id, phase, null, () => this.messageWithUsage(id, owner, phase, message));
@@ -77,24 +72,27 @@ export class ShoppingService {
   private async messageWithUsage(id: string, owner: string, phase: 'ask' | 'configure', message: string) {
     this.ai.ensureConfigured();
     const started = Date.now();
-    const session = await this.store.mutate(id, owner, async session => {
-      this.idle(session);
-      if (phase === 'configure' && !session.ready) throw new AppError(409, 'Finish the Ask conversation first.');
+    const base = await this.store.get(id, owner);
+    this.idle(base);
+    if (phase === 'configure' && !base.ready) throw new AppError(409, 'Finish the Ask conversation first.');
+    const transcript = phase === 'ask' ? base.askMessages : base.configureMessages;
+    if (transcript.length >= 40) throw new AppError(429, 'Conversation limit reached. Review the configuration or start a new search.');
+    // No database connection/transaction is held during the external call. Never
+    // replay a paid call or attach its result to a different version of the brief.
+    const result = await this.ai.converse(phase, [...transcript, { role: 'user', content: message }], base.config);
+    const session = await this.store.append(id, owner, session => {
       const messages = phase === 'ask' ? session.askMessages : session.configureMessages;
-      if (messages.length >= 40) throw new AppError(429, 'Conversation limit reached. Review the configuration or start a new search.');
-      // Stage changes, messages and config commit atomically only after validation.
-      const result = await this.ai.converse(phase, [...messages, { role: 'user', content: message }], session.config);
       messages.push({ role: 'user', content: message }, { role: 'assistant', content: result.reply });
       session.config = result.config;
       session.ready = isConfigReady(result.config) && (phase === 'configure' || result.ready);
       session.missing = result.missing; session.selectedProductId = null;
       session.stage = phase;
-    });
+    }, base.version);
     logger.info('session.message.completed', { sessionId: id, phase, durationMs: Date.now() - started, messages: phase === 'ask' ? session.askMessages.length : session.configureMessages.length, ready: session.ready });
     return session;
   }
   async configure(id: string, owner: string, config: ShoppingConfig) {
-    const session = await this.store.mutate(id, owner, session => {
+    const session = await this.store.append(id, owner, session => {
       this.idle(session);
       if (!session.ready) throw new AppError(409, 'Finish Ask before editing the configuration.');
       session.config = config; session.stage = 'configure'; session.selectedProductId = null;
@@ -104,7 +102,7 @@ export class ShoppingService {
   }
   async discover(id: string, owner: string) {
     this.ai.ensureConfigured();
-    const session = await this.store.mutate(id, owner, session => {
+    const session = await this.store.append(id, owner, session => {
       if (session.mode !== this.mode) throw new AppError(409, 'Start a new search after changing the deployment mode.');
       if (!session.ready) throw new AppError(409, 'Finish Ask and review Configure before searching.');
       const last = latestRound(session);
@@ -121,24 +119,25 @@ export class ShoppingService {
   private async learnWithUsage(id: string, owner: string, input: { productId: string | null; reason: string }) {
     this.ai.ensureConfigured();
     const started = Date.now();
-    const session = await this.store.mutate(id, owner, async session => {
-      this.idle(session);
-      if (!session.rounds.length) throw new AppError(409, 'Discover some products before adding feedback.');
-      if (session.feedback.length >= 30 || session.rounds.length >= 12) throw new AppError(429, 'Feedback limit reached. Start a new search.');
-      const product = input.productId ? activeProducts(session).find(p => p.id === input.productId) : null;
-      if (input.productId && !product) throw new AppError(400, 'Choose a product from the current shortlist.');
-      const learned = await this.ai.learn(this.context(session), input.reason, product ?? null);
+    const base = await this.store.get(id, owner);
+    this.idle(base);
+    if (!base.rounds.length) throw new AppError(409, 'Discover some products before adding feedback.');
+    if (base.feedback.length >= 30 || base.rounds.length >= 12) throw new AppError(429, 'Feedback limit reached. Start a new search.');
+    const product = input.productId ? activeProducts(base).find(p => p.id === input.productId) : null;
+    if (input.productId && !product) throw new AppError(400, 'Choose a product from the current shortlist.');
+    const learned = await this.ai.learn(this.context(base), input.reason, product ?? null);
+    const session = await this.store.append(id, owner, session => {
       const feedback = { id: randomUUID(), productId: product?.id ?? null, productName: product?.name ?? null, reason: input.reason, at: new Date().toISOString(), learned: learned.requirements };
       session.feedback.push(feedback);
       // Learned requirements are separate from editable base config: removing feedback is lossless.
       this.queue(session, 'learn');
-    });
+    }, base.version);
     logger.info('session.feedback.learned', { sessionId: id, durationMs: Date.now() - started, productId: input.productId, learnedRequirements: session.feedback.at(-1)?.learned.length ?? 0 });
     return session;
   }
   async undo(id: string, owner: string, feedbackId: string) {
     this.ai.ensureConfigured();
-    const session = await this.store.mutate(id, owner, session => {
+    const session = await this.store.append(id, owner, session => {
       this.idle(session);
       if (!session.feedback.some(f => f.id === feedbackId)) throw new AppError(404, 'Feedback not found.');
       if (session.rounds.length >= 12) throw new AppError(429, 'Round limit reached. Start a new search.');
@@ -149,7 +148,7 @@ export class ShoppingService {
     return session;
   }
   async select(id: string, owner: string, productId: string) {
-    const session = await this.store.mutate(id, owner, session => {
+    const session = await this.store.append(id, owner, session => {
       this.idle(session);
       if (JSON.stringify(latestRound(session)?.context.config) !== JSON.stringify(session.config)) throw new AppError(409, 'Your brief changed. Refresh discovery before choosing a product.');
       if (!activeProducts(session).some(p => p.id === productId && p.offers.some(o => latestRound(session)?.ranking?.ranked.some(r => r.offerId === o.id)))) throw new AppError(400, 'This product is not eligible in the current shortlist.');
@@ -159,7 +158,7 @@ export class ShoppingService {
     return session;
   }
   async navigate(id: string, owner: string, stage: ShoppingSession['stage']) {
-    const session = await this.store.mutate(id, owner, session => {
+    const session = await this.store.append(id, owner, session => {
       this.idle(session);
       if (stage === 'configure' && !session.ready) throw new AppError(409, 'Finish Ask first.');
       if (stage === 'discovery' && !session.rounds.length) throw new AppError(409, 'Start a discovery search first.');
@@ -177,7 +176,8 @@ export class ShoppingService {
     let context: DiscoveryContext | null = null;
     let startedAt: string | null = null;
     try {
-      await this.store.mutate(job.sessionId, null, session => {
+      await this.store.append(job.sessionId, null, session => {
+        context = null; startedAt = null;
         const round = session.rounds.find(r => r.id === job.id);
         if (!round || !['queued', 'running'].includes(round.status) || round.attempt > job.attempts) return;
         if (session.mode !== this.mode || job.attempts > 2) {
@@ -197,7 +197,7 @@ export class ShoppingService {
       });
       const save = async (result: DiscoveryResult, complete = false) => {
         const saveStarted = Date.now();
-        await this.store.mutate(job.sessionId, null, session => {
+        await this.store.append(job.sessionId, null, session => {
           const round = session.rounds.find(r => r.id === job.id);
           if (!round || round.status !== 'running' || round.attempt !== job.attempts) return;
           const discarded = new Set(round.context.discardedProducts.map(p => p.id));
@@ -221,7 +221,7 @@ export class ShoppingService {
         code: error instanceof AppError ? error.code : 'UNEXPECTED', message: publicError(error),
       });
       try {
-        await this.store.mutate(job.sessionId, null, session => {
+          await this.store.append(job.sessionId, null, session => {
           const round = session.rounds.find(r => r.id === job.id);
           if (round && round.attempt === job.attempts && ['queued', 'running'].includes(round.status)) this.finishRound(round, 'failed', publicError(error));
         });

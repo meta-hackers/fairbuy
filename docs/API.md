@@ -13,22 +13,29 @@ Same-origin JSON API; no CORS. All writes require `X-Fairbuy-Request: 1`. Browse
 | POST | `/api/location/reverse` | `{latitude, longitude}`: public, rate-limited city/country lookup through a fixed Nominatim endpoint; no AI call. Coordinates are rounded to two decimals, not persisted. Returns `{country, city, currency}`; currency is `null` when the local currency is unsupported. |
 | POST | `/api/sessions` | Create an owned search, optionally seeded with `{location: {country, city, currency}}`; returns `201`. Location alone never marks a brief ready. |
 | GET | `/api/sessions/:id` | Complete owned state, or `404`. Poll only while queued/running. |
-| DELETE | `/api/sessions/:id` | Delete owned search and cascading jobs; `204`. |
+| DELETE | `/api/sessions/:id` | Close the owned search by appending an archive version; `204`. Does not delete history, jobs or usage. Closed searches return `404` to owner requests. |
 | PATCH | `/api/sessions/:id/location` | `{country, city, currency, onlyIfMissing?}`: set shopping location, including during Ask. `onlyIfMissing: true` preserves an existing country; manual edits omit it. Blocked during active discovery. |
 | POST | `/api/sessions/:id/ask` | `{message}`: 1–3000 characters; AI response + revised brief. |
 | PUT | `/api/sessions/:id/configure` | Full validated `ShoppingConfig`; no AI call. |
 | POST | `/api/sessions/:id/configure/chat` | `{message}`: separate small-model conversation. |
 | POST | `/api/sessions/:id/discovery` | Queue fresh discovery; `202` with session state. Repeated click while pending does not create another round. |
 | POST | `/api/sessions/:id/learn` | `{productId: string \| null, reason}`: 1–2000 characters; interpret feedback, discard selected product if present, queue new round; `202`. |
-| DELETE | `/api/sessions/:id/learn/:feedbackId` | Remove one feedback entry and queue fresh discovery; `202`. |
+| DELETE | `/api/sessions/:id/learn/:feedbackId` | Append a feedback revocation and queue fresh discovery; `202`. Previous versions retain the feedback. |
 | POST | `/api/sessions/:id/select` | `{productId}`: select a currently eligible product for read-only Buy. |
 | PATCH | `/api/sessions/:id/stage` | `{stage}`: persist validated navigation (`ask`, `configure`, `discovery`, `buy`). |
 
 Ask/configure/learn mutations commit only after a valid AI response. Do not automatically retry these POSTs: a network loss after a successful commit could append the same message twice. Refresh owned state first. Discovery POST is idempotent only while a round is pending/running. Configuration/feedback edits during an active search return `409`.
 
+State changes append immutable versions, never overwrite the session. AI generation
+runs outside database transactions; if its source version changed before saving,
+the response is `409` with code `SESSION_CONFLICT`, and no stale result is appended.
+Refresh and let the user decide whether to retry; do not automatically repeat paid
+provider calls. No-op changes do not increment `version`. Sessions do not expire
+automatically; physical deletion is a separate backoffice maintenance command.
+
 `ShoppingSession`, `ShoppingConfig`, `DiscoveryRound`, product/offer evidence and runtime validators are in [`packages/core/src/`](../packages/core/src/). `version` increases on every committed mutation and allows clients to ignore out-of-order poll responses.
 
-The separately authenticated, read-only administrator API is documented in [Backoffice](BACKOFFICE.md). It uses `/api/admin` routes and is not part of the anonymous shopping-session API described below.
+The separately authenticated administrator API, including immutable history and confirmed deletion maintenance, is documented in [Backoffice](BACKOFFICE.md). It uses `/api/admin` routes and is not part of the anonymous shopping-session API described below.
 
 Discovery is progressive: a `running` round can already contain grounded `products`, `sources` and a current `ranking`. Render eligible products immediately and continue polling until `complete` or `failed`; do not wait for four cards to render the first one. Mutations remain blocked while searching. Already-persisted products remain available if a later provider request fails. Live searches target at least four distinct eligible models, with up to three complementary search/extraction passes; insufficient evidence is disclosed rather than replaced with invented offers.
 
@@ -66,7 +73,7 @@ Budget values in configuration are major currency units; offer prices and the ps
 
 ## Limits
 
-- 15 owned searches per retention window; 20 editable requirements; 40 messages (20 user turns) in each conversation.
+- 15 active owned searches (closed searches do not count); 20 editable requirements; 40 messages (20 user turns) in each conversation.
 - 12 discovery rounds/search; 30 feedback entries; up to 5 learned requirements/feedback.
 - Up to 3 research/extraction passes per round, with 8 extracted products per pass and 4 offers per product/pass; 25 extracted attributes/offer. Repeated models/offers are merged.
 - 45 AI operations/hour/owner; 150 AI operations/day/IP; 1800 API requests/15 minutes/IP. Access-token attempts are separately limited.

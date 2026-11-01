@@ -56,7 +56,7 @@ async function load() {
     const title = node('td'); const open = node('button', session.category || 'Untitled session', 'link');
     open.addEventListener('click', guarded(() => detail(session.id))); title.append(open, node('small', `${session.id} · ${session.mode}`));
     const owner = node('td', session.owner.slice(0, 14), 'mono'); owner.title = session.owner;
-    const phase = node('td'); phase.append(node('span', session.stage, 'badge'));
+    const phase = node('td'); phase.append(node('span', `${session.stage}${session.archived ? ' · Closed' : ''}`, 'badge'));
     const dates = node('td'); dates.append(node('span', date(session.createdAt)), node('small', date(session.updatedAt)));
     const usage = node('td', `${number(session.usage.inputTokens)} / ${number(session.usage.outputTokens)}`);
     const estimate = node('td', `${cost(session.usage.estimatedCostUsd)}${session.usage.partial ? ' *' : ''}`);
@@ -120,6 +120,31 @@ async function detail(id) {
     panel.append(jsonDisclosure('Sources', round.sources), jsonDisclosure('Round configuration, context and ranking', { context: round.context, ranking: round.ranking }), jsonDisclosure('Full round record', round)); rounds.append(panel);
   }
   root.append(rounds, jsonDisclosure('Complete stored session and usage data', result));
+  const history = section('Immutable version history');
+  const loadHistory = node('button', 'Load versions', 'secondary');
+  loadHistory.addEventListener('click', guarded(async () => {
+    loadHistory.disabled = true;
+    try {
+      const data = await api(`/sessions/${id}/history`);
+      if (activeSession !== id || request !== generation) return;
+      for (const revision of data.revisions) {
+        history.append(jsonDisclosure(`Version ${revision.version} · ${revision.kind} · ${date(revision.createdAt)}${revision.revokedFeedbackIds.length ? ' · Feedback revoked' : ''}`, revision));
+      }
+      loadHistory.remove();
+    } finally { loadHistory.disabled = false; }
+  }));
+  history.append(loadHistory); root.append(history);
+  const maintenance = section('Maintenance');
+  maintenance.append(node('p', 'Permanent deletion removes every version, legacy record, job and usage entry for this session. This cannot be undone. There is no automatic expiration.', 'policy'));
+  const purge = node('button', 'Permanently delete this session', 'secondary');
+  purge.addEventListener('click', guarded(async () => {
+    const confirmation = window.prompt(`Maintenance: type the session ID to permanently delete all its data:\n${id}`);
+    if (confirmation !== id) { if (confirmation !== null) notice('Session ID does not match. Nothing was deleted.'); return; }
+    purge.disabled = true;
+    try { await api(`/sessions/${id}/purge`, { confirmSessionId: confirmation }); await load(); }
+    finally { purge.disabled = false; }
+  }));
+  maintenance.append(purge); root.append(maintenance);
   window.scrollTo({ top: 0 });
 }
 guarded(async () => { try { account(await api('/me')); await load(); } catch (error) { show('login'); if (error.message !== 'Admin login required.') notice(error.message); } })();

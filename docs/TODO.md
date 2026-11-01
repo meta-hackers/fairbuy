@@ -25,12 +25,12 @@ This is a maintainer follow-up list, not a promise that an item is already imple
 - [ ] Review whether normalized product identity/grouping is robust enough to prevent renamed or variant products from evading prior-product exclusions.
 - [ ] Reassess source freshness and seller/offer quality indicators; provenance checks alone do not independently verify a claim.
 - [ ] Add usability/accessibility review for keyboard and screen-reader workflows across Ask, Configure, progressive Discovery, Learn/Undo, and Buy.
-- [ ] Define user-facing retention/privacy notices that distinguish application session expiry from provider retention and infrastructure backups.
+- [ ] Review the indefinite append-only retention policy and maintenance cadence against privacy requirements, provider retention and infrastructure backups; monitor snapshot storage growth.
 
 ## Backoffice and usage accounting
 
 - [ ] Validate recorded provider token usage and estimated costs against provider billing records; clearly communicate missing usage and excluded search/tool charges.
-- [ ] Decide whether backoffice access needs audit events, narrower roles, or additional export/redaction controls before adding write actions or more administrators.
+- [ ] Separate read-only backoffice access from maintenance permissions, and review durable audit/export/redaction controls before adding more administrators. Confirmed purge currently logs the operator and session ID.
 - [ ] Add coverage for account/password rotation and admin-session revocation through a production-like configuration test.
 
 ## Documentation maintenance

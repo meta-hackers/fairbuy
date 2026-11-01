@@ -19,7 +19,6 @@ export function startWorker(service: ShoppingService) {
     finally { pumping = false; }
   };
   const timer = setInterval(() => { void pump(); }, 1000);
-  const cleanup = setInterval(() => { void service.store.cleanup().catch(() => logger.error('retention.cleanup.failed')); }, 60 * 60 * 1000);
-  void pump(); void service.store.cleanup().catch(() => {});
-  return async () => { stopped = true; clearInterval(timer); clearInterval(cleanup); await Promise.allSettled([...tasks]); };
+  void pump();
+  return async () => { stopped = true; clearInterval(timer); await Promise.allSettled([...tasks]); };
 }

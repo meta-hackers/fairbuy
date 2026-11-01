@@ -58,7 +58,7 @@ See [deployment instructions and environment variables](DEPLOYMENT.md). Reuse th
 - Every live offer links to a provider-returned source, includes retrieved time and retains evidence. AI extraction is **not independent verification**; search snippets may be stale or incomplete.
 - Prices are the seller’s final listed product prices, not delivered totals. Location-dependent shipping/delivery is not estimated or added. Unknown prices, stock, compatibility and warranty remain unknown; no exchange rates are invented.
 - No arbitrary URL crawler, payment, booking, seller-message or order endpoint exists. Meta Model API, optional Cloudflare classification and Brave calls use fixed provider endpoints.
-- Anonymous, cookie-isolated searches expire after **7 days**. “New search” deletes the active search. There is no login or cross-device recovery. Avoid sensitive personal information.
+- Anonymous, cookie-isolated searches have no automatic expiry. “New search” appends an archive version; history remains in the backoffice until explicit maintenance deletion. Owner cookies last seven days; there is no login or cross-device recovery. Avoid sensitive personal information.
 - There are bounded model calls, job concurrency and rate limits, but configure provider billing limits too. There is no promise of exhaustive market coverage or guaranteed savings.
 - Live integration code is implemented and tested with mocked provider responses. **Actual Meta Model API/model/web-search access must be checked with your key after deployment.** Contributor mode pricing means Meta may use submitted content to train its models; prefer non-sensitive data and configure billing limits. Automated tests do not create cloud resources.
 

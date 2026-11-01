@@ -43,7 +43,7 @@ On Render, set **BACKOFFICE_ADMINS** to the JSON array from `.env.backoffice`
 (omit the environment assignment and surrounding single quotes), then redeploy.
 Do not commit the file or the passwords. Existing app access credentials do not
 grant admin privileges. With no admin configuration, the admin API fails closed.
-All configured admins have the same read-only access to all retained sessions.
+All configured admins can inspect every session and run confirmed permanent-deletion maintenance. Configure only trusted maintenance operators; there is not yet a separate read-only administrator role.
 
 To revoke an administrator, remove their entry from BACKOFFICE_ADMINS and restart.
 To rotate a password, remove their entry from the local file, generate a replacement
@@ -61,10 +61,31 @@ initial/current configuration, feedback, discovery rounds and attempts, products
 offers, source evidence, rankings, selection, and the complete stored record.
 Owner hashes identify browsers, not authenticated people. No identity is inferred.
 
-The existing **seven-day expiration and user deletion behavior are unchanged**.
-Usage rows cascade-delete with their session. No private archive is kept. Existing
-sessions are visible while retained, but usage before this feature cannot be
-reconstructed. Without PostgreSQL, demo sessions and admin logins are ephemeral.
+Sessions and version history have **no automatic expiration or cleanup**. “New
+search” appends a closed/archive version; it does not delete data. Closed sessions
+remain visible here. Anonymous owner cookies still expire after seven days, but
+that does not remove stored sessions. Usage before instrumentation and versions
+before the append-only migration cannot be reconstructed. Without PostgreSQL,
+demo sessions, versions and admin logins are ephemeral.
+
+The detail view's **Immutable version history** section loads the stored snapshots,
+including parent versions, archive events and feedback revocations. Snapshots
+include conversations: treat them as private data, not public diagnostic logs.
+
+### Maintenance commands
+
+In a session detail, choose **Permanently delete this session** and type its exact
+UUID. This explicitly purges the identity and all versions, legacy child rows,
+jobs and usage through foreign-key cascades. It cannot be undone; other sessions
+are unaffected. The server enforces admin authentication, the normal CSRF/origin
+checks and matching confirmation. The completion event logs the admin and UUID,
+not session contents. Database backups have their own retention.
+
+Admin API additions:
+
+- `GET /api/admin/sessions/:sessionId/history`: ordered immutable revisions and snapshots.
+- `POST /api/admin/sessions/:sessionId/purge`: JSON `{ "confirmSessionId": "<same UUID>" }`; returns `204`.
+- `GET /api/admin/me`: `retentionDays: null` indicates no automatic expiry.
 
 ## Token accounting and approximate costs
 

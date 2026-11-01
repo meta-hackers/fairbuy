@@ -63,4 +63,6 @@ export class UsageStore {
       FROM ai_usage WHERE session_id = $1 ORDER BY created_at, id`, [sessionId]);
     return rows;
   }
+  // PostgreSQL usage is removed by the session FK cascade during admin maintenance.
+  purgeMemory(sessionId: string) { this.memory = this.memory.filter(e => e.sessionId !== sessionId); }
 }

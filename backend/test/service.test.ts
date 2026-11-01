@@ -131,8 +131,9 @@ describe('real backend shopping orchestration', () => {
     const product = (await store.get(session.id)).rounds[0].products[0];
     await service.configure(session.id, 'alice', { ...session.config, budgetMax: 100 });
     await expect(service.select(session.id, 'alice', product.id)).rejects.toMatchObject({ status: 409 });
-    await store.delete(session.id, 'mallory'); expect(await store.get(session.id, 'alice')).toBeDefined();
-    await store.delete(session.id, 'alice'); await expect(store.get(session.id)).rejects.toMatchObject({ status: 404 });
+    await store.archive(session.id, 'mallory'); expect(await store.get(session.id, 'alice')).toBeDefined();
+    await store.archive(session.id, 'alice'); await expect(store.get(session.id, 'alice')).rejects.toMatchObject({ status: 404 });
+    expect(await store.get(session.id)).toBeDefined(); // Retained for administrators.
   });
   it('persists navigation and never mixes demo sessions into live operations', async () => {
     const { service, store, session, ai } = await setup();

@@ -94,8 +94,11 @@ describe('backoffice session data', () => {
     await client.get('/api/admin/sessions?page=0').expect(400);
     await client.get('/api/admin/sessions/not-a-uuid').expect(400);
     await client.post(`/api/admin/sessions/${second.id}`).set(write).send({}).expect(404);
-    await service.store.delete(first.id, 'first-browser');
-    await client.get(`/api/admin/sessions/${first.id}`).expect(404);
+    await service.store.archive(first.id, 'first-browser');
+    await client.get(`/api/admin/sessions/${first.id}`).expect(200);
+    const history = await client.get(`/api/admin/sessions/${first.id}/history`).expect(200);
+    expect(history.body.revisions.at(-1)).toMatchObject({ kind: 'archived', archived: true });
+    expect((await client.get('/api/admin/me')).body.retentionDays).toBeNull();
   });
   it('returns per-call usage without exposing prompts and includes partial totals', async () => {
     const { app, service } = setup(); const s = await service.create('owner');
@@ -108,6 +111,22 @@ describe('backoffice session data', () => {
     expect(body.usage).toHaveLength(2);
     expect(body.summary).toMatchObject({ calls: 2, inputTokens: 100, outputTokens: 40, partial: true });
     expect(body.summary.estimatedCostUsd).toBeCloseTo(0.00022);
+  });
+  it('allows permanent deletion only through authenticated, confirmed maintenance', async () => {
+    const { app, service } = setup(); const s = await service.create('owner');
+    await service.usage.capture(s.id, 'ask', null, async () => { recordUsage('meta', 'm', 'generation', 'completed', 1); });
+    const path = `/api/admin/sessions/${s.id}/purge`;
+    await request(app).post(path).set(write).send({ confirmSessionId: s.id }).expect(401);
+    await request(app).get(`/api/admin/sessions/${s.id}/history`).expect(401);
+    const client = request.agent(app); await login(client);
+    await client.post(path).send({ confirmSessionId: s.id }).expect(403);
+    await client.post(path).set(write).set('Origin', 'https://attacker.invalid').send({ confirmSessionId: s.id }).expect(403);
+    await client.post(path).set(write).send({}).expect(400);
+    await client.post(path).set(write).send({ confirmSessionId: '00000000-0000-4000-8000-000000000000' }).expect(400);
+    await client.get(`/api/admin/sessions/${s.id}`).expect(200);
+    await client.post(path).set(write).send({ confirmSessionId: s.id }).expect(204);
+    await client.get(`/api/admin/sessions/${s.id}`).expect(404);
+    expect(await service.usage.get(s.id)).toEqual([]);
   });
   it('serves a separate static UI with safe headers and no public session data', async () => {
     const { app } = setup();

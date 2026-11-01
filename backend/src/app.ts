@@ -101,7 +101,9 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   });
   app.param('id', (_req, _res, next, value) => { try { z.uuid().parse(value); next(); } catch { next(new AppError(400, 'Invalid search ID.')); } });
   app.get('/api/sessions/:id', async (req, res) => { res.json(await service.store.get(String(req.params.id), res.locals.owner)); });
-  app.delete('/api/sessions/:id', async (req, res) => { await service.store.delete(String(req.params.id), res.locals.owner); res.status(204).end(); });
+  // Backward-compatible route: closing a search appends an archive revision. Only
+  // authenticated backoffice maintenance can physically purge its history.
+  app.delete('/api/sessions/:id', async (req, res) => { await service.store.archive(String(req.params.id), res.locals.owner); res.status(204).end(); });
   app.patch('/api/sessions/:id/location', async (req, res) => {
     const { onlyIfMissing, ...location } = ShoppingLocationSchema.extend({ onlyIfMissing: z.boolean().default(false) }).parse(req.body);
     res.json(await service.locate(String(req.params.id), res.locals.owner, location, onlyIfMissing));
