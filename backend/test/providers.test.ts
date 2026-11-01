@@ -9,7 +9,7 @@ import { safeUrl } from '../src/links';
 
 vi.mock('../src/product-images', () => ({ findSellerImage: vi.fn().mockResolvedValue(null) }));
 
-const config = settings({ MODEL_API_KEY: 'test-not-a-real-key' });
+const config = settings({ MODEL_API_KEY: 'test-not-a-real-key', SEARCH_PROVIDER: 'meta' });
 afterEach(() => vi.restoreAllMocks());
 const context: DiscoveryContext = { sessionId: 'shopping', discoverySessionId: 'unique-round', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG, config: EMPTY_CONFIG, previousProducts: [], discardedProducts: [], feedback: [] };
 const research = { text: 'Aster Laptop costs EUR 590. 16 GB RAM. Official image available.', sources: [{ url: 'https://shop.fairbuy-fixture.org/aster', title: 'Aster' }] };
@@ -243,7 +243,7 @@ describe('progressive multi-product discovery', () => {
 });
 describe('per-stage reasoning effort', () => {
   it('uses independent Ask and Configure efforts even when their model IDs match', async () => {
-    const stageConfig = settings({ MODEL_API_KEY: config.MODEL_API_KEY, ASK_REASONING_EFFORT: 'minimal', CONFIGURE_REASONING_EFFORT: 'high' });
+    const stageConfig = settings({ MODEL_API_KEY: config.MODEL_API_KEY, SEARCH_PROVIDER: 'meta', ASK_REASONING_EFFORT: 'minimal', CONFIGURE_REASONING_EFFORT: 'high' });
     const answer = { reply: 'What do you need?', config: EMPTY_CONFIG, ready: false, missing: [] };
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(stream(result(JSON.stringify(answer))))

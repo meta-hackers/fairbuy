@@ -78,8 +78,8 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `ASK_REASONING_EFFORT` | `low`; Ask conversation and structured brief. |
 | `CONFIGURE_REASONING_EFFORT` | `low`; Configure and Learn interpretation calls. |
 | `DISCOVERY_REASONING_EFFORT` | `xhigh`; Meta discovery research. Mechanical evidence extraction stays at `low`, including with Brave search. |
-| `SEARCH_PROVIDER` | `meta` (default; no extra search key needed) or `brave`. |
-| `BRAVE_API_KEY` | Optional secret only for `SEARCH_PROVIDER=brave`; the Meta key is still required for interpretation/extraction. |
+| `SEARCH_PROVIDER` | `brave` (default; requires `BRAVE_API_KEY`) or `meta` (alternative; no extra search key needed). |
+| `BRAVE_API_KEY` | Required secret for the default `SEARCH_PROVIDER=brave` (`sync: false` in Blueprint); the Meta key is still required for interpretation/extraction. |
 | `INSTANT_CLASSIFIER_PROVIDER` | `disabled` unless set; the Blueprint sets `cloudflare`. Preview still requires both Cloudflare credentials and live mode. |
 | `INSTANT_CLASSIFIER_MODEL` | `@cf/meta/llama-3.1-8b-instruct-fp8-fast` (default); fallback is `@cf/meta/llama-3.2-3b-instruct`. The 1B model rejects the required JSON Schema requests. Ordinary Instruct models, no separate thinking phase. See [model choices](INSTANT_CLASSIFIER.md#model-choices). |
 | `CLOUDFLARE_ACCOUNT_ID` | Optional server-only account identifier (`sync: false`), 32 hexadecimal characters. Not a Zone ID. |
@@ -107,7 +107,7 @@ The preview disclosure appears before typing. Only the draft is sent, not the co
 
 ## Optional Brave search
 
-Add `BRAVE_API_KEY`, change `SEARCH_PROVIDER` to `brave`, and redeploy/restart. This implementation uses Brave Web Search snippets, not full page extraction or CAPTCHA bypassing. Results may be sparse, and unrelated comparison articles are not seller offers. Switch back to `meta` without code changes. Crawlora is not implemented or required.
+Set `SEARCH_PROVIDER=brave` (default) with `BRAVE_API_KEY` set, and redeploy/restart. This implementation uses Brave Web Search snippets, not full page extraction or CAPTCHA bypassing. Results may be sparse, and unrelated comparison articles are not seller offers. `SEARCH_PROVIDER=meta` keeps Meta hosted web search as the alternative without code changes. Crawlora is not implemented or required.
 
 ## Operations and recovery
 

@@ -26,7 +26,7 @@ const Schema = z.object({
   ASK_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
   CONFIGURE_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
   DISCOVERY_REASONING_EFFORT: ReasoningEffortSchema.default('xhigh'),
-  SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('meta'),
+  SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('brave'),
   BRAVE_API_KEY: z.string().default(''),
   INSTANT_CLASSIFIER_PROVIDER: z.enum(['disabled', 'cloudflare']).default('disabled'),
   INSTANT_CLASSIFIER_MODEL: z.enum(['@cf/meta/llama-3.1-8b-instruct-fp8-fast', '@cf/meta/llama-3.2-3b-instruct']).default('@cf/meta/llama-3.1-8b-instruct-fp8-fast'),
