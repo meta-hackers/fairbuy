@@ -1,5 +1,5 @@
 import { isIP } from 'node:net';
-// These URLs are displayed, never fetched by our server. Reject local/IP/credential links anyway.
+// Basic URL validation. Server fetches must additionally validate and pin DNS addresses.
 export function safeUrl(value: string): string | null {
   try {
     const url = new URL(value);

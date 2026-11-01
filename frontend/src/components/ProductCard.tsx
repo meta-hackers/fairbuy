@@ -9,10 +9,10 @@ export function ProductGlyph({ category = '', small = false }: { category?: stri
   </svg></div>;
 }
 export function ProductImage({ product, category, small = false }: { product: Product; category?: string; small?: boolean }) {
-  const [failed, setFailed] = useState(false);
-  if (!product.imageUrl || failed) return <ProductGlyph category={category ?? product.offers[0]?.category ?? ''} small={small} />;
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  if (!product.imageUrl || failedUrl === product.imageUrl) return <ProductGlyph category={category ?? product.offers[0]?.category ?? ''} small={small} />;
   return <img className={`product-photo ${small ? 'product-photo--small' : ''}`} src={product.imageUrl} alt={`${product.name} product image`}
-    loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
+    loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailedUrl(product.imageUrl)} />;
 }
 export default function ProductCard({ product, ranked, index, onLearn, onSelect, busy }: {
   product: Product; ranked: RankedOffer[]; index: number; onLearn: () => void; onSelect: () => void; busy: boolean;

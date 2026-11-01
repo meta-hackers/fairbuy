@@ -89,7 +89,13 @@ The Blueprint declares the Render project, environment, build, startup and healt
 ## Documentation
 
 - [Architecture and AI session lifecycle](Architecture.md)
+- [Shopping flow sequence diagram](docs/flow.md)
 - [Render deployment and operations](docs/DEPLOYMENT.md)
 - [API routes](docs/API.md)
+- [Discovery policy and stopping rules](docs/DISCOVERY_POLICY.md)
+- [Backoffice administration and usage estimates](docs/BACKOFFICE.md)
 - [Demo integration notes](docs/INTEGRATION.md)
+- [Supabase certificate details](certs/README.md)
 - [Original product proposal](docs/PROPOSAL.md) — historical planning; not a statement of current integrations or event eligibility.
+
+The READMEs for the [backend](backend/README.md) and [frontend](frontend/README.md) describe each package. The TODO list for maintainers is in [docs/TODO.md](docs/TODO.md).

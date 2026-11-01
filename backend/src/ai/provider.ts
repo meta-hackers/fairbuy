@@ -10,6 +10,7 @@ import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, type E
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT } from './prompts';
 import { streamObjectArray } from './json-stream';
 import { recordUsage } from '../usage';
+import { findSellerImage } from '../product-images';
 
 export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
@@ -42,7 +43,7 @@ export function mergeDiscoveryResults(current: DiscoveryResult, incoming: Discov
   const products = new Map(current.products.map(p => [p.id, p]));
   for (const product of incoming.products) {
     const existing = products.get(product.id);
-    products.set(product.id, { ...product, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
+    products.set(product.id, { ...product, imageUrl: product.imageUrl ?? existing?.imageUrl ?? null, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
   }
   return {
     products: [...products.values()], sources: [...new Map([...current.sources, ...incoming.sources].map(s => [s.url, s])).values()],
@@ -107,7 +108,7 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
 
 export class LiveAIProvider implements AIProvider {
   private client: MetaClient;
-  constructor(private config: Settings, private fetcher: typeof fetch = fetch) { this.client = new MetaClient(config, fetcher); }
+  constructor(private config: Settings, private fetcher: typeof fetch = fetch, private imageFinder = findSellerImage) { this.client = new MetaClient(config, fetcher); }
   ensureConfigured() { this.client.ensureConfigured(); }
   async converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig) {
     return this.client.structured(
@@ -123,6 +124,7 @@ export class LiveAIProvider implements AIProvider {
   }
   async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress) {
     let result: DiscoveryResult = { products: [], sources: [], summary: '' };
+    const images = new Map<string, Promise<string | null>>();
     const started = Date.now();
     const roundId = context.discoverySessionId;
     const eligibleCount = () => {
@@ -155,6 +157,9 @@ export class LiveAIProvider implements AIProvider {
         continue;
       }
       const accept = async (incoming: DiscoveryResult) => {
+        for (const product of incoming.products) {
+          if (!images.has(product.id)) images.set(product.id, this.imageFinder(product).catch(() => null));
+        }
         result = mergeDiscoveryResults(result, incoming);
         await onProgress?.(result);
       };
@@ -184,6 +189,13 @@ export class LiveAIProvider implements AIProvider {
       await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
       logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount() });
     }
+    // Fetch images alongside research without delaying the first visible products.
+    let imagesChanged = false;
+    await Promise.all(result.products.map(async product => {
+      const image = await images.get(product.id);
+      if (image && image !== product.imageUrl) { product.imageUrl = image; imagesChanged = true; }
+    }));
+    if (imagesChanged) await onProgress?.(result);
     const count = eligibleCount();
     if (count < DISCOVERY_MIN_PRODUCTS) result.summary = `${result.summary}${result.summary ? ' ' : ''}Only ${count} distinct eligible product${count === 1 ? '' : 's'} could be grounded after additional searches. We could not reach ${DISCOVERY_MIN_PRODUCTS} without breaking your must-haves or inventing offers.`;
     logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length });

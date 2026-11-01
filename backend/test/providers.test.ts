@@ -7,6 +7,8 @@ import { ExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
 import { safeUrl } from '../src/links';
 
+vi.mock('../src/product-images', () => ({ findSellerImage: vi.fn().mockResolvedValue(null) }));
+
 const config = settings({ MODEL_API_KEY: 'test-not-a-real-key' });
 afterEach(() => vi.restoreAllMocks());
 const context: DiscoveryContext = { sessionId: 'shopping', discoverySessionId: 'unique-round', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG, config: EMPTY_CONFIG, previousProducts: [], discardedProducts: [], feedback: [] };
@@ -91,6 +93,25 @@ describe('Meta Model API REST integration', () => {
   });
 });
 describe('progressive multi-product discovery', () => {
+  it('enriches visible products with seller page images without blocking streamed results', async () => {
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(researchStream(data.research))
+      .mockResolvedValueOnce(stream(result(JSON.stringify(data.extracted))));
+    let release!: (url: string) => void;
+    const image = new Promise<string>(resolve => { release = resolve; });
+    const imageFinder = vi.fn().mockReturnValue(image);
+    const updates: (string | null)[][] = [];
+    const pending = new LiveAIProvider(config, fetcher, imageFinder).discover(context, async update => {
+      updates.push(update.products.map(p => p.imageUrl));
+      if (update.products.length === 4) release('https://seller-cdn.org/laptop.jpg');
+    });
+    const discovered = await pending;
+    expect(updates[0]).toEqual([extracted.products[0].imageUrl]);
+    expect(updates.at(-1)).toEqual(Array(4).fill('https://seller-cdn.org/laptop.jpg'));
+    expect(discovered.products.every(p => p.imageUrl === 'https://seller-cdn.org/laptop.jpg')).toBe(true);
+    expect(imageFinder).toHaveBeenCalledTimes(4);
+  });
   it('lowers the stopping threshold with actual elapsed time, not pass count or reasoning effort', () => {
     expect(discoveryPolicy(0, 0)).toMatchObject({ matchStrategy: 'quick_start', researchTarget: 1, minimumSoftMatch: 0.75 });
     expect(discoveryPolicy(1, 1000).matchStrategy).toBe('focused');

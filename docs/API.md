@@ -28,6 +28,8 @@ Ask/configure/learn mutations commit only after a valid AI response. Do not auto
 
 `ShoppingSession`, `ShoppingConfig`, `DiscoveryRound`, product/offer evidence and runtime validators are in [`packages/core/src/`](../packages/core/src/). `version` increases on every committed mutation and allows clients to ignore out-of-order poll responses.
 
+The separately authenticated, read-only administrator API is documented in [Backoffice](BACKOFFICE.md). It uses `/api/admin` routes and is not part of the anonymous shopping-session API described below.
+
 Discovery is progressive: a `running` round can already contain grounded `products`, `sources` and a current `ranking`. Render eligible products immediately and continue polling until `complete` or `failed`; do not wait for four cards to render the first one. Mutations remain blocked while searching. Already-persisted products remain available if a later provider request fails. Live searches target at least four distinct eligible models, with up to three complementary search/extraction passes; insufficient evidence is disclosed rather than replaced with invented offers.
 
 Rounds expose nullable `startedAt`, `finishedAt` and `durationMs` alongside `createdAt`. Show elapsed time while queued/running and the recorded duration after completion/failure. Products expose nullable `imageUrl`: a public HTTPS image sharing a site with a research source, requested from official product sites. Images can be unavailable; clients should provide a fallback.
