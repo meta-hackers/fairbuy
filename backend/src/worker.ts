@@ -1,10 +1,10 @@
 import type { ShoppingService } from './shopping-service';
 import { logger } from './logger';
-export function startWorker(service: ShoppingService) {
+export function startWorker(service: ShoppingService, isReady: () => boolean = () => true) {
   let stopped = false, pumping = false, active = 0;
   const tasks = new Set<Promise<void>>();
   const pump = async () => {
-    if (stopped || pumping || active >= 2) return;
+    if (stopped || pumping || active >= 2 || !isReady()) return;
     pumping = true;
     try {
       while (!stopped && active < 2) {

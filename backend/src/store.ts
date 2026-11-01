@@ -219,7 +219,12 @@ SELECT
 
 export class PostgresStore implements Store {
   readonly pool: Pool;
-  constructor(url: string) { this.pool = new Pool({ connectionString: url, max: 10, connectionTimeoutMillis: 5000 }); }
+  constructor(url: string) {
+    this.pool = new Pool({
+      connectionString: url, max: 3, connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 10000, statement_timeout: 15000,
+    });
+  }
   async migrate() {
     // Idempotent DDL, serialized across overlapping Render deployments.
     const client = await this.pool.connect();

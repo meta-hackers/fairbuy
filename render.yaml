@@ -16,9 +16,11 @@ projects:
             region: virginia
             plan: free
             numInstances: 1
-            buildCommand: npm ci --include=dev && npm run build
-            # Free services do not support preDeployCommand; startup migrates.
-            startCommand: npm start
+            buildCommand: npm ci && npm run build && npm prune --omit=dev
+            # Free services do not support preDeployCommand; the app listens first,
+            # then migrates with retry. /healthz is liveness, /health is readiness.
+            # Never set PORT manually: Render injects it (normally 10000).
+            startCommand: node --env-file-if-exists=.env --env-file-if-exists=.env.backoffice backend/dist/main.js
             healthCheckPath: /healthz
             autoDeployTrigger: checksPass
             envVars:
