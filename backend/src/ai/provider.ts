@@ -14,6 +14,23 @@ export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
 export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string }
 export type DiscoveryProgress = (result: DiscoveryResult) => Promise<void>;
+export function discoveryPolicy(pass: number, elapsedMs: number) {
+  const minimumSoftMatch = Math.max(0, 0.75 * (1 - Math.max(0, elapsedMs) / 90000));
+  return {
+    elapsedSeconds: Math.floor(elapsedMs / 1000),
+    minimumSoftMatch,
+    matchStrategy: elapsedMs >= 90000 ? 'best_available' : elapsedMs >= 45000 ? 'broader' : pass === 0 ? 'quick_start' : 'focused',
+    researchTarget: pass === 0 ? 1 : DISCOVERY_MIN_PRODUCTS,
+  };
+}
+export function acceptableProductCount(result: DiscoveryResult, context: DiscoveryContext, elapsedMs: number) {
+  const threshold = discoveryPolicy(0, elapsedMs).minimumSoftMatch;
+  const acceptable = new Set(rankProducts(result.products, context).ranked.filter(offer => {
+    const soft = offer.constraints.filter(c => !c.constraint.hard);
+    return !soft.length || soft.filter(c => c.outcome === 'pass').length / soft.length >= threshold;
+  }).map(offer => offer.offerId));
+  return result.products.filter(product => product.offers.some(offer => acceptable.has(offer.id))).length;
+}
 export interface AIProvider {
   ensureConfigured(): void;
   converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig): Promise<ConversationResult>;
@@ -116,15 +133,17 @@ export class LiveAIProvider implements AIProvider {
       discardedProducts: context.discardedProducts.length, feedback: context.feedback.length,
     });
     // Bounded complementary searches, not retries of failed provider requests.
-    for (let pass = 0; pass < 3 && eligibleCount() < DISCOVERY_MIN_PRODUCTS; pass++) {
+    for (let pass = 0; pass < 3 && acceptableProductCount(result, context, Date.now() - started) < DISCOVERY_MIN_PRODUCTS; pass++) {
       const passStarted = Date.now();
+      const searchPolicy = discoveryPolicy(pass, passStarted - started);
       const input = {
         ...context, effectiveConfig: effectiveConfig(context), searchPass: pass + 1,
-        minimumProducts: DISCOVERY_MIN_PRODUCTS, productsNeeded: DISCOVERY_MIN_PRODUCTS - eligibleCount(),
+        minimumProducts: DISCOVERY_MIN_PRODUCTS, productsNeeded: DISCOVERY_MIN_PRODUCTS - acceptableProductCount(result, context, passStarted - started),
         alreadyFound: result.products, excludedOffers: rankProducts(result.products, context).excluded,
+        searchPolicy,
       };
-      logger.info('discovery.pass.started', { roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded });
-      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass)
+      logger.info('discovery.pass.started', { roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded, ...searchPolicy });
+      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, searchPolicy)
         : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
       logger.info('discovery.research.completed', {
         roundId, pass: pass + 1, durationMs: Date.now() - passStarted,
@@ -165,15 +184,19 @@ export class LiveAIProvider implements AIProvider {
       logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount() });
     }
     const count = eligibleCount();
-    if (count < DISCOVERY_MIN_PRODUCTS) result.summary = `${result.summary}${result.summary ? ' ' : ''}Only ${count} distinct eligible product${count === 1 ? '' : 's'} could be grounded after additional searches. We could not reach ${DISCOVERY_MIN_PRODUCTS} without relaxing your requirements or inventing offers.`;
+    if (count < DISCOVERY_MIN_PRODUCTS) result.summary = `${result.summary}${result.summary ? ' ' : ''}Only ${count} distinct eligible product${count === 1 ? '' : 's'} could be grounded after additional searches. We could not reach ${DISCOVERY_MIN_PRODUCTS} without breaking your must-haves or inventing offers.`;
     logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length });
     return result;
   }
-  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number): Promise<Research> {
+  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, policy: ReturnType<typeof discoveryPolicy>): Promise<Research> {
     this.ensureConfigured();
     const config = effectiveConfig(context);
-    const q = [config.category, pass ? `alternative models ${alreadyFound.slice(0, 4).map(p => `-"${p.name}"`).join(' ')}` : '', ...context.feedback.slice().reverse().flatMap(f => f.learned.map(r => r.label)), ...config.requirements.map(r => r.label), config.purpose,
-      config.budgetMax ? `under ${config.budgetMax} ${config.currency}` : '', config.country, config.city, 'buy price'].filter(Boolean).join(' ').slice(0, 400);
+    const focused = policy.matchStrategy === 'quick_start' || policy.matchStrategy === 'focused';
+    const requirements = config.requirements.filter(r => r.hard || focused);
+    const q = [config.category, config.country, config.city, config.currency,
+      pass ? `alternative models ${alreadyFound.slice(0, 4).map(p => `-"${p.name}"`).join(' ')}` : '',
+      config.budgetMax && (config.budgetHard || focused) ? `under ${config.budgetMax} ${config.currency}` : '',
+      ...requirements.map(r => r.label), config.purpose, 'buy price'].filter(Boolean).join(' ').slice(0, 400);
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
     url.searchParams.set('q', q); url.searchParams.set('count', '15'); url.searchParams.set('extra_snippets', 'true');
     let response: Response;

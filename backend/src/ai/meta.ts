@@ -120,7 +120,7 @@ export class MetaClient {
       reasoning: { effort: this.config.DISCOVERY_REASONING_EFFORT },
       tools: [{ type: 'web_search', search_context_size: 'medium' }],
       include: ['web_search_call.results'],
-      // Research answers are long; give reasoning + visible output more room than chat turns.
+      // Preserve the reasoning budget; latency changes acceptance, not reasoning quality.
       max_output_tokens: 16000,
     });
     if (!data.output.some(o => o.type === 'web_search_call' && o.status === 'completed')) throw new AppError(502, 'No completed web search was returned. No unsourced products were accepted.', 'SEARCH_NOT_RUN');

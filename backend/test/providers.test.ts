@@ -1,13 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { EMPTY_CONFIG, rankProducts, type DiscoveryContext } from '@fairbuy/core';
-import { normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
+import { acceptableProductCount, discoveryPolicy, normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
 import { safeUrl } from '../src/links';
 
 const config = settings({ MODEL_API_KEY: 'test-not-a-real-key' });
+afterEach(() => vi.restoreAllMocks());
 const context: DiscoveryContext = { sessionId: 'shopping', discoverySessionId: 'unique-round', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG, config: EMPTY_CONFIG, previousProducts: [], discardedProducts: [], feedback: [] };
 const research = { text: 'Aster Laptop costs EUR 590. 16 GB RAM. Official image available.', sources: [{ url: 'https://shop.fairbuy-fixture.org/aster', title: 'Aster' }] };
 const extracted = ExtractionSchema.parse({ summary: 'Found one.', products: [{ name: 'Aster', summary: 'A laptop', why: '16 GB RAM', tradeoffs: [], imageUrl: 'https://cdn.shop.fairbuy-fixture.org/aster.png', offers: [{
@@ -90,6 +91,46 @@ describe('Meta Model API REST integration', () => {
   });
 });
 describe('progressive multi-product discovery', () => {
+  it('lowers the stopping threshold with actual elapsed time, not pass count or reasoning effort', () => {
+    expect(discoveryPolicy(0, 0)).toMatchObject({ matchStrategy: 'quick_start', researchTarget: 1, minimumSoftMatch: 0.75 });
+    expect(discoveryPolicy(1, 1000).matchStrategy).toBe('focused');
+    expect(discoveryPolicy(0, 45000)).toMatchObject({ matchStrategy: 'broader', minimumSoftMatch: 0.375 });
+    expect(discoveryPolicy(1, 90000)).toMatchObject({ matchStrategy: 'best_available', minimumSoftMatch: 0 });
+    expect(discoveryPolicy(2, 0).minimumSoftMatch).toBe(0.75);
+    expect(discoveryPolicy(0, 180000).minimumSoftMatch).toBe(0);
+    expect(discoveryPolicy(0, -1000).minimumSoftMatch).toBe(0.75);
+    expect(discoveryPolicy(0, 90000)).not.toHaveProperty('reasoningEffort');
+  });
+  it('accepts imperfect soft matches over time without admitting hard failures or changing ranking', () => {
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const brief = structuredClone(context);
+    brief.config.requirements = [8, 32].map(value => ({ label: `${value} GB RAM`, hard: false, attribute: 'ramGb', op: '>=' as const, value, unit: 'GB' }));
+    const result = normalizeExtraction(data.extracted, data.research, brief);
+    const ranking = rankProducts(result.products, brief);
+    expect(acceptableProductCount(result, brief, 0)).toBe(0);
+    expect(acceptableProductCount(result, brief, 45000)).toBe(4);
+    expect(rankProducts(result.products, brief)).toEqual(ranking);
+    brief.config.requirements[1].hard = true;
+    expect(acceptableProductCount(result, brief, 180000)).toBe(0);
+  });
+  it('publishes imperfect options immediately but stops further research only when time makes them acceptable', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const brief = structuredClone(context);
+    brief.config.requirements = [8, 32].map(value => ({ label: `${value} GB RAM`, hard: false, attribute: 'ramGb', op: '>=' as const, value, unit: 'GB' }));
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(researchStream(data.research)).mockResolvedValueOnce(stream(result(JSON.stringify(data.extracted))))
+      .mockResolvedValueOnce(researchStream(data.research)).mockImplementationOnce(async () => {
+        now = 90000; return stream(result(JSON.stringify(data.extracted)));
+      });
+    const updates: number[] = [];
+    const discovered = await new LiveAIProvider(config, fetcher).discover(brief, async update => { if (!now) updates.push(update.products.length); });
+    expect(updates).toContain(1); expect(updates).toContain(4);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(discovered.products).toHaveLength(4);
+    for (const index of [0, 2]) expect(JSON.parse(fetcher.mock.calls[index][1]!.body as string).reasoning.effort).toBe(config.DISCOVERY_REASONING_EFFORT);
+  });
   it('publishes the first grounded product while extraction is still streaming, then stops at four', async () => {
     const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
     const encoder = new TextEncoder();
@@ -127,6 +168,8 @@ describe('progressive multi-product discovery', () => {
     expect(rankProducts(discovered.products, context).ranked).toHaveLength(4);
     const inputs = [0, 2, 4].map(index => JSON.parse(JSON.parse(fetcher.mock.calls[index][1]!.body as string).input));
     expect(inputs.map(input => input.productsNeeded)).toEqual([4, 3, 1]);
+    expect(inputs.map(input => input.searchPolicy.matchStrategy)).toEqual(['quick_start', 'focused', 'focused']);
+    expect(inputs[0].searchPolicy.researchTarget).toBe(1);
     expect(inputs[1].excludedOffers).toHaveLength(1);
     expect(inputs[2].alreadyFound.map((p: { name: string }) => p.name)).toEqual(['Aster', 'Unavailable', 'Birch', 'Cedar']);
     expect(discovered.summary).not.toContain('could not reach');
@@ -151,6 +194,30 @@ describe('progressive multi-product discovery', () => {
     expect(fetcher).toHaveBeenCalledTimes(3);
     expect(discovered.products).toEqual([]);
     expect(discovered.summary).toContain('Only 0 distinct eligible products');
+  });
+  it.each([false, true])('broadens Brave preferences while preserving hard budget=%s and must-haves', async budgetHard => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const brief = structuredClone(context);
+    brief.config = { ...EMPTY_CONFIG, category: 'laptop', country: 'IT', budgetMax: 700, budgetHard, requirements: [
+      { label: 'Matte screen', hard: false, attribute: 'screen', op: '=', value: 'matte', unit: null },
+      { label: 'Required compatibility', hard: true, attribute: 'compatible', op: '=', value: true, unit: null },
+    ] };
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async url => {
+      if (String(url).startsWith('https://api.search.brave.com/')) return new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }));
+      now = 45000;
+      return stream(result(JSON.stringify(extracted)));
+    });
+    await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key' }, fetcher).discover(brief);
+    const queries = fetcher.mock.calls.filter(([url]) => String(url).startsWith('https://api.search.brave.com/')).map(([url]) => new URL(String(url)).searchParams.get('q')!);
+    expect(queries).toHaveLength(3);
+    expect(queries[0]).toContain('Matte screen');
+    for (const query of queries.slice(1)) {
+      expect(query).not.toContain('Matte screen');
+      expect(query).toContain('Required compatibility'); expect(query).toContain('IT');
+      expect(query.includes('under 700')).toBe(budgetHard);
+    }
+    expect(brief.config.requirements[0].hard).toBe(false);
   });
 });
 describe('per-stage reasoning effort', () => {
@@ -177,7 +244,7 @@ describe('per-stage reasoning effort', () => {
     });
   });
 
-  it.each(['xhigh', 'medium'] as const)('uses %s for Discovery research and keeps mechanical extraction at low', async effort => {
+  it.each(['xhigh', 'medium', 'minimal'] as const)('preserves configured %s research effort with time-aware acceptance', async effort => {
     const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(researchStream(data.research))
@@ -187,6 +254,7 @@ describe('per-stage reasoning effort', () => {
     const payloads = fetcher.mock.calls.map(([, init]) => JSON.parse(init!.body as string));
     expect(payloads.map(p => p.model)).toEqual([config.DISCOVERY_MODEL, config.DISCOVERY_MODEL]);
     expect(payloads.map(p => p.reasoning.effort)).toEqual([effort, 'low']);
+    expect(payloads[0].max_output_tokens).toBe(16000);
   });
 });
 describe('untrusted search evidence', () => {
