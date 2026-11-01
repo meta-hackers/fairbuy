@@ -6,7 +6,7 @@ Same-origin JSON API; no CORS. All writes require `X-Fairbuy-Request: 1`. Browse
 
 | Method | Path | Body / behavior |
 |---|---|---|
-| GET | `/healthz` | Database readiness, no AI call. |
+| GET | `/health`, `/healthz` | Public database readiness, no password or AI call. Returns `200` with `{"status":"ok"}`, or `503` with `{"status":"unavailable"}` when the database is unreachable. Responses are not cached. |
 | GET | `/api/bootstrap` | Setup status and latest owned search (only after access gate). |
 | POST | `/api/access` | `{token}`: validate app password; set HttpOnly access cookie. |
 | POST | `/api/sessions` | Create an empty owned search; returns `201`. |

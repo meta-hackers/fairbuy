@@ -20,7 +20,8 @@ export function createApp(service: ShoppingService, config: Settings) {
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
   app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
-  app.get('/healthz', async (_req, res) => {
+  app.get(['/health', '/healthz'], async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     try { await service.store.health(); res.json({ status: 'ok' }); }
     catch { res.status(503).json({ status: 'unavailable' }); }
   });

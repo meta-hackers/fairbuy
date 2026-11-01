@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app';
 import { DemoAIProvider } from '../src/ai/demo';
 import { LiveAIProvider } from '../src/ai/provider';
@@ -14,6 +14,24 @@ function setup(extra: Record<string, string> = {}) {
   const app = createApp(new ShoppingService(store, ai, config.FAIRBUY_MODE), config);
   return { app, store };
 }
+describe('health endpoints', () => {
+  it.each(['/health', '/healthz'])('%s reports readiness without a password or AI key', async path => {
+    const { app, store } = setup({ FAIRBUY_MODE: 'live', MODEL_API_KEY: '', APP_ACCESS_TOKEN: 'test-only-access' });
+    const health = vi.spyOn(store, 'health');
+    const response = await request(app).get(path).expect('Content-Type', /json/).expect(200);
+    expect(response.body).toEqual({ status: 'ok' });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(health).toHaveBeenCalledOnce();
+  });
+  it.each(['/health', '/healthz'])('%s returns 503 without leaking database errors', async path => {
+    const { app, store } = setup({ APP_ACCESS_TOKEN: 'test-only-access' });
+    vi.spyOn(store, 'health').mockRejectedValue(new Error('Private database connection details'));
+    const response = await request(app).get(path).expect('Content-Type', /json/).expect(503);
+    expect(response.body).toEqual({ status: 'unavailable' });
+    expect(response.headers['cache-control']).toBe('no-store');
+  });
+});
 describe('HTTP API security and validation', () => {
   it('sets an HttpOnly owner cookie and isolates two browsers', async () => {
     const { app } = setup(); const alice = request.agent(app); const bob = request.agent(app);
