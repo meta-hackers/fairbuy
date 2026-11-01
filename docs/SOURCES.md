@@ -74,6 +74,11 @@ In a production build, use the compiled script so it does not depend on the
 npm run catalog:seed:dist -- --update-defaults --dry-run
 ```
 
+The compiled script bundles the seed file at build time. After editing
+`data/source-catalog.ts`, run `npm run build` before using
+`catalog:seed:dist`; the `tsx`-based `catalog:seed` command reads the current
+file directly.
+
 The script validates every entry with `SourceEntrySchema`, rejects duplicate
 domains, runs in a transaction and reports inserted, updated, preserved and
 removed defaults. A domain removed from the seed file is reported but left in
