@@ -45,7 +45,7 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
     expect(service.envVars.filter((env: { key: string }) => env.key.endsWith('REASONING_EFFORT'))).toEqual([
       { key: 'ASK_REASONING_EFFORT', value: 'low' },
       { key: 'CONFIGURE_REASONING_EFFORT', value: 'low' },
-      { key: 'DISCOVERY_REASONING_EFFORT', value: 'xhigh' },
+      { key: 'DISCOVERY_REASONING_EFFORT', value: 'medium' },
     ]);
   });
 
