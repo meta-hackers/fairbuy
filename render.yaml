@@ -1,9 +1,7 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
-# Free-tier Blueprint matching the live deployment. Deploy the web service in
-# Virginia: Meta Model API returned model_not_found from Frankfurt (it is not
-# enabled for EU-hosted callers yet). The PostgreSQL instance is NOT
-# Blueprint-managed: only one free database per workspace is allowed and the
-# live data already sits on it, so paste its connection string below.
+# Adopt the existing free-tier resources; do not create replacement instances.
+# Keep the web service in Virginia: Meta Model API returned model_not_found
+# from Frankfurt. Keep the existing PostgreSQL instance and data in Frankfurt.
 services:
   - type: web
     name: fairbuy
@@ -13,7 +11,7 @@ services:
     plan: free
     numInstances: 1
     buildCommand: npm ci --include=dev && npm run build
-    preDeployCommand: npm run db:migrate
+    # Free services do not support preDeployCommand; startup runs migrations.
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeployTrigger: checksPass
@@ -25,7 +23,10 @@ services:
       - key: FAIRBUY_MODE
         value: live
       - key: DATABASE_URL
-        sync: false # same-region DB: paste its internal connection string. Cross-region (e.g. existing Frankfurt DB): paste the external string + ?sslmode=require and allow this service's outbound IPs on the database.
+        # Preserve the existing external URL to the logical database "fairbuy",
+        # including ?sslmode=require. fromDatabase.connectionString is internal,
+        # cannot cross regions, and targets the instance's different default DB.
+        sync: false
       - key: MODEL_API_KEY
         sync: false
       - key: ASK_MODEL
@@ -40,6 +41,17 @@ services:
         value: meta
       - key: APP_ACCESS_TOKEN
         sync: false # set a fixed, memorable app password in Render; do not commit it
-# No databases: section on purpose. Render allows a single free PostgreSQL
-# database per workspace and the live one already exists outside this
-# Blueprint, so DATABASE_URL above is wired manually to it.
+databases:
+  # Match dpg-db5t7n0473hc73cb6vr0-a exactly for in-place adoption.
+  # These are the existing instance's defaults, NOT the app's logical DB name.
+  - name: sample-postgres
+    region: frankfurt
+    plan: free
+    postgresMajorVersion: "18"
+    databaseName: sample_postgres_baoy
+    user: sample_postgres_baoy_user
+    ipAllowList:
+      - source: 74.220.49.0/24
+        description: fairbuy-us virginia outbound
+      - source: 74.220.57.0/24
+        description: fairbuy-us virginia outbound

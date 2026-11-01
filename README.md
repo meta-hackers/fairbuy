@@ -59,14 +59,14 @@ For a production-style local server, `npm run build && npm start` serves everyth
 
 ## Deploy on Render
 
-The root [`render.yaml`](render.yaml) is a validated free-tier Blueprint for the web service in **Virginia** (Meta Model API is not enabled for EU-hosted callers yet; Frankfurt returned `model_not_found`). The existing free PostgreSQL database is wired manually via `DATABASE_URL`. Review Render pricing before creating resources.
+The root [`render.yaml`](render.yaml) describes the existing free-tier web service in **Virginia** and PostgreSQL instance `sample-postgres` in **Frankfurt** for in-place Blueprint adoption. Meta Model API calls require the Virginia service (Frankfurt returned `model_not_found`). The database is declared in the Blueprint, but the cross-region `DATABASE_URL` remains a manually configured secret pointing to the logical database `fairbuy`. Review Render pricing before changing plans.
 
 1. Push this implementation to `git@github.com:meta-hackers/fairbuy.git`.
-2. In Render, create a **Blueprint** from that repository and review the resource plans.
+2. In Render, use **Generate Blueprint** for the existing resources and follow the [adoption checklist](docs/DEPLOYMENT.md#administrative-adoption-of-the-existing-resources). Do not deploy duplicate resources or recreate the database.
 3. Supply `MODEL_API_KEY`, either during setup or later in the web service’s Environment settings. No key is bundled in the frontend. Without it, health checks still work and the UI explains setup.
 4. Set `APP_ACCESS_TOKEN` in Render to a fixed app password you choose, then enter that password in the app. This gate protects your AI credits.
 
-Build, migrations, startup, health checks and the database connection are configured in the Blueprint. See [deployment instructions and environment variables](docs/DEPLOYMENT.md).
+Build, migrations, startup, health checks and database infrastructure are declared in the Blueprint. Initial attachment/sync in Render is still required; committing YAML alone does not make resources Blueprint-managed. See [deployment instructions and environment variables](docs/DEPLOYMENT.md).
 
 ## Trust and limitations
 
