@@ -176,20 +176,6 @@ export default function App() {
         {stage === 'configure' && draft && session && <div className="configure-layout"><Configure config={draft} onChange={setDraft} onSearch={() => { void findProducts(); }} busy={busy} /><div className="configure-aside"><Chat compact messages={session.configureMessages} busy={busy} onSend={message => send('configure', message)} disabled={!boot.aiConfigured} /><p className="aside-note">Your brief is a starting point, not a box. You can keep refining it after seeing products.</p>{!!session.feedback.length && <div className="panel"><h3>Also learned along the way</h3>{session.feedback.map(f => <p className="micro" key={f.id}>{f.reason}</p>)}</div>}</div></div>}
         {stage === 'discovery' && session && <section aria-label="Product discovery">
           <div className="discovery-toolbar"><div><span className="status-dot" /><strong>{searching ? `${visibleProducts.length} options found · still searching` : `${visibleProducts.length} options worth a closer look`}</strong><span className="micro">{session.config.category} · {session.config.country} · search {round?.number ?? 0}{searchTime !== null && ` · ${timingLabel} ${formatDuration(searchTime)}`}</span></div><div className="toolbar-actions"><button className="text-button" disabled={unavailable} onClick={() => { void navigate('configure'); }}>Edit brief</button><button className="button secondary" disabled={unavailable} onClick={() => { void perform(async () => accept(await api<ShoppingSession>(`/sessions/${session.id}/discovery`, 'POST'))); }}>Refresh search ↻</button></div></div>
-          <form className="discovery-refinement panel" onSubmit={async event => {
-            event.preventDefault();
-            const reason = refinement.trim();
-            if (!reason || unavailable) return;
-            if (await perform(async () => {
-              accept(await api<ShoppingSession>(`/sessions/${session.id}/learn`, 'POST', { productId: null, reason }));
-              setNotice('Request saved. Searching again with your brief and all your feedback.');
-            })) setRefinement('');
-          }}>
-            <label htmlFor="discovery-refinement">Steer your results</label>
-            <p className="muted" id="discovery-refinement-help">Include another brand, add a requirement, or tell us what to change. We’ll search again without forgetting your brief.</p>
-            <textarea id="discovery-refinement" aria-describedby="discovery-refinement-help" rows={2} maxLength={1500} value={refinement} onChange={event => setRefinement(event.target.value)} disabled={busy} placeholder="e.g. Include Moulinex products too, or only show dishwasher-safe options." />
-            <div className="refinement-actions"><p className="micro">{searching ? 'You can write your next request now. Submit it when this search finishes.' : 'Your request will be saved with your feedback.'}</p><button className="button primary" disabled={unavailable || !refinement.trim()}>Update results <span aria-hidden="true">↗</span></button></div>
-          </form>
           {notice && <div className="success-banner" role="status">✓ {notice}</div>}
           {stale && !searching && <div className="notice"><p>Your brief changed. These results reflect the previous configuration. Refresh search before choosing a product.</p></div>}
           {searching && <div className="search-progress panel" role="status"><span className="spinner large" /><div><h2>{round?.status === 'queued' ? 'Your research is queued.' : visibleProducts.length ? `${visibleProducts.length} ${visibleProducts.length === 1 ? 'option' : 'options'} ready to explore. More on the way.` : 'Looking beyond the obvious.'}</h2><p className="muted">{round?.status === 'queued' ? 'A fresh discovery session will begin shortly.' : `Searching for at least ${DISCOVERY_MIN_PRODUCTS} distinct products that meet your brief. Grounded matches appear as soon as they’re found; you can read their sources while we keep searching.`}</p><p className="micro search-timer" role="timer"><span aria-hidden="true">◷</span> {round?.status === 'queued' ? `Queued for ${formatDuration(searchTime ?? 0)}` : `Search time ${formatDuration(searchTime ?? 0)}`} · {round?.context.previousProducts.length ?? 0} previous products · {round?.context.discardedProducts.length ?? 0} discarded · {session.feedback.length} feedback entries</p></div></div>}
@@ -209,6 +195,20 @@ export default function App() {
           </>}
           <PreviousResults session={session} activeIds={new Set(visibleProducts.map(item => item.product.id))} />
           {!!session.feedback.length && <details className="panel feedback-history" open><summary>What we’ve learned ({session.feedback.length})</summary><ul>{session.feedback.map(f => <li key={f.id}><div><strong>{f.productName ? `Not for you: ${f.productName}` : 'A new detail'}</strong><p>{f.reason}</p></div><button className="text-button" disabled={unavailable} onClick={() => { void perform(async () => { accept(await api<ShoppingSession>(`/sessions/${session.id}/learn/${f.id}`, 'DELETE')); setNotice('Feedback removed. A fresh search will restore eligible options.'); }); }}>Undo</button></li>)}</ul></details>}
+          <form className="discovery-refinement panel" onSubmit={async event => {
+            event.preventDefault();
+            const reason = refinement.trim();
+            if (!reason || unavailable) return;
+            if (await perform(async () => {
+              accept(await api<ShoppingSession>(`/sessions/${session.id}/learn`, 'POST', { productId: null, reason }));
+              setNotice('Request saved. Searching again with your brief and all your feedback.');
+            })) setRefinement('');
+          }}>
+            <label htmlFor="discovery-refinement">Steer your results</label>
+            <p className="muted" id="discovery-refinement-help">Include another brand, add a requirement, or tell us what to change. We’ll search again without forgetting your brief.</p>
+            <textarea id="discovery-refinement" aria-describedby="discovery-refinement-help" rows={2} maxLength={1500} value={refinement} onChange={event => setRefinement(event.target.value)} disabled={busy} placeholder="e.g. Include Moulinex products too, or only show dishwasher-safe options." />
+            <div className="refinement-actions"><p className="micro">{searching ? 'You can write your next request now. Submit it when this search finishes.' : 'Your request will be saved with your feedback.'}</p><button className="button primary" disabled={unavailable || !refinement.trim()}>Update results <span aria-hidden="true">↗</span></button></div>
+          </form>
         </section>}
         {stage === 'buy' && selected && session && <Buy product={selected} session={session} onBack={() => { void navigate('discovery'); }} />}
       </>}
