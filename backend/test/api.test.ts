@@ -15,7 +15,7 @@ function setup(extra: Record<string, string> = {}) {
   return { app, store };
 }
 describe('health endpoints', () => {
-  it.each(['/health', '/healthz'])('%s reports readiness without a password or AI key', async path => {
+  it.each(['/health'])('%s reports readiness without a password or AI key', async path => {
     const { app, store } = setup({ FAIRBUY_MODE: 'live', MODEL_API_KEY: '', APP_ACCESS_TOKEN: 'test-only-access' });
     const health = vi.spyOn(store, 'health');
     const response = await request(app).get(path).expect('Content-Type', /json/).expect(200);
@@ -24,7 +24,22 @@ describe('health endpoints', () => {
     expect(response.headers['set-cookie']).toBeUndefined();
     expect(health).toHaveBeenCalledOnce();
   });
-  it.each(['/health', '/healthz'])('%s returns 503 without leaking database errors', async path => {
+  it('/healthz reports liveness without touching the database', async () => {
+    const { app, store } = setup({ FAIRBUY_MODE: 'live', MODEL_API_KEY: '', APP_ACCESS_TOKEN: 'test-only-access' });
+    const health = vi.spyOn(store, 'health');
+    const response = await request(app).get('/healthz').expect('Content-Type', /json/).expect(200);
+    expect(response.body).toEqual({ status: 'ok' });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(health).not.toHaveBeenCalled();
+  });
+  it('/health returns 503 before migrations complete', async () => {
+    const { app } = setup({ APP_ACCESS_TOKEN: 'test-only-access' });
+    const notReady = createApp(new ShoppingService(new MemoryStore(), new DemoAIProvider(), 'demo'), settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo' }), undefined, undefined, () => false);
+    await request(notReady).get('/health').expect(503);
+    await request(app).get('/health').expect(200);
+  });
+  it.each(['/health'])('%s returns 503 without leaking database errors', async path => {
     const { app, store } = setup({ APP_ACCESS_TOKEN: 'test-only-access' });
     vi.spyOn(store, 'health').mockRejectedValue(new Error('Private database connection details'));
     const response = await request(app).get(path).expect('Content-Type', /json/).expect(503);

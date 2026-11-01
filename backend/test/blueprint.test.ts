@@ -22,7 +22,8 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
   });
 
   it('keeps the Virginia free web plan and external database connection secret', () => {
-    expect(service).toMatchObject({ name: 'fairbuy', region: 'virginia', plan: 'free', startCommand: 'npm start' });
+    expect(service).toMatchObject({ name: 'fairbuy', region: 'virginia', plan: 'free', startCommand: 'node --env-file-if-exists=.env --env-file-if-exists=.env.backoffice backend/dist/main.js' });
+    expect(service.healthCheckPath).toBe('/healthz');
     expect(service).not.toHaveProperty('preDeployCommand');
     expect(service.envVars.filter((env: { key: string }) => env.key === 'DATABASE_URL'))
       .toEqual([{ key: 'DATABASE_URL', sync: false }]);

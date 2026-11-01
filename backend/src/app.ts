@@ -19,13 +19,21 @@ function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a
 function cookies(req: Request) {
   return Object.fromEntries((req.headers.cookie ?? '').split(';').map(c => c.trim().split('=')).filter(c => c.length === 2));
 }
-export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver(), classifier = new InstantClassifier(config)) {
+export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver(), classifier = new InstantClassifier(config), isReady: () => boolean = () => true) {
   const app = express();
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
   app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'https:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
-  app.get(['/health', '/healthz'], async (_req, res) => {
+  app.get('/healthz', (_req, res) => {
+    // Liveness: the process is running and serving HTTP. Never touches the DB
+    // so Render does not kill a cold-starting instance during migration.
     res.setHeader('Cache-Control', 'no-store');
+    res.json({ status: 'ok' });
+  });
+  app.get('/health', async (_req, res) => {
+    // Readiness: migrated schema + reachable DB.
+    res.setHeader('Cache-Control', 'no-store');
+    if (!isReady()) { res.status(503).json({ status: 'unavailable' }); return; }
     try { await service.store.health(); res.json({ status: 'ok' }); }
     catch { res.status(503).json({ status: 'unavailable' }); }
   });
