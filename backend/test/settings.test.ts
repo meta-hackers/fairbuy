@@ -41,7 +41,7 @@ describe('optional instant classifier settings', () => {
   it('does not require Cloudflare to start or change the main AI models', () => {
     const config = settings({});
     expect(config.INSTANT_CLASSIFIER_PROVIDER).toBe('disabled');
-    expect(config.INSTANT_CLASSIFIER_MODEL).toBe('@cf/meta/llama-3.2-3b-instruct');
+    expect(config.INSTANT_CLASSIFIER_MODEL).toBe('@cf/meta/llama-3.1-8b-instruct-fp8-fast');
     expect(config.CLOUDFLARE_API_TOKEN).toBe('');
     expect(config.ASK_MODEL).toBe('muse-spark-1.3-contributor');
   });

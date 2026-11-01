@@ -81,7 +81,7 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `SEARCH_PROVIDER` | `meta` (default; no extra search key needed) or `brave`. |
 | `BRAVE_API_KEY` | Optional secret only for `SEARCH_PROVIDER=brave`; the Meta key is still required for interpretation/extraction. |
 | `INSTANT_CLASSIFIER_PROVIDER` | `disabled` unless set; the Blueprint sets `cloudflare`. Preview still requires both Cloudflare credentials and live mode. |
-| `INSTANT_CLASSIFIER_MODEL` | `@cf/meta/llama-3.2-3b-instruct`; allowlisted alternative is `@cf/meta/llama-3.1-8b-instruct-fp8-fast`. The 1B model rejects the required JSON Schema requests. Ordinary Instruct models, no separate thinking phase. See [model choices](INSTANT_CLASSIFIER.md#model-choices). |
+| `INSTANT_CLASSIFIER_MODEL` | `@cf/meta/llama-3.1-8b-instruct-fp8-fast` (default); fallback is `@cf/meta/llama-3.2-3b-instruct`. The 1B model rejects the required JSON Schema requests. Ordinary Instruct models, no separate thinking phase. See [model choices](INSTANT_CLASSIFIER.md#model-choices). |
 | `CLOUDFLARE_ACCOUNT_ID` | Optional server-only account identifier (`sync: false`), 32 hexadecimal characters. Not a Zone ID. |
 | `CLOUDFLARE_API_TOKEN` | Optional server-only Workers AI Read + Edit token restricted to that account (`sync: false`). Never use the Global API Key or expose in `VITE_*`. |
 | `APP_ACCESS_TOKEN` | Fixed app password set in Render (`sync: false` in the Blueprint). Local empty value disables gate; not recommended for a public deployment. |

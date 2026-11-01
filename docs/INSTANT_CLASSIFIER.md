@@ -12,12 +12,12 @@ Add `INSTANT_CLASSIFIER_PROVIDER=cloudflare`, `CLOUDFLARE_ACCOUNT_ID` and a rest
 
 ## Model choices
 
-FairBuy uses Cloudflare Workers AI only for the optional, provisional draft preview. The default is `@cf/meta/llama-3.2-3b-instruct`. The 1B model is not supported: Cloudflare rejects its JSON Schema requests with error `5025`. The main Ask, Configure, and Discovery models are separate and unchanged.
+FairBuy uses Cloudflare Workers AI only for the optional, provisional draft preview. The default is `@cf/meta/llama-3.1-8b-instruct-fp8-fast`. The 1B model is not supported: Cloudflare rejects its JSON Schema requests with error `5025`. The main Ask, Configure, and Discovery models are separate and unchanged.
 
 | Supported `INSTANT_CLASSIFIER_MODEL` | Neurons / 1M input tokens | Neurons / 1M output tokens | Use |
 | --- | ---: | ---: | --- |
-| `@cf/meta/llama-3.2-3b-instruct` | 4,625 | 30,475 | Default; supports the classifier's JSON Schema requests. |
-| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | 4,119 | 34,868 | Alternative: fewer input neurons than 3B, more output neurons. |
+| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | 4,119 | 34,868 | Default: smarter 8B classifier; fewer input neurons than 3B, more output neurons. |
+| `@cf/meta/llama-3.2-3b-instruct` | 4,625 | 30,475 | Fallback; supports the classifier's JSON Schema requests. |
 
 Rates are from [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) (October 2026); check the current rates before comparing costs. Actual usage depends on input and output length. Test classification quality with representative drafts before choosing another model.
 
@@ -29,10 +29,10 @@ The instant classifier requires structured output via `response_format: { type: 
 - Without `response_format`, the model responds successfully (HTTP `200`), but the test returned prose and a Markdown code block rather than a strict JSON response. Prompting for JSON alone does not enforce the classifier's schema.
 - Removing structured output is not a drop-in fix: the classifier still needs schema validation and exact evidence grounding. Do not bypass those checks to accommodate 1B.
 
-The 1B model is therefore excluded from the configuration allowlist despite its lower neuron cost. Use the default 3B model, which passed a live test with the full classifier request and validation. Any alternative must be tested with that same request contract before deployment.
+The 1B model is therefore excluded from the configuration allowlist despite its lower neuron cost. Use the default 8B model. Any alternative must be tested with that same request contract before deployment.
 
 ## Applying model changes
 
-To enable the preview, set `INSTANT_CLASSIFIER_PROVIDER=cloudflare` and provide server-only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Set `INSTANT_CLASSIFIER_MODEL` to one of the IDs above to override the default in the server's `.env` or the Render service environment; don't put credentials in frontend variables. The Render blueprint and `.env.example` select 3B. An existing Render environment value can override the blueprint, so update it to 3B when deploying this choice. See [deployment configuration](DEPLOYMENT.md#optional-cloudflare-instant-classifier).
+To enable the preview, set `INSTANT_CLASSIFIER_PROVIDER=cloudflare` and provide server-only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Set `INSTANT_CLASSIFIER_MODEL` to one of the IDs above to override the default in the server's `.env` or the Render service environment; don't put credentials in frontend variables. The Render blueprint and `.env.example` select 8B. An existing Render environment value can override the blueprint, so update it to 8B when deploying this choice. See [deployment configuration](DEPLOYMENT.md#optional-cloudflare-instant-classifier).
 
 Model settings are currently read at application startup. Updating a Render environment variable requires a restart/redeploy and takes effect only when the new instance is live; hot reload or a database-backed runtime override is not implemented.
