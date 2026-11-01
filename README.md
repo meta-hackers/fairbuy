@@ -7,6 +7,7 @@ A full-stack AI shopping research application combining [Alberto’s demo](https
 ## Ask → Configure → Discovery ↔ Learn → Buy
 
 - **Ask:** a real AI conversation collects enough context to search, asking useful follow-ups rather than enforcing a fixed number of answers.
+- **Instant classifier (optional):** Cloudflare-hosted Meta Llama shows provisional category, explicit budget, condition and requirement hints after a 600 ms typing pause in Ask. It has no separate reasoning phase, no web search and no fixed price estimates. Nothing updates the brief until you send the message to the existing Ask conversation.
 - **Configure:** edit the extracted brief, budget, country and soft preferences/must-haves. A separate smaller AI helps incorporate extra requirements.
 - **Discovery:** a new AI session researches products on the web, extracts source-backed offers and explains fit and trade-offs. Deterministic rules handle hard constraints and numerical ranking.
 - **Learn:** reject a product or add feedback. Every submission starts fresh discovery with the original configuration, current brief, all prior products, discarded products and accumulated feedback. Undo preserves unrelated edits and starts another search.
@@ -34,6 +35,12 @@ npm run dev
 ```
 
 Open **http://localhost:5173**. Vite proxies the API to port 3001. The example database password is for local development only.
+
+### Optional instant classifier
+
+Add `INSTANT_CLASSIFIER_PROVIDER=cloudflare`, `CLOUDFLARE_ACCOUNT_ID` and a restricted `CLOUDFLARE_API_TOKEN` (Workers AI Read + Edit for that account) to the server's `.env` or Render environment. The default model is `@cf/meta/llama-3.2-3b-instruct`; `INSTANT_CLASSIFIER_MODEL` can select the supported 1B or 8B-fast alternative. No Cloudflare Worker, DNS change or browser key is needed. Keep the Free plan if you want requests to stop at its daily allowance rather than charge overages.
+
+The UI discloses that unsent drafts go to Cloudflare. Requests are debounced, cancelled when superseded, time-limited and separately rate-limited; failed previews never block Send. Hints require exact input evidence and are not confirmed facts or a replacement for the main AI. There is no live classifier or simulated fallback in scripted demo mode. See [deployment configuration](docs/DEPLOYMENT.md#optional-cloudflare-instant-classifier).
 
 ### No-key preview
 
@@ -74,7 +81,7 @@ The Blueprint declares the Render project, environment, build, startup and healt
 
 - Every live offer links to a provider-returned source, includes retrieved time and retains evidence. AI extraction is **not independent verification**; search snippets may be stale or incomplete.
 - Unknown shipping, taxes, stock, compatibility and warranty remain unknown. An incomplete cost is a known minimum, not a delivered price. No exchange rates are invented.
-- No arbitrary URL crawler, payment, booking, seller-message or order endpoint exists. Meta Model API and Brave calls use fixed provider endpoints.
+- No arbitrary URL crawler, payment, booking, seller-message or order endpoint exists. Meta Model API, optional Cloudflare classification and Brave calls use fixed provider endpoints.
 - Anonymous, cookie-isolated searches expire after **7 days**. “New search” deletes the active search. There is no login or cross-device recovery. Avoid sensitive personal information.
 - There are bounded model calls, job concurrency and rate limits, but configure provider billing limits too. There is no promise of exhaustive market coverage or guaranteed savings.
 - Live integration code is implemented and tested with mocked provider responses. **Actual Meta Model API/model/web-search access must be checked with your key after deployment.** Contributor mode pricing means Meta may use submitted content to train its models; prefer non-sensitive data and configure billing limits. Automated tests do not create cloud resources.

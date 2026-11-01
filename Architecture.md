@@ -8,6 +8,7 @@ flowchart LR
   API --> DB[(Supabase PostgreSQL)]
   API --> Ask[Ask / Configure / Learn interpretation]
   Ask --> Meta[Meta Model API Responses REST]
+  API --> Classifier[Optional Cloudflare Meta Llama draft hints]
   DB --> Worker[Leased discovery queue]
   Worker --> Research[Fresh AI research session]
   Research --> Meta
@@ -23,7 +24,15 @@ flowchart LR
 
 - **Alberto:** the Ask → Configure → Discovery ↔ Learn → Buy journey, restrained green visual language, editable brief, product reasons/trade-offs, Learn modal, Undo and read-only seller selection. Rebuilt around persistent API state, not the category-specific fixture router.
 - **Alessandro:** the Zod-validated shared contract, field-level provenance, unknown values, delivered-cost handling, deterministic hard-constraint filtering and transparent ranking. Adapted to generic attributes and EUR/CHF/USD/GBP.
-- **New:** real Meta Model API REST orchestration, optional Brave search, isolated anonymous sessions, PostgreSQL persistence/queue, source validation, cost guards, deployment and CI. The old NestJS/in-memory skeleton and client-side keyword interpreter are not parallel production engines. Express is intentionally the smaller same-origin hosting layer; Meta Model API is the only live interpreter.
+- **New:** real Meta Model API REST orchestration, optional Brave search, isolated anonymous sessions, PostgreSQL persistence/queue, source validation, cost guards, deployment and CI. The old NestJS/in-memory skeleton and client-side keyword interpreter are not parallel production engines. Express is intentionally the smaller same-origin hosting layer; Meta Model API remains the interpreter of confirmed shopping configuration. The optional Cloudflare classifier only produces provisional UI hints.
+
+## Instant classifier
+
+In live mode, configured Cloudflare credentials enable a disclosed Ask preview. After a 600 ms pause, a 3–3000 character draft is sent through a same-origin, app-password-protected endpoint to a fixed Cloudflare Workers AI endpoint. Only the draft is sent, never the session/transcript/location or main Meta key. The default Meta Llama 3.2 3B Instruct is an ordinary non-reasoning model, requested with temperature zero, JSON Schema and 600 maximum output tokens. A few synthetic extraction examples improve abstention and explicit/implicit distinction. No web tools or reasoning parameters are sent.
+
+Schema validation and exact input quotes are required for hints. Additional validation rejects invented budget amounts and unmentioned conditions/currencies; these checks do not prove semantic correctness. Short provisional chips and clarification remain editable through the message, never mutate `ShoppingConfig`, mark a session ready, rank products or create an expected price. The existing Ask model processes the submitted text independently.
+
+Superseded requests are aborted and stale responses ignored. Provider timeout is eight seconds, with no retries or silent model/fixture fallback. There is one in-flight request/owner, at most four/process, 20 endpoint requests/minute/owner, 200/day/IP and 500 actual provider calls/rolling day/process. Cache hits do not consume the provider-call allowance; at most 100 owner-isolated, hashed-key results live in memory for five minutes. Failed previews back off for a minute in the UI and never block Send. These process-local controls reset on restart, are not an account-wide billing guarantee and require shared storage before scaling. Cloudflare's own Free-plan quota is the external spending boundary. Demo mode does not call Cloudflare.
 
 ## AI session lifecycle
 

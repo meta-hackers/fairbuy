@@ -5,18 +5,19 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { ConfigSchema, CoordinatesSchema, LearnInputSchema, MessageInputSchema, ShoppingLocationSchema } from '@fairbuy/core';
+import { ConfigSchema, CoordinatesSchema, InstantClassifierInputSchema, LearnInputSchema, MessageInputSchema, ShoppingLocationSchema } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { AppError, publicError } from './errors';
 import { LocationResolver } from './location';
+import { InstantClassifier } from './instant-classifier';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b))); }
 function cookies(req: Request) {
   return Object.fromEntries((req.headers.cookie ?? '').split(';').map(c => c.trim().split('=')).filter(c => c.length === 2));
 }
-export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver()) {
+export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver(), classifier = new InstantClassifier(config)) {
   const app = express();
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
@@ -53,6 +54,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     res.json({
       mode: config.FAIRBUY_MODE, accessRequired: !res.locals.access,
       aiConfigured: config.FAIRBUY_MODE === 'demo' || !!config.MODEL_API_KEY,
+      instantClassifierConfigured: res.locals.access && classifier.configured(),
       searchProvider: config.SEARCH_PROVIDER, persistent: !!config.DATABASE_URL,
       session: latest?.mode === config.FAIRBUY_MODE ? latest : null,
     });
@@ -68,6 +70,18 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     res.json(await locations.reverse(latitude, longitude));
   });
   app.use('/api', (_req, res, next) => res.locals.access ? next() : next(new AppError(401, 'Enter the app password to continue.', 'ACCESS_REQUIRED')));
+  const classifierLimit = rateLimit({ windowMs: 60000, limit: 20, keyGenerator: (_req, res) => res.locals.owner, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Preview limit reached. You can still send your message.', code: 'CLASSIFIER_LIMIT' } });
+  const classifierDailyLimit = rateLimit({ windowMs: 86400000, limit: 200, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Daily preview limit reached for this network. You can still send your message.', code: 'CLASSIFIER_LIMIT' } });
+  app.post('/api/instant-classifier', classifierLimit, classifierDailyLimit, async (req, res) => {
+    const { text } = InstantClassifierInputSchema.parse(req.body);
+    const controller = new AbortController();
+    const cancel = () => { if (!res.writableEnded) controller.abort(); };
+    res.on('close', cancel);
+    try {
+      const result = await classifier.classify(res.locals.owner, text, controller.signal);
+      if (!res.destroyed) res.json(result);
+    } finally { res.off('close', cancel); }
+  });
   const aiLimit = rateLimit({ windowMs: 60 * 60000, limit: 45, keyGenerator: (_req, res) => res.locals.owner, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'AI request limit reached. Try again in an hour.' } });
   const dailyLimit = rateLimit({ windowMs: 86400000, limit: 150, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Daily AI limit reached for this network.' } });
   app.post('/api/sessions', aiLimit, async (req, res) => {
@@ -113,7 +127,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   const webRoot = fileURLToPath(new URL('../../frontend/dist/', import.meta.url));
   if (existsSync(webRoot)) {
     app.use(express.static(webRoot, { index: false, maxAge: '1h' }));
-    app.get('/{*path}', (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(`${webRoot}/index.html`); });
+    app.get('/{*path}', (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile('index.html', { root: webRoot }); });
   }
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof z.ZodError) { res.status(400).json({ error: 'Some input is invalid or too long. Please review it.', code: 'INVALID_INPUT' }); return; }

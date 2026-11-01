@@ -3,6 +3,21 @@ import { settings } from '../src/settings';
 
 const effortKeys = ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'] as const;
 
+describe('optional instant classifier settings', () => {
+  it('does not require Cloudflare to start or change the main AI models', () => {
+    const config = settings({});
+    expect(config.INSTANT_CLASSIFIER_PROVIDER).toBe('disabled');
+    expect(config.INSTANT_CLASSIFIER_MODEL).toBe('@cf/meta/llama-3.2-3b-instruct');
+    expect(config.CLOUDFLARE_API_TOKEN).toBe('');
+    expect(config.ASK_MODEL).toBe('muse-spark-1.3-contributor');
+  });
+  it('only accepts the intended non-reasoning Meta models and a valid account ID', () => {
+    expect(() => settings({ INSTANT_CLASSIFIER_MODEL: 'muse-spark-1.3' })).toThrow();
+    expect(() => settings({ CLOUDFLARE_ACCOUNT_ID: 'invalid/account' })).toThrow();
+    expect(settings({ INSTANT_CLASSIFIER_PROVIDER: 'cloudflare', CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32) }).INSTANT_CLASSIFIER_PROVIDER).toBe('cloudflare');
+  });
+});
+
 describe('per-stage reasoning effort settings', () => {
   it('defaults to low for Ask and Configure, and xhigh for Discovery', () => {
     expect(settings({})).toMatchObject({

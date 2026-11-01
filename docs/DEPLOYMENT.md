@@ -78,6 +78,10 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `DISCOVERY_REASONING_EFFORT` | `xhigh`; Meta discovery research. Mechanical evidence extraction stays at `low`, including with Brave search. |
 | `SEARCH_PROVIDER` | `meta` (default; no extra search key needed) or `brave`. |
 | `BRAVE_API_KEY` | Optional secret only for `SEARCH_PROVIDER=brave`; the Meta key is still required for interpretation/extraction. |
+| `INSTANT_CLASSIFIER_PROVIDER` | `disabled` unless set; the Blueprint sets `cloudflare`. Preview still requires both Cloudflare credentials and live mode. |
+| `INSTANT_CLASSIFIER_MODEL` | `@cf/meta/llama-3.2-3b-instruct`; allowlisted alternatives are `@cf/meta/llama-3.2-1b-instruct` and `@cf/meta/llama-3.1-8b-instruct-fp8-fast`. Ordinary Instruct models, no separate thinking phase. |
+| `CLOUDFLARE_ACCOUNT_ID` | Optional server-only account identifier (`sync: false`), 32 hexadecimal characters. Not a Zone ID. |
+| `CLOUDFLARE_API_TOKEN` | Optional server-only Workers AI Read + Edit token restricted to that account (`sync: false`). Never use the Global API Key or expose in `VITE_*`. |
 | `APP_ACCESS_TOKEN` | Fixed app password set in Render (`sync: false` in the Blueprint). Local empty value disables gate; not recommended for a public deployment. |
 | `APP_ORIGIN` | Optional exact HTTPS public origin for a custom domain, with no trailing slash. Default uses Render’s `RENDER_EXTERNAL_URL`. |
 | `FAIRBUY_MODE` | `live`; use `demo` only for an explicitly labelled scripted preview. |
@@ -88,6 +92,16 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 Reasoning effort settings accept `minimal`, `low`, `medium`, `high` or `xhigh`; `"max"` is not supported by the Contributor model. They replace the old shared `REASONING_EFFORT` variable, which is no longer used. Set the per-stage variables in your local `.env` or Render environment and restart/redeploy for changes to take effect.
 
 Use model IDs your account actually supports. Defaults are configurable, not an assurance of account access. Provider errors are intentionally redacted; check model names, credits and provider dashboards. Never put secrets in `VITE_*`, frontend source, URLs or Git.
+
+## Optional Cloudflare instant classifier
+
+Create a Free Cloudflare account, then open Workers AI → Use REST API → Create a Workers AI API Token. Keep the restricted Read + Edit template and copy the account ID and token into the two server-only variables above. Set `INSTANT_CLASSIFIER_PROVIDER=cloudflare`. No domain, DNS change, Cloudflare Worker or paid plan is required. See [Cloudflare's REST setup](https://developers.cloudflare.com/workers-ai/get-started/rest-api/).
+
+Render never reads a developer's local `.env` automatically. Set these four classifier variables on the existing `fairbuy` service without replacing unrelated environment variables; the Blueprint deliberately leaves credentials as `sync: false`. Deploy the integration code before expecting the new bootstrap flag or preview. Changing secrets alone does not deploy a local worktree. Leave `MODEL_API_KEY`, the main models, database and app password untouched.
+
+Cloudflare currently grants 10,000 neurons/day, not 10,000 requests. On Workers Free, excess usage fails until the quota resets; upgrading to Paid allows charges beyond the allowance. Review [current pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/). FairBuy treats all quota/provider/validation errors as a missing preview and keeps Send available. No automatic fallback spends Meta Model API credits. The application has process-local rate/call caps, not a provider-wide spending guarantee.
+
+The preview disclosure appears before typing. Only the draft is sent, not the conversation or stored location. Cached previews are owner-isolated and expire after five minutes; provider retention policies still apply. Test with a synthetic draft and verify the classifier responds without changing session readiness. The automated suite uses HTTP mocks and never calls Cloudflare.
 
 ## Optional Brave search
 

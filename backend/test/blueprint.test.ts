@@ -29,10 +29,15 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
   });
 
   it('leaves provider credentials and the app password out of source control', () => {
-    for (const key of ['MODEL_API_KEY', 'APP_ACCESS_TOKEN']) {
+    for (const key of ['MODEL_API_KEY', 'APP_ACCESS_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN']) {
       expect(service.envVars.filter((env: { key: string }) => env.key === key))
         .toEqual([{ key, sync: false }]);
     }
+  });
+
+  it('uses a separate non-reasoning Meta model for the optional instant classifier', () => {
+    expect(service.envVars).toContainEqual({ key: 'INSTANT_CLASSIFIER_PROVIDER', value: 'cloudflare' });
+    expect(service.envVars).toContainEqual({ key: 'INSTANT_CLASSIFIER_MODEL', value: '@cf/meta/llama-3.2-3b-instruct' });
   });
 
   it('configures independent reasoning effort defaults for each stage', () => {

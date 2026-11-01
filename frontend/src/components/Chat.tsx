@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ChatMessage } from '@fairbuy/core';
-export default function Chat({ messages, busy, onSend, compact = false, disabled = false }: {
-  messages: ChatMessage[]; busy: boolean; onSend: (message: string) => Promise<boolean>; compact?: boolean; disabled?: boolean;
+import InstantClassifier from './InstantClassifier';
+export default function Chat({ messages, busy, onSend, compact = false, disabled = false, instantClassifier = false }: {
+  messages: ChatMessage[]; busy: boolean; onSend: (message: string) => Promise<boolean>; compact?: boolean; disabled?: boolean; instantClassifier?: boolean;
 }) {
   const [text, setText] = useState('');
+  const [composing, setComposing] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [messages.length, busy]);
   const send = async (event: FormEvent) => {
@@ -30,7 +32,9 @@ export default function Chat({ messages, busy, onSend, compact = false, disabled
       <textarea id={compact ? 'configure-message' : 'ask-message'} value={text} maxLength={3000} rows={compact ? 3 : 3}
         placeholder={compact ? 'Tell me one more thing…' : 'e.g. A laptop for coding, around €700. I travel a lot.'}
         disabled={busy || disabled} onChange={event => setText(event.target.value)}
+        onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)}
         onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+      {instantClassifier && <InstantClassifier text={text} enabled={!busy && !disabled && !composing} />}
       <div className="composer-bottom"><span className="micro">Enter to send · Shift + Enter for a new line</span><button className="button primary" type="submit" disabled={busy || disabled || !text.trim()}>{compact ? 'Update brief' : 'Send message'} <span aria-hidden="true">↗</span></button></div>
     </form>
   </section>;
