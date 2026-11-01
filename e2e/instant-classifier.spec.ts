@@ -19,40 +19,42 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('debounces typing, shows evidence-backed draft hints, and never makes the brief ready', async ({ page }, testInfo) => {
+test('debounces typing, shows requirement tags, and never makes the brief ready', async ({ page }, testInfo) => {
   let calls = 0;
   await page.route('**/api/instant-classifier', async route => { calls++; await route.fulfill({ json: washingMachine }); });
   await page.goto('/');
   const preview = page.locator('.instant-classifier');
-  await expect(preview).toContainText('your draft is sent to Cloudflare');
+  const dots = page.locator('.instant-classifier-dots');
+  await expect(preview).toHaveCount(0);
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
   await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
   const input = page.getByRole('textbox', { name: 'Your message' });
   await input.fill('washing');
-  await expect(preview).toContainText('Reading your draft');
+  await expect(dots).toBeVisible();
   await page.clock.fastForward(400);
   await input.fill('A quiet washing machine under CHF 700 for a small apartment');
   await page.clock.fastForward(599);
   expect(calls).toBe(0);
+  await expect(dots).toBeVisible();
   await page.clock.fastForward(1);
-  await expect(preview.getByRole('listitem').filter({ hasText: 'Washing machine' })).toBeVisible();
+  await expect(preview.getByRole('listitem').filter({ hasText: 'Quiet' })).toBeVisible();
   expect(calls).toBe(1);
-  await expect(preview).toContainText('Budget ≤ CHF 700');
-  await expect(preview).toContainText('Prefer: Quiet');
-  await expect(preview.getByText('Washing machine', { exact: true })).toHaveAttribute('title', 'From your text: “washing machine”');
-  await expect(preview).toContainText('maximum width and depth');
+  await expect(preview.getByText('Quiet', { exact: true })).toHaveAttribute('title', 'From your text: “quiet”');
+  await expect(preview).not.toContainText('Washing machine');
+  await expect(preview).not.toContainText('Budget');
   await page.screenshot({ path: `test-results/${testInfo.project.name}-instant-classifier.png`, fullPage: true });
   await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeDisabled();
   expect((await (await page.request.get('/api/bootstrap')).json()).session).toBeNull();
   await input.fill('baby');
   await expect(preview.getByRole('listitem')).toHaveCount(0);
   await input.fill('');
+  await expect(preview).toHaveCount(0);
   await page.clock.fastForward(1000);
   expect(calls).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
 });
 
-test('ignores stale responses and clarifies ambiguous needs rather than guessing', async ({ page }) => {
+test('ignores stale responses and only shows requirement tags', async ({ page }) => {
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
   let firstStarted = false;
@@ -66,22 +68,30 @@ test('ignores stale responses and clarifies ambiguous needs rather than guessing
   const input = page.getByRole('textbox', { name: 'Your message' });
   await input.fill('washing machine');
   await expect.poll(() => firstStarted).toBe(true);
+  await expect(page.locator('.instant-classifier-dots')).toBeVisible();
   await input.fill('baby');
-  await expect(page.getByText('Which baby product are you looking for?')).toBeVisible();
-  release();
+  const dots = page.locator('.instant-classifier-dots');
+  // A clarification-only result carries no requirements, so no tags appear.
+  await expect(dots).toBeVisible();
+  await expect(dots).toHaveCount(0);
   await expect(page.locator('.instant-classifier-chips')).toHaveCount(0);
-  await expect(page.getByText('Which baby product are you looking for?')).toBeVisible();
+  await expect(page.locator('.instant-classifier')).toHaveCount(0);
+  release();
+  await page.waitForTimeout(300);
+  await expect(page.locator('.instant-classifier-chips')).toHaveCount(0);
+  await expect(page.locator('.instant-classifier')).toHaveCount(0);
 });
 
-test('quota failures do not block Send and pause further preview attempts', async ({ page }) => {
+test('quota failures show nothing and do not block Send', async ({ page }) => {
   let calls = 0;
   await page.route('**/api/instant-classifier', async route => { calls++; await route.fulfill({ status: 429, json: { error: 'Allowance exhausted.' } }); });
   await page.goto('/');
   const input = page.getByRole('textbox', { name: 'Your message' });
   await input.fill('A laptop for coding');
-  await expect(page.getByText('Preview unavailable. You can still send your message.')).toBeVisible();
+  await expect(page.locator('.instant-classifier-dots')).toBeVisible();
+  await expect(page.locator('.instant-classifier')).toHaveCount(0);
   await input.fill('A laptop for coding in Italy, budget EUR 700');
-  await expect(page.getByText('Preview unavailable. You can still send your message.')).toBeVisible();
+  await expect(page.locator('.instant-classifier')).toHaveCount(0);
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeEnabled();
   expect(calls).toBe(1);
