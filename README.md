@@ -59,11 +59,11 @@ For a production-style local server, `npm run build && npm start` serves everyth
 
 ## Deploy on Render
 
-The root [`render.yaml`](render.yaml) defines the `fairbuy` project and `production` environment in Render's **fairbuy workspace**, with one free web service in **Virginia**. PostgreSQL is hosted by **Supabase**, not Render. The backend uses a dedicated database login, a private `fairbuy` schema and a verified-TLS Session pooler connection stored in `DATABASE_URL`. Meta Model API calls require the Virginia service (Frankfurt returned `model_not_found`). Review provider pricing before changing plans.
+The root [`render.yaml`](render.yaml) defines the `fairbuy` project and `production` environment in Render's **My Workspace**, with one free web service in **Virginia** at [fairbuy.onrender.com](https://fairbuy.onrender.com). PostgreSQL is hosted by **Supabase**, not Render. The backend uses a dedicated database login, a private `fairbuy` schema and a verified-TLS Session pooler connection stored in `DATABASE_URL`. Meta Model API calls require the Virginia service (Frankfurt returned `model_not_found`). Review provider pricing before changing plans.
 
 1. Push this implementation to `git@github.com:meta-hackers/fairbuy.git`.
 2. Set up the private Supabase schema using the [deployment instructions](docs/DEPLOYMENT.md#supabase-postgresql).
-3. Select the **fairbuy workspace** in Render and create/attach its Blueprint from this repository. Supply the Supabase `DATABASE_URL` and `MODEL_API_KEY` as server-only secrets. No key is bundled in the frontend. Without a model key, health checks still work and the UI explains setup.
+3. Select **My Workspace** in Render and reuse its existing **fairbuy** Blueprint and service. Do not recreate them or create a duplicate in the separate `fairbuy` workspace. Supply the Supabase `DATABASE_URL` and `MODEL_API_KEY` as server-only secrets. No key is bundled in the frontend. Without a model key, health checks still work and the UI explains setup.
 4. Set `APP_ACCESS_TOKEN` in Render to a fixed app password you choose, then enter that password in the app. This gate protects your AI credits.
 
 The Blueprint declares the Render project, environment, build, startup and health checks; it deliberately contains no Render database. Supabase is managed separately. Initial attachment/sync in Render is still required; committing YAML alone does not make resources Blueprint-managed. See [deployment instructions and environment variables](docs/DEPLOYMENT.md).

@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
-# Select the Render "fairbuy" workspace when creating this Blueprint.
+# Active deployment: the existing "fairbuy" Blueprint in Render "My Workspace".
+# Reuse that Blueprint/service; do not create a duplicate in another workspace.
 # Workspace ownership is set in Render, not by the project name below.
 # Keep the web service in Virginia for Meta Model API access.
 # PostgreSQL is hosted by Supabase; do not provision a Render database.

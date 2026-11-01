@@ -4,7 +4,7 @@
 
 - The implementation is committed/pushed to `meta-hackers/fairbuy` on the branch you intend to deploy. Local changes alone are not visible to Render.
 - A Render account connected to that GitHub repository, with permission to create resources.
-- Access to the Render **fairbuy** workspace and a Supabase PostgreSQL project. The app does not use Supabase Auth or the browser Data API.
+- Access to Render **My Workspace** and the Supabase `fairbuy` project. The app does not use Supabase Auth or the browser Data API.
 - A Meta Model API key from [dev.meta.ai](https://dev.meta.ai) with billing, access to the configured model (`muse-spark-1.3-contributor`), the Responses API (search grounding) and structured output. Pay-as-you-go Contributor mode is lower cost in exchange for Meta possibly using submitted content to train its models.
 
 ## Blueprint
@@ -13,9 +13,10 @@ The root `render.yaml` defines the web deployment, not a Render PostgreSQL insta
 
 | Resource | Location | Configuration |
 |---|---|---|
-| Render workspace `fairbuy` | `tea-dbjfjfbbc2fs73cm8ni0` | Select explicitly in the Dashboard/API |
+| Render workspace `My Workspace` | `tea-db0m51s9v7es73c21lf0` | Active deployment; select explicitly in the Dashboard/API |
+| Render Blueprint `fairbuy` | `exs-dbjgfmmtlv9c73d5gjng` | Reuse this existing Blueprint |
 | Render project / environment | `fairbuy` / `production` | Declared in the Blueprint |
-| Render web service `fairbuy` | Virginia | Free plan, one instance |
+| Render web service `fairbuy` | Virginia, `srv-dbjgia67bikc73fd27tg` | Free plan, one instance; https://fairbuy.onrender.com |
 | Supabase project `fairbuy` | `ekhurxapawdqcaqvqrwu`, Ireland (`eu-west-1`) | Database `postgres`, private schema `fairbuy` |
 
 The Blueprint deliberately has no `databases:` declaration or `fromDatabase` reference. Supabase resources are managed separately. A Render project name does **not** select its workspace; workspace ownership must be set explicitly when creating the Blueprint/service.
@@ -25,11 +26,11 @@ Do not move the web service to Frankfurt/EU for Meta calls: in testing, Meta Mod
 ### Create or attach the Blueprint
 
 1. Configure Supabase as below, then push the deployment changes to `https://github.com/meta-hackers/fairbuy`. The service follows the Blueprint branch; there is no hardcoded `main` override.
-2. In the Render Dashboard, switch to the **fairbuy workspace** before opening Blueprints. Do not create it in `My Workspace`.
-3. If the web service already exists in this workspace, select it and use **Generate Blueprint**, following the instructions to manage that existing service with the repository's `render.yaml` rather than replicate it. For a new deployment, use **New → Blueprint**. Initial Blueprint creation/approval requires the Dashboard; the public API supports validation and updating existing Blueprints but does not expose creation.
+2. In the Render Dashboard, select **My Workspace → Blueprints → fairbuy**. The separate workspace named `fairbuy` is not the active deployment target.
+3. Reuse the existing Blueprint and service IDs above. Retry a failed sync with **Manual Sync**, reviewing/approving its plan if prompted; do not recreate the resources to clear an error. For a genuinely new deployment only, use **New → Blueprint**, or **Generate Blueprint** to adopt existing resources rather than replicate them. Initial Blueprint creation/approval requires the Dashboard; the public API supports validation and updating existing Blueprints but does not expose creation.
 4. Review the sync plan: the project must be `fairbuy`, its environment `production`, the service plan `free`, and there must be **no Render database**. When adopting the API-created service, verify its ID rather than accepting a suffixed duplicate.
-5. Supply or preserve `DATABASE_URL`, `MODEL_API_KEY` and `APP_ACCESS_TOKEN` as secrets. They use `sync: false`; do not paste their values into Git. A later Blueprint sync leaves these variables unchanged.
-6. Approve/sync, then verify the Blueprint, project and service all belong to workspace `tea-dbjfjfbbc2fs73cm8ni0` and the deployed service's `/healthz` succeeds.
+5. Supply or preserve `DATABASE_URL`, `MODEL_API_KEY` and `APP_ACCESS_TOKEN` as secrets. They use `sync: false`; do not paste their values into Git. A later Blueprint sync leaves these variables unchanged, but recreating a service does **not** copy the old service's secrets. A missing `DATABASE_URL` prevents production startup. Keep the app password configured even when the model key is supplied later.
+6. Approve/sync, then verify the Blueprint, project and service all belong to workspace `tea-db0m51s9v7es73c21lf0` and https://fairbuy.onrender.com/healthz succeeds.
 7. Smoke-test live Ask → Configure → Discovery → Learn → Buy using a small request. Check clickable citations and the live/preview banner. Confirm that prices/charges/stock not found in evidence remain unknown. Watch API billing/latency.
 
 Render builds with `npm ci --include=dev && npm run build` and starts with `npm start`. Free web services do not support `preDeployCommand`; instead, the app safely initializes schema at startup before accepting requests. `npm run db:migrate` remains available for explicit maintenance runs. `/healthz` checks database availability, not paid AI access. Without a valid `MODEL_API_KEY`, the app serves setup guidance and never substitutes demo results. `APP_ACCESS_TOKEN` is the fixed app password, not a per-user account.
@@ -57,7 +58,7 @@ The checked-in [public Supabase root certificate](../certs/README.md) verifies t
 
 ### Replacing the initial Render deployment
 
-Render cannot transfer an existing service between workspaces. Recreate the web deployment in the **fairbuy** workspace, retaining the provider key and app password and replacing `DATABASE_URL` with the Supabase connection. Disconnect the old Blueprint **before** deleting its resources, otherwise a future sync can recreate them. Remove its Render database declaration from Git as well.
+Render cannot transfer an existing service between workspaces. The active deployment is now back in **My Workspace**, using its original `fairbuy.onrender.com` hostname and the existing Blueprint/service IDs above. Do not move or recreate it as part of ordinary configuration changes. If a future workspace change is explicitly requested, retain all connection/provider/password secrets securely before deleting anything; a replacement service does not inherit them. Disconnect an obsolete Blueprint **before** deleting its resources, otherwise a future sync can recreate them. The previous Render PostgreSQL database has already been removed and must not be reintroduced into the Blueprint.
 
 The owner explicitly approved discarding the initial Render database's data and downtime during this early-stage reset. This is not a general migration policy: take and verify backups before deleting any future populated deployment. Do not remove unrelated services from `My Workspace`.
 
