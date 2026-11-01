@@ -53,7 +53,7 @@ projects:
               - key: CONFIGURE_REASONING_EFFORT
                 value: low
               - key: DISCOVERY_REASONING_EFFORT
-                value: xhigh
+                value: medium
               - key: SEARCH_PROVIDER
                 value: meta
               - key: APP_ACCESS_TOKEN
