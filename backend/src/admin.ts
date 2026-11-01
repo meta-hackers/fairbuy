@@ -3,7 +3,8 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
-import { DEFAULT_SOURCE_CATALOG, SOURCE_ROLES, SOURCE_VERTICALS, SourceEntrySchema } from '@fairbuy/core';
+import { SOURCE_ROLES, SOURCE_VERTICALS, SourceEntrySchema } from '@fairbuy/core';
+import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { PostgresStore } from './store';
@@ -97,7 +98,7 @@ export function adminRouter(service: ShoppingService, config: Settings) {
   router.get('/sources', async (_req, res) => {
     res.json({
       entries: await catalog.views(), roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
-      builtinCount: DEFAULT_SOURCE_CATALOG.length,
+      builtinCount: SOURCE_CATALOG_SEED.length,
     });
   });
   router.put('/sources/:domain', async (req, res) => {

@@ -61,26 +61,30 @@ domain, display name, roles (`seller`, `marketplace`, `spec`, `review`,
 `comparison`), verticals, country coverage or `global`, priority (1-3), an
 optional note and an enabled flag.
 
-The effective catalog is the built-in list in
-`packages/core/src/sources.ts` plus persisted overrides in the
-`source_catalog_overrides` PostgreSQL table. Saving an edit stores a full
-override for that domain; resetting removes the override and restores the
-built-in entry. Custom domains can be added and deleted. Disabling an entry
-keeps it in the catalog for role enforcement: a disabled specification source
-is still never accepted as an offer URL.
+The database `source_catalog` table is the runtime source of truth. The seed
+file `data/source-catalog.ts` is the reviewed baseline; startup applies it with
+`insert-missing`, and `npm run catalog:seed` applies explicit updates. Each row
+stores the effective `entry`, the seeded `default_entry`, the seed version and
+the last editor. Saving an edit changes `entry`; resetting restores
+`default_entry`; deleting a custom entry removes the row. Custom domains can be
+added. Disabling an entry keeps it in the catalog for role enforcement: a
+disabled specification source is still never accepted as an offer URL.
 
 Changes apply to the next discovery round; an in-flight round keeps the plan it
 started with. The admin API is:
 
-- `GET /api/admin/sources`: effective entries, their `default`/`modified`/`custom`
-  origin, the optional built-in `defaultEntry`, roles and verticals.
+- `GET /api/admin/sources`: database entries, their `default`/`modified`/`custom`
+  origin, the optional `defaultEntry`, roles, verticals and the seed-file count.
 - `PUT /api/admin/sources/:domain`: JSON `{ "entry": { ... } }`. Creates a custom
-  entry or replaces the built-in entry. The path domain and `entry.domain` must
+  entry or replaces the effective entry. The path domain and `entry.domain` must
   match.
-- `DELETE /api/admin/sources/:domain`: removes the override. A built-in entry
-  reverts to its default; a custom entry disappears.
-- `POST /api/admin/sources/reset`: JSON `{ "confirm": "reset" }`; removes every
-  override and restores the built-in catalog.
+- `DELETE /api/admin/sources/:domain`: restores a seeded entry to its default, or
+  deletes a custom entry.
+- `POST /api/admin/sources/reset`: JSON `{ "confirm": "reset" }`; restores every
+  seeded default and deletes every custom entry.
+
+To merge runtime edits back into the seed file, run `npm run catalog:export` and
+review the JSON before editing `data/source-catalog.ts`.
 
 Catalog writes use the same admin session, same-origin/header CSRF protection
 and request logging as other admin actions. `updated_at` and `updated_by` are

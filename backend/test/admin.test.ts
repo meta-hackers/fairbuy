@@ -3,6 +3,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { passwordHash, verifyPassword } from '../src/admin';
 import { MemoryStore } from '../src/store';
+import { SourceCatalogService } from '../src/source-catalog';
+import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
 import { DemoAIProvider } from '../src/ai/demo';
 import { ShoppingService } from '../src/shopping-service';
 import { settings } from '../src/settings';
@@ -17,6 +19,9 @@ function setup(enabled = true, appPassword = '') {
   return { app, service, config };
 }
 const write = { 'X-Fairbuy-Request': '1' };
+async function seedCatalog(service: ShoppingService) {
+  return new SourceCatalogService(service.store).seed(SOURCE_CATALOG_SEED, 'sync', 'test');
+}
 async function login(client: ReturnType<typeof request.agent>, username = 'Alberto') {
   return client.post('/api/admin/login').set(write).send({ username, password: 'test-password-not-for-production' }).expect(200);
 }
@@ -129,7 +134,8 @@ describe('backoffice session data', () => {
     expect(await service.usage.get(s.id)).toEqual([]);
   });
   it('lists built-in sources and persists an override without losing the default', async () => {
-    const { app } = setup();
+    const { app, service } = setup();
+    await seedCatalog(service);
     const client = request.agent(app); await login(client);
     const initial = await client.get('/api/admin/sources').expect(200);
     expect(initial.body.builtinCount).toBeGreaterThan(100);
@@ -148,7 +154,8 @@ describe('backoffice session data', () => {
     expect(reset).toMatchObject({ origin: 'default', entry: { name: 'Ricardo' } });
   });
   it('adds custom sources, validates input and supports a confirmed reset', async () => {
-    const { app } = setup();
+    const { app, service } = setup();
+    await seedCatalog(service);
     const client = request.agent(app); await login(client);
     const entry = { domain: 'example-shop.ch', name: 'Example Shop', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3, enabled: true };
     await client.put('/api/admin/sources/example-shop.ch').set(write).send({ entry }).expect(200);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { EMPTY_CONFIG, rankProducts, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
+import { EMPTY_CONFIG, rankProducts, sourcePlan, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
+import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
 import { acceptableProductCount, discoveryPolicy, normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
@@ -242,7 +243,7 @@ describe('progressive multi-product discovery', () => {
     const specExtracted = ExtractionSchema.parse({
       summary: 'Found one.', products: [{ ...extracted.products[0], offers: [{ ...extracted.products[0].offers[0], url: specResearch.sources[0].url, quote: specResearch.text }] }],
     });
-    const grounded = normalizeExtraction(specExtracted, specResearch, brief);
+    const grounded = normalizeExtraction(specExtracted, specResearch, brief, sourcePlan(brief.config, SOURCE_CATALOG_SEED));
     expect(grounded.products).toEqual([]);
     expect(grounded.summary).toContain('specification, review or comparison page is not a seller');
   });

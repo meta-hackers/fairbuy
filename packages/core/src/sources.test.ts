@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { SOURCE_CATALOG_SEED } from '../../../data/source-catalog';
 import {
-  DEFAULT_SOURCE_CATALOG, EMPTY_CONFIG, SourceEntrySchema, classifyVertical, hostInDomains, isNonSellerHost,
-  isPlannedSellerHost, mergeSourceCatalog, sourcePlan,
+  EMPTY_CONFIG, SourceEntrySchema, classifyVertical, hostInDomains, isNonSellerHost,
+  isPlannedSellerHost, sourcePlan, validateSourceCatalog,
 } from './index';
 
 const brief = (category: string | null, country: string | null, purpose: string | null = null) =>
@@ -25,7 +26,7 @@ describe('category-aware source hints', () => {
   });
 
   it('selects Swiss computer sellers and separates specification sources', () => {
-    const plan = sourcePlan(brief('laptop', 'CH', 'software development'));
+    const plan = sourcePlan(brief('laptop', 'CH', 'software development'), SOURCE_CATALOG_SEED);
     const domains = plan.sellers.map(source => source.domain);
     expect(plan.vertical).toBe('computers');
     expect(domains).toEqual(expect.arrayContaining(['digitec.ch', 'galaxus.ch', 'ricardo.ch']));
@@ -36,7 +37,7 @@ describe('category-aware source hints', () => {
   });
 
   it('selects Italian sellers and comparison domains for the same category', () => {
-    const plan = sourcePlan(brief('laptop', 'IT', 'software development'));
+    const plan = sourcePlan(brief('laptop', 'IT', 'software development'), SOURCE_CATALOG_SEED);
     const domains = plan.sellers.map(source => source.domain);
     expect(domains).toEqual(expect.arrayContaining(['mediaworld.it', 'unieuro.it', 'amazon.it', 'ebay.it']));
     expect(domains).not.toContain('ricardo.ch');
@@ -44,7 +45,7 @@ describe('category-aware source hints', () => {
   });
 
   it('uses food-delivery platforms for food and keeps product marketplaces out', () => {
-    const plan = sourcePlan(brief('food delivery', 'IT', 'sushi for dinner'));
+    const plan = sourcePlan(brief('food delivery', 'IT', 'sushi for dinner'), SOURCE_CATALOG_SEED);
     const domains = plan.sellers.map(source => source.domain);
     expect(plan.vertical).toBe('food_delivery');
     expect(domains).toEqual(expect.arrayContaining(['ubereats.com', 'glovoapp.com', 'deliveroo.it', 'just-eat.it']));
@@ -54,7 +55,7 @@ describe('category-aware source hints', () => {
   });
 
   it('applies persisted overrides and hides disabled entries without losing role safety', () => {
-    const disabled = DEFAULT_SOURCE_CATALOG.map(source => source.domain === 'openicecat.com' ? { ...source, enabled: false } : source);
+    const disabled = SOURCE_CATALOG_SEED.map(source => source.domain === 'openicecat.com' ? { ...source, enabled: false } : source);
     const disabledPlan = sourcePlan(brief('laptop', 'CH'), disabled);
     expect(disabledPlan.specs.map(source => source.domain)).not.toContain('openicecat.com');
     expect(disabledPlan.nonSellerDomains).toContain('openicecat.com');
@@ -64,15 +65,14 @@ describe('category-aware source hints', () => {
       countries: ['CH'], priority: 3, enabled: true,
     });
     expect(override.domain).toBe('example.store');
-    const merged = mergeSourceCatalog(DEFAULT_SOURCE_CATALOG, [override]);
-    expect(merged.find(source => source.domain === 'example.store')?.name).toBe('Example Store');
-    const plan = sourcePlan(brief('laptop', 'CH'), merged);
+    const plan = sourcePlan(brief('laptop', 'CH'), [...SOURCE_CATALOG_SEED, override]);
     expect(plan.sellers.map(source => source.domain)).toContain('example.store');
   });
 
-  it('keeps the built-in catalog valid and unique', () => {
-    expect(new Set(DEFAULT_SOURCE_CATALOG.map(source => source.domain)).size).toBe(DEFAULT_SOURCE_CATALOG.length);
-    for (const source of DEFAULT_SOURCE_CATALOG) expect(SourceEntrySchema.parse(source)).toEqual(source);
+  it('keeps the seed catalog valid and unique', () => {
+    expect(new Set(SOURCE_CATALOG_SEED.map(source => source.domain)).size).toBe(SOURCE_CATALOG_SEED.length);
+    expect(validateSourceCatalog(SOURCE_CATALOG_SEED)).toHaveLength(SOURCE_CATALOG_SEED.length);
+    expect(() => validateSourceCatalog([SOURCE_CATALOG_SEED[0], SOURCE_CATALOG_SEED[0]])).toThrow(/Duplicate source domain/);
   });
 
   it('validates persisted catalog entries', () => {
@@ -84,11 +84,11 @@ describe('category-aware source hints', () => {
   });
 
   it('does not invent country coverage and matches subdomains only at dot boundaries', () => {
-    const swissFood = sourcePlan(brief('food delivery', 'CH', null));
+    const swissFood = sourcePlan(brief('food delivery', 'CH', null), SOURCE_CATALOG_SEED);
     expect(swissFood.sellers.map(source => source.domain)).toContain('ubereats.com');
     expect(swissFood.sellers.map(source => source.domain)).not.toContain('deliveroo.it');
 
-    const plan = sourcePlan(brief('laptop', 'CH', null));
+    const plan = sourcePlan(brief('laptop', 'CH', null), SOURCE_CATALOG_SEED);
     expect(hostInDomains('www.digitec.ch', ['digitec.ch'])).toBe(true);
     expect(hostInDomains('notdigitec.ch', ['digitec.ch'])).toBe(false);
     expect(isNonSellerHost('https://www.openicecat.com/en/product/1', plan)).toBe(true);

@@ -16,6 +16,7 @@ Set `MODEL_API_KEY` in `.env`, then:
 
 ```bash
 npm run db:migrate
+npm run catalog:seed   # optional: startup also inserts missing seed domains
 npm run dev
 ```
 

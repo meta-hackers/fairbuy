@@ -92,7 +92,7 @@ test('admin can view, filter, edit, add and reset source catalog entries', async
   await expect(page.locator('#source-rows')).not.toContainText('example-shop.ch');
 
   page.once('dialog', dialog => dialog.accept('reset'));
-  await page.getByRole('button', { name: 'Reset all overrides', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset all to defaults', exact: true }).click();
   await expect(page.locator('#source-rows tr', { hasText: 'ricardo.ch' })).toContainText('Ricardo');
   await expect(page.locator('#source-rows tr', { hasText: 'ricardo.ch' })).toContainText('default');
 

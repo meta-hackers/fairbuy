@@ -3,7 +3,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=../.env --env-file-if-exists=../.env.backoffice --import tsx --watch src/main.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --external:express --external:express-rate-limit --external:helmet --external:pg --outfile=dist/main.js"
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --external:express --external:express-rate-limit --external:helmet --external:pg --outfile=dist/main.js && esbuild ../scripts/seed-source-catalog.ts --bundle --platform=node --format=esm --external:pg --outfile=dist/seed-source-catalog.js"
   },
   "dependencies": {
     "@fairbuy/core": "*", "express": "^5.1.0", "express-rate-limit": "^8.1.0",

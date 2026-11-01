@@ -163,10 +163,11 @@ function renderSources() {
     $('source-rows').append(row);
   }
   if (!rows.length) {
-    const row = node('tr'); const cell = node('td', 'No sources match these filters.', 'empty');
+    const message = sourceData.length ? 'No sources match these filters.' : 'No catalog entries. Run npm run catalog:seed to load the seed file.';
+    const row = node('tr'); const cell = node('td', message, 'empty');
     cell.colSpan = 8; row.append(cell); $('source-rows').append(row);
   }
-  $('source-count').textContent = `${rows.length} of ${sourceData.length} sources · ${sourceMeta.builtinCount} built-in`;
+  $('source-count').textContent = `${rows.length} of ${sourceData.length} sources · ${sourceMeta.builtinCount} in seed file`;
 }
 function openSourceEditor(item = null) {
   editingSource = item;
@@ -182,7 +183,7 @@ function openSourceEditor(item = null) {
   $('source-reset').hidden = !(item?.origin === 'modified' && item.hasDefault);
   $('source-delete').hidden = item?.origin !== 'custom';
   $('source-form-note').textContent = item
-    ? `${item.origin === 'default' ? 'Built-in entry.' : item.origin === 'modified' ? 'Overrides a built-in entry.' : 'Custom entry.'}${item.updatedAt ? ` Last changed ${date(item.updatedAt)} by ${item.updatedBy}.` : ''}${item.defaultEntry ? ` Default name: ${item.defaultEntry.name}.` : ''}`
+    ? `${item.origin === 'default' ? 'Seeded default.' : item.origin === 'modified' ? 'Modified from the seed default.' : 'Custom entry.'}${item.updatedAt ? ` Last changed ${date(item.updatedAt)} by ${item.updatedBy}.` : ''}${item.defaultEntry ? ` Default name: ${item.defaultEntry.name}.` : ''}`
     : 'New custom entry. Choose roles and verticals explicitly; nothing is assumed.';
   form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -225,7 +226,7 @@ $('source-form').addEventListener('submit', guarded(async event => {
   closeSourceEditor(); await loadSources();
 }));
 $('sources-reset-all').addEventListener('click', guarded(async () => {
-  const confirmation = window.prompt('Type reset to remove every catalog override and restore built-in defaults.');
+  const confirmation = window.prompt('Type reset to restore every seeded default and delete custom entries.');
   if (confirmation !== 'reset') { if (confirmation !== null) notice('Confirmation did not match. Nothing was reset.'); return; }
   await api('/sources/reset', { confirm: 'reset' });
   closeSourceEditor(); await loadSources();

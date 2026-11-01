@@ -8,6 +8,7 @@ This is a maintainer follow-up list, not a promise that an item is already imple
 - [ ] Improve discovery result relevance and overall quality.
 - [ ] Investigate and fix product images that do not consistently load.
 - [x] Add category- and country-aware source hints for discovery. See [source hints](SOURCES.md).
+- [ ] Assign a source-catalog owner and a review cadence; run `npm run catalog:export` to merge backoffice edits back into the seed file.
 - [ ] Add user login via a one-time code sent by email.
 - [ ] Limit each authenticated user to two searches per day; define how Discovery, Learn-triggered searches and retries count toward the allowance.
 

@@ -78,7 +78,7 @@ Each round also computes a **source plan** from the brief's category and country
 - In Brave mode, a second targeted `site:` query runs in parallel when the vertical is known; a failed targeted query does not discard the broad result.
 - Specification, review and comparison domains (for example Open Icecat) may support attributes, but they are rejected as offer URLs and price sources by extraction and normalization.
 - The plan does not change ranking, hard checks or source-grounding rules.
-- The effective catalog combines the built-in list with admin overrides managed in the [backoffice](BACKOFFICE.md#discovery-source-catalog); changes apply to the next round.
+- The database catalog is seeded from `data/source-catalog.ts` and editable in the [backoffice](BACKOFFICE.md#discovery-source-catalog); changes apply to the next round.
 
 See [category-aware source hints](SOURCES.md).
 
@@ -105,7 +105,8 @@ An unknown hard check is not a verified pass. Under the existing ranking policy,
 
 - [`backend/src/ai/provider.ts`](../backend/src/ai/provider.ts): `discoveryPolicy`, `acceptableProductCount`, the bounded discovery loop, Brave query construction, and non-seller source rejection.
 - [`backend/src/ai/prompts.ts`](../backend/src/ai/prompts.ts): research strategies, compact first-result instructions, source-plan usage, and explicit trade-off disclosure.
-- [`packages/core/src/sources.ts`](../packages/core/src/sources.ts): vertical classification, source catalog, source plan, and host-role checks.
+- [`packages/core/src/sources.ts`](../packages/core/src/sources.ts): vertical classification, seed validation, source plan, and host-role checks.
+- [`data/source-catalog.ts`](../data/source-catalog.ts) and [`scripts/seed-source-catalog.ts`](../scripts/seed-source-catalog.ts): reviewed seed data and the database import script.
 - [`backend/src/ai/meta.ts`](../backend/src/ai/meta.ts): configured research reasoning effort.
 - [`packages/core/src/ranking.ts`](../packages/core/src/ranking.ts): deterministic constraint evaluation, exclusions, and displayed ranking scores.
 - [`backend/src/shopping-service.ts`](../backend/src/shopping-service.ts): incremental persistence and ranking of streamed results.
