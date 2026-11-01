@@ -4,6 +4,20 @@ import { verifyPassword } from '../src/admin';
 
 const effortKeys = ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'] as const;
 
+describe('HTTP port binding configuration', () => {
+  it('uses the documented fallback when PORT is unset or empty', () => {
+    expect(settings({}).PORT).toBe(4000);
+    expect(settings({ PORT: '' }).PORT).toBe(4000);
+  });
+  it('honors Render PORT and explicit local overrides as numeric ports', () => {
+    expect(settings({ PORT: '10000' }).PORT).toBe(10000);
+    expect(settings({ PORT: '3001' }).PORT).toBe(3001);
+  });
+  it.each(['0', '-1', '65536', '4000.5', 'invalid'])('rejects invalid PORT %s', PORT => {
+    expect(() => settings({ PORT })).toThrow();
+  });
+});
+
 describe('administrator password configuration', () => {
   it('accepts multiple plaintext passwords, hashes them internally, and remains stable across restarts', async () => {
     const env = { BACKOFFICE_ADMINS: JSON.stringify([{ username: 'FirstAdmin', password: 'first-test-password' }, { username: 'SecondAdmin', password: 'second-test-password' }]) };

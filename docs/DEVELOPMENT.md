@@ -19,7 +19,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Open **http://localhost:5173**. Vite proxies the API to port 3001. The example database password is for local development only.
+Open **http://localhost:5173**. Vite proxies the API to `PORT` from the root `.env` or process environment, falling back to port 4000. The example database password is for local development only.
 
 ### Optional instant classifier
 
@@ -47,7 +47,7 @@ npm audit
 
 To include database integration tests, set `TEST_DATABASE_URL` to a **dedicated test PostgreSQL database**. CI does this automatically. Browser tests run the compiled full stack in explicit demo mode on desktop and 390/320 px mobile viewports. API/provider tests use controlled HTTP mocks, not paid calls.
 
-For a production-style local server, `npm run build && npm start` serves everything on port 3001 using `.env`.
+For a production-style local server, `npm run build && npm start` serves everything on `PORT` from `.env` or the process environment, falling back to port 4000.
 
 ## Deploy on Render
 

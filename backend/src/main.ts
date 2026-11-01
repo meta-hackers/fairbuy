@@ -14,6 +14,8 @@ if (store instanceof PostgresStore) await store.migrate();
 const ai = config.FAIRBUY_MODE === 'demo' ? new DemoAIProvider() : new LiveAIProvider(config);
 const service = new ShoppingService(store, ai, config.FAIRBUY_MODE, new UsageStore(store instanceof PostgresStore ? store.pool : undefined), config);
 const app = createApp(service, config);
+// config.PORT is the validated numeric equivalent of process.env.PORT || 4000.
+// Render requires binding the public HTTP server to all interfaces.
 const server = app.listen(config.PORT, '0.0.0.0', () => { console.info(`FairBuy listening on port ${config.PORT} (${config.FAIRBUY_MODE}).`); });
 const stopWorker = startWorker(service);
 let closing = false;

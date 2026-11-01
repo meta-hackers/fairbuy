@@ -88,7 +88,7 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `APP_ORIGIN` | Optional exact HTTPS public origin for a custom domain, with no trailing slash. Default uses Render’s `RENDER_EXTERNAL_URL`. |
 | `FAIRBUY_MODE` | `live`; use `demo` only for an explicitly labelled scripted preview. |
 | `NODE_ENV` | `production` on Render: Secure cookies and database requirement. |
-| `PORT` | Render-injected listen port; local default 3001. |
+| `PORT` | Render-injected listen port (normally `10000`); fallback `4000` when unset/empty. The server binds to `0.0.0.0`, as required by [Render port binding](https://render.com/docs/web-services#port-binding). |
 | `NODE_VERSION` | Tested/pinned in Blueprint and `.node-version`. |
 
 Reasoning effort settings accept `minimal`, `low`, `medium`, `high` or `xhigh`; `"max"` is not supported by the Contributor model. They replace the old shared `REASONING_EFFORT` variable, which is no longer used. Set the per-stage variables in your local `.env` or Render environment and restart/redeploy for changes to take effect.

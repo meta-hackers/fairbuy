@@ -2,7 +2,7 @@
 
 The standalone admin UI lives in `backoffice/`. The existing Express server serves
 it at `/backoffice/`, with a separate authenticated API at `/api/admin`. No separate
-frontend build or service is needed. In development, open the backend port (3001),
+frontend build or service is needed. In development, open the backend port (`PORT`, default 4000),
 not the shopping frontend's Vite port.
 
 See [deployment configuration](DEPLOYMENT.md#environment) for the Render environment

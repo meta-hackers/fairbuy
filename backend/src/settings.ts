@@ -16,7 +16,8 @@ const AdminsSchema = z.array(AdminSchema).max(100).refine(admins => new Set(admi
 const Schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   FAIRBUY_MODE: z.enum(['live', 'demo']).default('live'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+  // Render supplies PORT (normally 10000); match its documented local fallback.
+  PORT: z.preprocess(value => value || 4000, z.coerce.number().int().min(1).max(65535)),
   DATABASE_URL: z.string().default(''),
   MODEL_API_KEY: z.string().default(''),
   ASK_MODEL: z.string().default('muse-spark-1.3-contributor'),
