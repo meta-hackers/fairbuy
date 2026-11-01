@@ -70,6 +70,18 @@ The first research call targets **one useful candidate**, not the entire ideal s
 
 The default Meta research prompt receives this policy explicitly. In optional Brave mode, broader queries omit soft requirement labels and a soft budget while retaining core purpose, location/currency, and hard requirement labels. All extracted offers still go through the same grounding and deterministic eligibility checks.
 
+### Source hints
+
+Each round also computes a **source plan** from the brief's category and country. The plan suggests a small number of seller/marketplace domains plus specification, review and comparison references. It is guidance, not evidence and not an allowlist:
+
+- The broad query is unchanged, so an incomplete plan cannot narrow the search to nothing.
+- In Brave mode, a second targeted `site:` query runs in parallel when the vertical is known; a failed targeted query does not discard the broad result.
+- Specification, review and comparison domains (for example Open Icecat) may support attributes, but they are rejected as offer URLs and price sources by extraction and normalization.
+- The plan does not change ranking, hard checks or source-grounding rules.
+- The effective catalog combines the built-in list with admin overrides managed in the [backoffice](BACKOFFICE.md#discovery-source-catalog); changes apply to the next round.
+
+See [category-aware source hints](SOURCES.md).
+
 ## What time never changes
 
 - **Research reasoning effort:** `DISCOVERY_REASONING_EFFORT` remains configured throughout the round. Mechanical extraction remains at its separate, fixed `low` effort.
@@ -91,8 +103,9 @@ An unknown hard check is not a verified pass. Under the existing ranking policy,
 
 ## Implementation and tests
 
-- [`backend/src/ai/provider.ts`](../backend/src/ai/provider.ts): `discoveryPolicy`, `acceptableProductCount`, the bounded discovery loop, and Brave query construction.
-- [`backend/src/ai/prompts.ts`](../backend/src/ai/prompts.ts): research strategies, compact first-result instructions, and explicit trade-off disclosure.
+- [`backend/src/ai/provider.ts`](../backend/src/ai/provider.ts): `discoveryPolicy`, `acceptableProductCount`, the bounded discovery loop, Brave query construction, and non-seller source rejection.
+- [`backend/src/ai/prompts.ts`](../backend/src/ai/prompts.ts): research strategies, compact first-result instructions, source-plan usage, and explicit trade-off disclosure.
+- [`packages/core/src/sources.ts`](../packages/core/src/sources.ts): vertical classification, source catalog, source plan, and host-role checks.
 - [`backend/src/ai/meta.ts`](../backend/src/ai/meta.ts): configured research reasoning effort.
 - [`packages/core/src/ranking.ts`](../packages/core/src/ranking.ts): deterministic constraint evaluation, exclusions, and displayed ranking scores.
 - [`backend/src/shopping-service.ts`](../backend/src/shopping-service.ts): incremental persistence and ranking of streamed results.

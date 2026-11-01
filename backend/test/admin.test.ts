@@ -128,6 +128,57 @@ describe('backoffice session data', () => {
     await client.get(`/api/admin/sessions/${s.id}`).expect(404);
     expect(await service.usage.get(s.id)).toEqual([]);
   });
+  it('lists built-in sources and persists an override without losing the default', async () => {
+    const { app } = setup();
+    const client = request.agent(app); await login(client);
+    const initial = await client.get('/api/admin/sources').expect(200);
+    expect(initial.body.builtinCount).toBeGreaterThan(100);
+    expect(initial.body.roles).toContain('seller');
+    expect(initial.body.verticals).toContain('food_delivery');
+    expect(initial.body.entries.find((item: any) => item.entry.domain === 'ricardo.ch')).toMatchObject({ origin: 'default', hasDefault: true });
+
+    const entry = { domain: 'ricardo.ch', name: 'Ricardo (test)', roles: ['marketplace'], verticals: ['general'], countries: ['CH'], priority: 2, enabled: true };
+    await client.put('/api/admin/sources/ricardo.ch').set(write).send({ entry }).expect(200);
+    const modified = (await client.get('/api/admin/sources').expect(200)).body.entries.find((item: any) => item.entry.domain === 'ricardo.ch');
+    expect(modified).toMatchObject({ origin: 'modified', hasDefault: true, entry: { name: 'Ricardo (test)' } });
+    expect(modified.defaultEntry.name).toBe('Ricardo');
+
+    await client.delete('/api/admin/sources/ricardo.ch').set(write).expect(204);
+    const reset = (await client.get('/api/admin/sources').expect(200)).body.entries.find((item: any) => item.entry.domain === 'ricardo.ch');
+    expect(reset).toMatchObject({ origin: 'default', entry: { name: 'Ricardo' } });
+  });
+  it('adds custom sources, validates input and supports a confirmed reset', async () => {
+    const { app } = setup();
+    const client = request.agent(app); await login(client);
+    const entry = { domain: 'example-shop.ch', name: 'Example Shop', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3, enabled: true };
+    await client.put('/api/admin/sources/example-shop.ch').set(write).send({ entry }).expect(200);
+    let data = (await client.get('/api/admin/sources').expect(200)).body;
+    expect(data.entries.find((item: any) => item.entry.domain === 'example-shop.ch')).toMatchObject({ origin: 'custom', hasDefault: false });
+    await client.delete('/api/admin/sources/example-shop.ch').set(write).expect(204);
+    data = (await client.get('/api/admin/sources').expect(200)).body;
+    expect(data.entries.some((item: any) => item.entry.domain === 'example-shop.ch')).toBe(false);
+
+    await client.put('/api/admin/sources/example-shop.ch').set(write).send({ entry: { ...entry, roles: [] } }).expect(400);
+    await client.put('/api/admin/sources/example-shop.ch').set(write).send({ entry: { ...entry, domain: 'other.ch' } }).expect(400);
+    await client.put('/api/admin/sources/example-shop.ch').set(write).send({ entry: { ...entry, countries: ['ch'] } }).expect(400);
+
+    await client.put('/api/admin/sources/example-shop.ch').set(write).send({ entry }).expect(200);
+    await client.post('/api/admin/sources/reset').set(write).send({}).expect(400);
+    await client.post('/api/admin/sources/reset').set(write).send({ confirm: 'reset' }).expect(204);
+    data = (await client.get('/api/admin/sources').expect(200)).body;
+    expect(data.entries.some((item: any) => item.entry.domain === 'example-shop.ch')).toBe(false);
+    expect(data.entries.length).toBe(data.builtinCount);
+  });
+  it('requires admin authentication and request verification for catalog writes', async () => {
+    const { app } = setup();
+    const entry = { domain: 'ricardo.ch', name: 'Ricardo (test)', roles: ['marketplace'], verticals: ['general'], countries: ['CH'], priority: 2, enabled: true };
+    await request(app).get('/api/admin/sources').expect(401);
+    await request(app).put('/api/admin/sources/ricardo.ch').set(write).send({ entry }).expect(401);
+    const client = request.agent(app); await login(client);
+    await client.put('/api/admin/sources/ricardo.ch').send({ entry }).expect(403);
+    await client.delete('/api/admin/sources/ricardo.ch').expect(403);
+    await client.post('/api/admin/sources/reset').send({ confirm: 'reset' }).expect(403);
+  });
   it('serves a separate static UI with safe headers and no public session data', async () => {
     const { app } = setup();
     await request(app).get('/backoffice').expect(302).expect('Location', '/backoffice/');

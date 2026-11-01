@@ -4,6 +4,9 @@ let page = 1;
 let activeSession = null;
 let priceTable = {};
 let generation = 0;
+let sourceData = null;
+let sourceMeta = { roles: [], verticals: [], builtinCount: 0 };
+let editingSource = null;
 const number = value => value == null ? 'Unknown' : value.toLocaleString();
 const cost = value => value == null ? 'Unknown' : `~$${value.toFixed(5)}`;
 const date = value => value ? new Date(value).toLocaleString() : '—';
@@ -13,22 +16,34 @@ function node(tag, text, className) {
   if (className) element.className = className;
   return element;
 }
-function show(view) { for (const id of ['login', 'history', 'detail']) $(id).hidden = id !== view; }
+function show(view) {
+  for (const id of ['login', 'history', 'detail', 'sources']) $(id).hidden = id !== view;
+  $('admin-nav').hidden = view === 'login';
+  $('nav-sessions').classList.toggle('active', view === 'history' || view === 'detail');
+  $('nav-sources').classList.toggle('active', view === 'sources');
+}
 function notice(message) { $('notice').textContent = message; $('notice').hidden = !message; }
-async function api(path, body) {
-  const response = await fetch(`/api/admin${path}`, { credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Fairbuy-Request': '1' }, ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+async function api(path, body, method = body === undefined ? 'GET' : 'POST') {
+  const response = await fetch(`/api/admin${path}`, {
+    credentials: 'same-origin', cache: 'no-store', method,
+    headers: { 'Content-Type': 'application/json', 'X-Fairbuy-Request': '1' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
   if (response.status === 204) return;
   const data = await response.json();
   if (!response.ok) {
-    if (response.status === 401) {
-      generation++; activeSession = null; $('session-content').replaceChildren(); $('sessions').replaceChildren(); $('account').hidden = true; show('login');
-    }
+    if (response.status === 401) signedOut();
     throw new Error(data.error || 'Request failed.');
   }
   return data;
 }
 function guarded(action) { return async event => { event?.preventDefault(); notice(''); try { await action(event); } catch (error) { notice(error.message); } }; }
-function account(data) { $('username').textContent = data.username; $('account').hidden = false; priceTable = data.prices || {}; }
+function account(data) { $('username').textContent = data.username; $('account').hidden = false; $('admin-nav').hidden = false; priceTable = data.prices || {}; }
+function signedOut() {
+  generation++; activeSession = null; sourceData = null; editingSource = null; $('source-form').hidden = true;
+  $('session-content').replaceChildren(); $('sessions').replaceChildren(); $('source-rows').replaceChildren();
+  $('account').hidden = true; show('login');
+}
 $('login-form').addEventListener('submit', guarded(async event => {
   const button = event.target.querySelector('button'); button.disabled = true;
   try {
@@ -36,14 +51,14 @@ $('login-form').addEventListener('submit', guarded(async event => {
     await api('/login', values); event.target.reset(); account(await api('/me')); await load();
   } finally { button.disabled = false; }
 }));
-$('logout').addEventListener('click', guarded(async () => {
-  await api('/logout', {}); generation++; activeSession = null; $('session-content').replaceChildren(); $('sessions').replaceChildren(); $('account').hidden = true; show('login');
-}));
+$('logout').addEventListener('click', guarded(async () => { await api('/logout', {}); signedOut(); }));
 $('filters').addEventListener('submit', guarded(async () => { page = 1; await load(); }));
 $('refresh').addEventListener('click', guarded(load));
 $('previous').addEventListener('click', guarded(async () => { page--; await load(); }));
 $('next').addEventListener('click', guarded(async () => { page++; await load(); }));
 $('back').addEventListener('click', guarded(load));
+$('nav-sessions').addEventListener('click', guarded(load));
+$('nav-sources').addEventListener('click', guarded(loadSources));
 async function load() {
   const request = ++generation;
   const query = new URLSearchParams(new FormData($('filters'))); query.set('page', page);
@@ -66,6 +81,155 @@ async function load() {
   $('sessions').removeAttribute('aria-busy'); $('count').textContent = `${result.total} sessions · Page ${page}`;
   $('previous').disabled = page <= 1; $('next').disabled = page * result.pageSize >= result.total;
 }
+function fillSelect(id, values, allLabel, label = value => value) {
+  const select = $(id); const current = select.value;
+  const all = node('option', allLabel); all.value = '';
+  select.replaceChildren(all, ...values.map(value => {
+    const option = node('option', label(value)); option.value = value; return option;
+  }));
+  if (values.includes(current)) select.value = current;
+}
+function buildChecks(container, values, selected, name) {
+  container.replaceChildren(...values.map(value => {
+    const label = node('label'); const input = document.createElement('input');
+    input.type = 'checkbox'; input.name = name; input.value = value; input.checked = selected.includes(value);
+    label.append(input, document.createTextNode(value.replaceAll('_', ' ')));
+    return label;
+  }));
+}
+async function loadSources() {
+  const request = ++generation;
+  $('source-rows').setAttribute('aria-busy', 'true');
+  try {
+    const data = await api('/sources');
+    if (request !== generation) return;
+    sourceData = data.entries; sourceMeta = data;
+    fillSelect('source-vertical-filter', data.verticals, 'All verticals', value => value.replaceAll('_', ' '));
+    fillSelect('source-role-filter', data.roles, 'All roles');
+    const countries = [...new Set(sourceData.flatMap(item => item.entry.countries === 'global' ? [] : item.entry.countries))].sort();
+    fillSelect('source-country-filter', ['global', ...countries], 'All countries', value => value === 'global' ? 'Global only' : value);
+    renderSources(); show('sources');
+  } finally { $('source-rows').removeAttribute('aria-busy'); }
+}
+function renderSources() {
+  if (!sourceData) return;
+  const filters = Object.fromEntries(new FormData($('source-filters')));
+  const search = String(filters.search ?? '').trim().toLowerCase();
+  const rows = sourceData.filter(item => {
+    const entry = item.entry;
+    if (search && !`${entry.domain} ${entry.name}`.toLowerCase().includes(search)) return false;
+    if (filters.vertical && !entry.verticals.includes(filters.vertical)) return false;
+    if (filters.role && !entry.roles.includes(filters.role)) return false;
+    if (filters.country === 'global') { if (entry.countries !== 'global') return false; }
+    else if (filters.country && entry.countries !== 'global' && !entry.countries.includes(filters.country)) return false;
+    if (filters.state === 'active' && entry.enabled === false) return false;
+    if (filters.state === 'disabled' && entry.enabled !== false) return false;
+    if (filters.state === 'custom' && item.origin !== 'custom') return false;
+    if (filters.state === 'modified' && item.origin !== 'modified') return false;
+    if (filters.state === 'default' && item.origin !== 'default') return false;
+    return true;
+  });
+  $('source-rows').replaceChildren();
+  for (const item of rows) {
+    const entry = item.entry;
+    const row = node('tr');
+    const source = node('td');
+    const open = node('button', entry.name, 'link');
+    open.addEventListener('click', guarded(() => openSourceEditor(item)));
+    source.append(open, node('small', `${entry.domain} · ${item.origin}${entry.enabled === false ? ' · disabled' : ''}`));
+    const state = node('td');
+    state.append(node('span', entry.enabled === false ? 'Disabled' : 'Active', 'badge'));
+    const updated = node('td');
+    updated.append(node('span', item.updatedAt ? date(item.updatedAt) : '—'), node('small', item.updatedBy || 'Built-in default'));
+    const actions = node('td', null, 'row-actions');
+    const edit = node('button', 'Edit', 'secondary');
+    edit.addEventListener('click', guarded(() => openSourceEditor(item)));
+    actions.append(edit);
+    if (item.origin === 'modified' && item.hasDefault) {
+      const reset = node('button', 'Reset', 'secondary');
+      reset.addEventListener('click', guarded(() => resetSource(entry.domain)));
+      actions.append(reset);
+    }
+    if (item.origin === 'custom') {
+      const remove = node('button', 'Delete', 'secondary');
+      remove.addEventListener('click', guarded(() => deleteCustomSource(entry.domain)));
+      actions.append(remove);
+    }
+    row.append(
+      source, node('td', entry.roles.join(', ')), node('td', entry.verticals.map(value => value.replaceAll('_', ' ')).join(', ')),
+      node('td', entry.countries === 'global' ? 'Global' : entry.countries.join(', ')),
+      node('td', String(entry.priority)), state, updated, actions,
+    );
+    $('source-rows').append(row);
+  }
+  if (!rows.length) {
+    const row = node('tr'); const cell = node('td', 'No sources match these filters.', 'empty');
+    cell.colSpan = 8; row.append(cell); $('source-rows').append(row);
+  }
+  $('source-count').textContent = `${rows.length} of ${sourceData.length} sources · ${sourceMeta.builtinCount} built-in`;
+}
+function openSourceEditor(item = null) {
+  editingSource = item;
+  const form = $('source-form'); form.hidden = false; form.reset();
+  $('source-form-title').textContent = item ? `Edit ${item.entry.domain}` : 'Add source';
+  const entry = item?.entry ?? { domain: '', name: '', roles: [], verticals: [], countries: [], priority: 3, enabled: true };
+  form.elements.domain.value = entry.domain; form.elements.domain.readOnly = !!item;
+  form.elements.name.value = entry.name; form.elements.priority.value = String(entry.priority);
+  form.elements.countries.value = entry.countries === 'global' ? 'global' : entry.countries.join(', ');
+  form.elements.note.value = entry.note ?? ''; form.elements.enabled.checked = entry.enabled !== false;
+  buildChecks($('source-roles'), sourceMeta.roles, entry.roles, 'role');
+  buildChecks($('source-verticals'), sourceMeta.verticals, entry.verticals, 'vertical');
+  $('source-reset').hidden = !(item?.origin === 'modified' && item.hasDefault);
+  $('source-delete').hidden = item?.origin !== 'custom';
+  $('source-form-note').textContent = item
+    ? `${item.origin === 'default' ? 'Built-in entry.' : item.origin === 'modified' ? 'Overrides a built-in entry.' : 'Custom entry.'}${item.updatedAt ? ` Last changed ${date(item.updatedAt)} by ${item.updatedBy}.` : ''}${item.defaultEntry ? ` Default name: ${item.defaultEntry.name}.` : ''}`
+    : 'New custom entry. Choose roles and verticals explicitly; nothing is assumed.';
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function closeSourceEditor() { editingSource = null; $('source-form').hidden = true; }
+async function resetSource(domain) {
+  await api(`/sources/${encodeURIComponent(domain)}`, undefined, 'DELETE');
+  if (editingSource?.entry.domain === domain) closeSourceEditor();
+  await loadSources();
+}
+async function deleteCustomSource(domain) {
+  if (!window.confirm(`Delete ${domain} from the catalog? This removes the custom entry.`)) return;
+  await resetSource(domain);
+}
+$('sources-refresh').addEventListener('click', guarded(loadSources));
+$('sources-add').addEventListener('click', guarded(() => openSourceEditor(null)));
+$('source-cancel').addEventListener('click', () => closeSourceEditor());
+$('source-reset').addEventListener('click', guarded(async () => { if (editingSource) await resetSource(editingSource.entry.domain); }));
+$('source-delete').addEventListener('click', guarded(async () => { if (editingSource) await deleteCustomSource(editingSource.entry.domain); }));
+$('source-filters').addEventListener('submit', event => { event.preventDefault(); renderSources(); });
+$('source-form').addEventListener('submit', guarded(async event => {
+  event.preventDefault();
+  const form = event.target;
+  const values = Object.fromEntries(new FormData(form));
+  const domain = String(form.elements.domain.value).trim().toLowerCase();
+  const roles = [...form.querySelectorAll('input[name="role"]:checked')].map(input => input.value);
+  const verticals = [...form.querySelectorAll('input[name="vertical"]:checked')].map(input => input.value);
+  const rawCountries = String(values.countries ?? '').trim();
+  const countries = rawCountries.toLowerCase() === 'global' ? 'global'
+    : rawCountries.split(',').map(value => value.trim().toUpperCase()).filter(Boolean);
+  if (!domain) throw new Error('Enter a domain.');
+  if (!roles.length) throw new Error('Choose at least one role.');
+  if (!verticals.length) throw new Error('Choose at least one vertical.');
+  if (!countries.length) throw new Error('Enter at least one country code or global.');
+  const entry = {
+    domain, name: String(values.name).trim(), roles, verticals, countries,
+    priority: Number(values.priority), note: String(values.note ?? '').trim() || undefined,
+    enabled: form.elements.enabled.checked,
+  };
+  await api(`/sources/${encodeURIComponent(domain)}`, { entry }, 'PUT');
+  closeSourceEditor(); await loadSources();
+}));
+$('sources-reset-all').addEventListener('click', guarded(async () => {
+  const confirmation = window.prompt('Type reset to remove every catalog override and restore built-in defaults.');
+  if (confirmation !== 'reset') { if (confirmation !== null) notice('Confirmation did not match. Nothing was reset.'); return; }
+  await api('/sources/reset', { confirm: 'reset' });
+  closeSourceEditor(); await loadSources();
+}));
 function jsonDisclosure(title, data) { const details = node('details'); details.append(node('summary', title), node('pre', JSON.stringify(data, null, 2))); return details; }
 function section(title) { const section = node('section', null, 'panel'); section.append(node('h2', title)); return section; }
 function metric(label, value) { const card = node('div', null, 'metric'); card.append(node('small', label), node('strong', value)); return card; }

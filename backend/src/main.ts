@@ -2,6 +2,7 @@ import { settings } from './settings';
 import { MemoryStore, PostgresStore } from './store';
 import { DemoAIProvider } from './ai/demo';
 import { LiveAIProvider } from './ai/provider';
+import { SourceCatalogService } from './source-catalog';
 import { ShoppingService } from './shopping-service';
 import { createApp } from './app';
 import { startWorker } from './worker';
@@ -14,7 +15,8 @@ const store = config.DATABASE_URL ? new PostgresStore(config.DATABASE_URL) : new
 // Readiness gate: /healthz (liveness) passes as soon as we listen; /health
 // (readiness) passes only after migrations succeed.
 let ready = !(store instanceof PostgresStore);
-const ai = config.FAIRBUY_MODE === 'demo' ? new DemoAIProvider() : new LiveAIProvider(config);
+const ai = config.FAIRBUY_MODE === 'demo' ? new DemoAIProvider()
+  : new LiveAIProvider(config, fetch, undefined, new SourceCatalogService(store));
 const service = new ShoppingService(store, ai, config.FAIRBUY_MODE, new UsageStore(store instanceof PostgresStore ? store.pool : undefined), config);
 const app = createApp(service, config, undefined, undefined, () => ready);
 // config.PORT is the validated numeric equivalent of process.env.PORT || 4000.

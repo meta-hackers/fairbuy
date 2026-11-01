@@ -47,3 +47,55 @@ test('admin can inspect immutable history, confirm maintenance deletion and sign
   expect((await page.request.get('/api/admin/sessions')).status()).toBe(401);
   expect(errors).toEqual([]);
 });
+
+test('admin can view, filter, edit, add and reset source catalog entries', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/backoffice/');
+  await page.getByLabel('Username', { exact: true }).fill('TestAdmin');
+  await page.getByLabel('Password', { exact: true }).fill('e2e-only-password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Sources', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Source catalog' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const rows = page.locator('#source-rows');
+  await expect(rows).toContainText('ricardo.ch');
+  await expect(rows).toContainText('openicecat.com');
+
+  await page.locator('#source-filters').getByLabel('Find source', { exact: true }).fill('openicecat');
+  await page.locator('#source-filters').getByRole('button', { name: 'Apply', exact: true }).click();
+  await expect(page.locator('#source-rows tr')).toHaveCount(1);
+  await expect(rows).toContainText('spec');
+  await page.locator('#source-filters').getByLabel('Find source', { exact: true }).fill('');
+  await page.locator('#source-filters').getByRole('button', { name: 'Apply', exact: true }).click();
+
+  const ricardo = page.locator('#source-rows tr', { hasText: 'ricardo.ch' });
+  await ricardo.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.locator('#source-form')).toBeVisible();
+  await page.locator('#source-form input[name="name"]').fill('Ricardo Test');
+  await page.locator('#source-form input[name="enabled"]').uncheck();
+  await page.getByRole('button', { name: 'Save source', exact: true }).click();
+  await expect(page.locator('#source-rows tr', { hasText: 'ricardo.ch' })).toContainText('Ricardo Test');
+  await expect(page.locator('#source-rows tr', { hasText: 'ricardo.ch' })).toContainText('Disabled');
+
+  await page.getByRole('button', { name: 'Add source', exact: true }).click();
+  await page.locator('#source-form input[name="domain"]').fill('example-shop.ch');
+  await page.locator('#source-form input[name="name"]').fill('Example Shop');
+  await page.locator('#source-roles input[value="seller"]').check();
+  await page.locator('#source-verticals input[value="computers"]').check();
+  await page.locator('#source-form input[name="countries"]').fill('CH');
+  await page.getByRole('button', { name: 'Save source', exact: true }).click();
+  await expect(page.locator('#source-rows tr', { hasText: 'example-shop.ch' })).toContainText('custom');
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#source-rows tr', { hasText: 'example-shop.ch' }).getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.locator('#source-rows')).not.toContainText('example-shop.ch');
+
+  page.once('dialog', dialog => dialog.accept('reset'));
+  await page.getByRole('button', { name: 'Reset all overrides', exact: true }).click();
+  await expect(page.locator('#source-rows tr', { hasText: 'ricardo.ch' })).toContainText('Ricardo');
+  await expect(page.locator('#source-rows tr', { hasText: 'ricardo.ch' })).toContainText('default');
+
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  expect(errors).toEqual([]);
+});

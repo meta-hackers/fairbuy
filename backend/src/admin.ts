@@ -3,9 +3,11 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
+import { DEFAULT_SOURCE_CATALOG, SOURCE_ROLES, SOURCE_VERTICALS, SourceEntrySchema } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { PostgresStore } from './store';
+import { SourceCatalogService } from './source-catalog';
 import { AppError } from './errors';
 import { logger } from './logger';
 
@@ -25,6 +27,7 @@ interface LoginSession { username: string; credential_hash: string; expires_at: 
 export function adminRouter(service: ShoppingService, config: Settings) {
   const router = Router();
   const pool = service.store instanceof PostgresStore ? service.store.pool : null;
+  const catalog = new SourceCatalogService(service.store);
   const sessions = new Map<string, LoginSession>();
   const cookieOptions = { httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'strict' as const, path: '/api/admin' };
   router.use((_req, _res, next) => {
@@ -89,6 +92,27 @@ export function adminRouter(service: ShoppingService, config: Settings) {
     await service.store.purge(id);
     service.usage.purgeMemory(id);
     logger.warn('maintenance.session.purge.completed', { sessionId: id, admin: res.locals.admin });
+    res.status(204).end();
+  });
+  router.get('/sources', async (_req, res) => {
+    res.json({
+      entries: await catalog.views(), roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
+      builtinCount: DEFAULT_SOURCE_CATALOG.length,
+    });
+  });
+  router.put('/sources/:domain', async (req, res) => {
+    const domain = z.string().trim().min(3).max(253).parse(req.params.domain).toLowerCase();
+    const { entry } = z.object({ entry: SourceEntrySchema }).strict().parse(req.body);
+    res.json({ entry: await catalog.save(domain, entry, res.locals.admin) });
+  });
+  router.delete('/sources/:domain', async (req, res) => {
+    const domain = z.string().trim().min(3).max(253).parse(req.params.domain).toLowerCase();
+    await catalog.remove(domain, res.locals.admin);
+    res.status(204).end();
+  });
+  router.post('/sources/reset', async (req, res) => {
+    z.object({ confirm: z.literal('reset') }).strict().parse(req.body);
+    await catalog.resetAll(res.locals.admin);
     res.status(204).end();
   });
   router.use((_req, _res, next) => next(new AppError(404, 'Admin endpoint not found.')));

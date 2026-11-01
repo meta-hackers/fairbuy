@@ -53,6 +53,41 @@ hours, use opaque random HttpOnly, SameSite=Strict cookies (Secure in production
 and are stored hashed in PostgreSQL. Sign-out revokes the current session. Login
 is rate limited. Admin writes use the existing same-origin/header CSRF protection.
 
+## Discovery source catalog
+
+The **Sources** tab in the backoffice lists the category- and country-aware
+discovery hints described in [source hints](SOURCES.md). Each entry has a
+domain, display name, roles (`seller`, `marketplace`, `spec`, `review`,
+`comparison`), verticals, country coverage or `global`, priority (1-3), an
+optional note and an enabled flag.
+
+The effective catalog is the built-in list in
+`packages/core/src/sources.ts` plus persisted overrides in the
+`source_catalog_overrides` PostgreSQL table. Saving an edit stores a full
+override for that domain; resetting removes the override and restores the
+built-in entry. Custom domains can be added and deleted. Disabling an entry
+keeps it in the catalog for role enforcement: a disabled specification source
+is still never accepted as an offer URL.
+
+Changes apply to the next discovery round; an in-flight round keeps the plan it
+started with. The admin API is:
+
+- `GET /api/admin/sources`: effective entries, their `default`/`modified`/`custom`
+  origin, the optional built-in `defaultEntry`, roles and verticals.
+- `PUT /api/admin/sources/:domain`: JSON `{ "entry": { ... } }`. Creates a custom
+  entry or replaces the built-in entry. The path domain and `entry.domain` must
+  match.
+- `DELETE /api/admin/sources/:domain`: removes the override. A built-in entry
+  reverts to its default; a custom entry disappears.
+- `POST /api/admin/sources/reset`: JSON `{ "confirm": "reset" }`; removes every
+  override and restores the built-in catalog.
+
+Catalog writes use the same admin session, same-origin/header CSRF protection
+and request logging as other admin actions. `updated_at` and `updated_by` are
+shown in the UI; the server also logs the admin and domain on each change.
+Catalog hints are not evidence: the discovery grounding and non-seller
+validation described in [source hints](SOURCES.md) still apply.
+
 ## Data and retention
 
 Sessions can be searched by category, session ID, or anonymous browser-owner hash
@@ -85,6 +120,7 @@ Admin API additions:
 
 - `GET /api/admin/sessions/:sessionId/history`: ordered immutable revisions and snapshots.
 - `POST /api/admin/sessions/:sessionId/purge`: JSON `{ "confirmSessionId": "<same UUID>" }`; returns `204`.
+- `GET /api/admin/sources` and the source catalog write routes described above.
 - `GET /api/admin/me`: `retentionDays: null` indicates no automatic expiry.
 
 ## Token accounting and approximate costs
