@@ -89,7 +89,7 @@ sequenceDiagram
                 Note over Backend: Validate schema, source URLs and literal evidence
                 Backend->>Database: Persist grounded products and sources
             end
-            Note over Backend: Apply hard constraints and deterministic ranking; seek four eligible models
+            Note over Backend: Apply hard constraints and deterministic ranking, seeking four eligible models
         end
         Backend->>Database: Mark round complete and finish job
         Note over Backend,Database: On failure, mark failed and retain already-persisted products
@@ -119,7 +119,7 @@ sequenceDiagram
             Frontend->>Backend: DELETE /api/sessions/:id/learn/:feedbackId
             Backend->>Database: Remove only that entry and queue a fresh round
             Backend-->>Frontend: 202 Accepted with queued session
-            Note over Frontend,Database: Repeat discovery; preserve unrelated edits and feedback
+            Note over Frontend,Database: Repeat discovery while preserving unrelated edits and feedback
         end
     end
 
@@ -129,7 +129,7 @@ sequenceDiagram
     Backend-->>Frontend: Buy-stage session with seller offers
     Frontend-->>User: Show source-backed seller links
     User->>Frontend: Open a seller source page
-    Note over User,Frontend: Browser navigation only; no automatic checkout or payment
+    Note over User,Frontend: Browser navigation only, no automatic checkout or payment
 ```
 
 This diagram shows the default Meta hosted-search path. Optional Brave search replaces hosted web search with bounded snippet-based research. Explicit demo mode uses scripted responses and synthetic products, not live Meta or Cloudflare calls. Frontend API requests are same-origin; provider credentials remain on the backend.
