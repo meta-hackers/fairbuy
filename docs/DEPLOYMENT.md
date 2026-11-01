@@ -73,7 +73,9 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `ASK_MODEL` | `muse-spark-1.3-contributor`; question-asking and structured brief. |
 | `CONFIGURE_MODEL` | `muse-spark-1.3-contributor`; Configure and Learn interpretation calls. |
 | `DISCOVERY_MODEL` | `muse-spark-1.3-contributor`; discovery research and evidence extraction. |
-| `REASONING_EFFORT` | `medium`; `minimal`–`xhigh` are valid. `"max"` is not supported by the Contributor model. |
+| `ASK_REASONING_EFFORT` | `low`; Ask conversation and structured brief. |
+| `CONFIGURE_REASONING_EFFORT` | `low`; Configure and Learn interpretation calls. |
+| `DISCOVERY_REASONING_EFFORT` | `xhigh`; Meta discovery research. Mechanical evidence extraction stays at `low`, including with Brave search. |
 | `SEARCH_PROVIDER` | `meta` (default; no extra search key needed) or `brave`. |
 | `BRAVE_API_KEY` | Optional secret only for `SEARCH_PROVIDER=brave`; the Meta key is still required for interpretation/extraction. |
 | `APP_ACCESS_TOKEN` | Fixed app password set in Render (`sync: false` in the Blueprint). Local empty value disables gate; not recommended for a public deployment. |
@@ -82,6 +84,8 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `NODE_ENV` | `production` on Render: Secure cookies and database requirement. |
 | `PORT` | Render-injected listen port; local default 3001. |
 | `NODE_VERSION` | Tested/pinned in Blueprint and `.node-version`. |
+
+Reasoning effort settings accept `minimal`, `low`, `medium`, `high` or `xhigh`; `"max"` is not supported by the Contributor model. They replace the old shared `REASONING_EFFORT` variable, which is no longer used. Set the per-stage variables in your local `.env` or Render environment and restart/redeploy for changes to take effect.
 
 Use model IDs your account actually supports. Defaults are configurable, not an assurance of account access. Provider errors are intentionally redacted; check model names, credits and provider dashboards. Never put secrets in `VITE_*`, frontend source, URLs or Git.
 

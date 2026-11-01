@@ -82,10 +82,13 @@ export class LiveAIProvider implements AIProvider {
     return this.client.structured(
       phase === 'ask' ? this.config.ASK_MODEL : this.config.CONFIGURE_MODEL,
       phase === 'ask' ? ASK_PROMPT : CONFIGURE_PROMPT, { phase, currentConfig: config, conversation: messages }, ConversationResultSchema,
+      { reasoning: { effort: phase === 'ask' ? this.config.ASK_REASONING_EFFORT : this.config.CONFIGURE_REASONING_EFFORT } },
     );
   }
   async learn(context: DiscoveryContext, reason: string, product: Product | null) {
-    return this.client.structured(this.config.CONFIGURE_MODEL, LEARN_PROMPT, { context, feedback: reason, product }, LearnedResultSchema);
+    return this.client.structured(this.config.CONFIGURE_MODEL, LEARN_PROMPT, { context, feedback: reason, product }, LearnedResultSchema, {
+      reasoning: { effort: this.config.CONFIGURE_REASONING_EFFORT },
+    });
   }
   async discover(context: DiscoveryContext) {
     const input = { ...context, effectiveConfig: effectiveConfig(context) };

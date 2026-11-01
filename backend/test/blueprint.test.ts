@@ -35,6 +35,14 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
     }
   });
 
+  it('configures independent reasoning effort defaults for each stage', () => {
+    expect(service.envVars.filter((env: { key: string }) => env.key.endsWith('REASONING_EFFORT'))).toEqual([
+      { key: 'ASK_REASONING_EFFORT', value: 'low' },
+      { key: 'CONFIGURE_REASONING_EFFORT', value: 'low' },
+      { key: 'DISCOVERY_REASONING_EFFORT', value: 'xhigh' },
+    ]);
+  });
+
   it('bundles the public Supabase trust root for verified TLS connections', () => {
     const certificate = new X509Certificate(readFileSync(new URL('../../certs/supabase-ca.crt', import.meta.url)));
     expect(certificate.ca).toBe(true);
