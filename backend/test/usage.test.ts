@@ -33,7 +33,7 @@ describe('usage accounting', () => {
   });
   it('reads terminal provider usage, including incomplete responses, and does not duplicate calls', async () => {
     const store = new UsageStore();
-    const config = settings({ MODEL_API_KEY: 'test-only' });
+    const config = settings({ MODEL_API_KEY: 'test-only', SEARCH_PROVIDER: 'meta' });
     const payload = { status: 'completed', usage: { input_tokens: 40, output_tokens: 10 }, output: [{ type: 'message', content: [{ type: 'output_text', text: 'ok' }] }] };
     const response = (data: unknown, type = 'response.completed') => new Response(`data: ${JSON.stringify({ type, response: data })}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(response(payload)).mockResolvedValueOnce(response({ ...payload, status: 'incomplete' }, 'response.incomplete')).mockRejectedValueOnce(new Error('timeout'));
