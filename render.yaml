@@ -37,7 +37,7 @@ projects:
               - key: INSTANT_CLASSIFIER_PROVIDER
                 value: cloudflare
               - key: INSTANT_CLASSIFIER_MODEL
-                value: '@cf/meta/llama-3.2-3b-instruct'
+                value: '@cf/meta/llama-3.2-1b-instruct'
               - key: CLOUDFLARE_ACCOUNT_ID
                 sync: false
               - key: CLOUDFLARE_API_TOKEN

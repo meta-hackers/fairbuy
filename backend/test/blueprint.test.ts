@@ -37,7 +37,7 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
 
   it('uses a separate non-reasoning Meta model for the optional instant classifier', () => {
     expect(service.envVars).toContainEqual({ key: 'INSTANT_CLASSIFIER_PROVIDER', value: 'cloudflare' });
-    expect(service.envVars).toContainEqual({ key: 'INSTANT_CLASSIFIER_MODEL', value: '@cf/meta/llama-3.2-3b-instruct' });
+    expect(service.envVars).toContainEqual({ key: 'INSTANT_CLASSIFIER_MODEL', value: '@cf/meta/llama-3.2-1b-instruct' });
   });
 
   it('configures independent reasoning effort defaults for each stage', () => {

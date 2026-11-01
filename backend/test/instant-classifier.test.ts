@@ -17,7 +17,7 @@ describe('Cloudflare instant classifier', () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response());
     expect(await new InstantClassifier(config(), fetcher).classify('owner', 'A laptop')).toEqual(hint);
     const [url, init] = fetcher.mock.calls[0];
-    expect(url).toBe(`https://api.cloudflare.com/client/v4/accounts/${'a'.repeat(32)}/ai/run/@cf/meta/llama-3.2-3b-instruct`);
+    expect(url).toBe(`https://api.cloudflare.com/client/v4/accounts/${'a'.repeat(32)}/ai/run/@cf/meta/llama-3.2-1b-instruct`);
     const body = JSON.parse(init!.body as string);
     expect(body).toMatchObject({ temperature: 0, max_tokens: 600, response_format: { type: 'json_schema' } });
     expect(body.messages.at(-1)).toEqual({ role: 'user', content: 'A laptop' });

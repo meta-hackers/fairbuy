@@ -38,7 +38,7 @@ Open **http://localhost:5173**. Vite proxies the API to port 3001. The example d
 
 ### Optional instant classifier
 
-Add `INSTANT_CLASSIFIER_PROVIDER=cloudflare`, `CLOUDFLARE_ACCOUNT_ID` and a restricted `CLOUDFLARE_API_TOKEN` (Workers AI Read + Edit for that account) to the server's `.env` or Render environment. The default model is `@cf/meta/llama-3.2-3b-instruct`; `INSTANT_CLASSIFIER_MODEL` can select the supported 1B or 8B-fast alternative. No Cloudflare Worker, DNS change or browser key is needed. Keep the Free plan if you want requests to stop at its daily allowance rather than charge overages.
+Add `INSTANT_CLASSIFIER_PROVIDER=cloudflare`, `CLOUDFLARE_ACCOUNT_ID` and a restricted `CLOUDFLARE_API_TOKEN` (Workers AI Read + Edit for that account) to the server's `.env` or Render environment. The default model is `@cf/meta/llama-3.2-1b-instruct`; `INSTANT_CLASSIFIER_MODEL` can select the supported 3B or 8B-fast alternative. No Cloudflare Worker, DNS change or browser key is needed. Keep the Free plan if you want requests to stop at its daily allowance rather than charge overages. See [model choices](CONFIGURATION.md).
 
 The UI discloses that unsent drafts go to Cloudflare. Requests are debounced, cancelled when superseded, time-limited and separately rate-limited; failed previews never block Send. Hints require exact input evidence and are not confirmed facts or a replacement for the main AI. There is no live classifier or simulated fallback in scripted demo mode. See [deployment configuration](docs/DEPLOYMENT.md#optional-cloudflare-instant-classifier).
 
