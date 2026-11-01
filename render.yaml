@@ -16,7 +16,11 @@ projects:
             region: virginia
             plan: free
             numInstances: 1
-            buildCommand: npm ci && npm run build && npm prune --omit=dev
+            # Render injects NODE_ENV=production into the build too, and `npm ci`
+            # then omits devDependencies. TypeScript, Vite and the React type
+            # packages are build-only, so they must be installed explicitly;
+            # prune them again afterwards to keep the runtime image small.
+            buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
             # Free services do not support preDeployCommand; the app listens first,
             # then migrates with retry. /healthz is liveness, /health is readiness.
             # Never set PORT manually: Render injects it (normally 10000).

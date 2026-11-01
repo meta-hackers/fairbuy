@@ -29,6 +29,10 @@ test('requests location on arrival, seeds Ask and preserves edited locations acr
   await expect(page.getByLabel('Budget ceiling')).toHaveValue('800');
   await page.getByRole('combobox', { name: 'Currency', exact: true }).selectOption('USD');
   await page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Ask/ }).click();
+  // Navigate() persists the stage with an async PATCH and only then renders the
+  // Ask view, so waiting for the composer guarantees the stored stage is 'ask'.
+  // Reloading straight after the click races that request and restores Configure.
+  await expect(page.getByRole('textbox', { name: 'Your message' })).toBeVisible();
   await page.reload();
   await expect(location).toContainText('Shopping in London, United Kingdom · USD');
   await page.getByRole('button', { name: 'Continue to Configure' }).click();

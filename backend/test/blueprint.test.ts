@@ -29,6 +29,15 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
       .toEqual([{ key: 'DATABASE_URL', sync: false }]);
   });
 
+  it('installs build-only dev dependencies despite NODE_ENV=production', () => {
+    // Render passes service env vars to the build, and `npm ci` omits
+    // devDependencies when NODE_ENV=production. TypeScript, Vite and the React
+    // type packages are build-only, so the install must opt back in.
+    expect(service.envVars).toContainEqual({ key: 'NODE_ENV', value: 'production' });
+    expect(service.buildCommand).toContain('npm ci --include=dev');
+    expect(service.buildCommand).toContain('npm prune --omit=dev');
+  });
+
   it('leaves provider credentials and the app password out of source control', () => {
     for (const key of ['MODEL_API_KEY', 'APP_ACCESS_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN']) {
       expect(service.envVars.filter((env: { key: string }) => env.key === key))
