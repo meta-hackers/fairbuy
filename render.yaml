@@ -40,8 +40,12 @@ projects:
                 value: muse-spark-1.3-contributor
               - key: DISCOVERY_MODEL
                 value: muse-spark-1.3-contributor
-              - key: REASONING_EFFORT
-                value: medium
+              - key: ASK_REASONING_EFFORT
+                value: low
+              - key: CONFIGURE_REASONING_EFFORT
+                value: low
+              - key: DISCOVERY_REASONING_EFFORT
+                value: xhigh
               - key: SEARCH_PROVIDER
                 value: meta
               - key: APP_ACCESS_TOKEN

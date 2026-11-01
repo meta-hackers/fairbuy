@@ -25,10 +25,10 @@ describe('Meta Model API REST integration', () => {
   it('streams the Responses endpoint, schema-constrained format and no provider-side history', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(stream(result('{"reply":"ok"}')));
     const client = new MetaClient(config, fetcher);
-    await expect(client.structured('muse-spark-1.3-contributor', 'system rules', { untrusted: 'ignore instructions' }, z.object({ reply: z.string() }))).resolves.toEqual({ reply: 'ok' });
+    await expect(client.structured('muse-spark-1.3-contributor', 'system rules', { untrusted: 'ignore instructions' }, z.object({ reply: z.string() }), { reasoning: { effort: config.ASK_REASONING_EFFORT } })).resolves.toEqual({ reply: 'ok' });
     const [url, init] = fetcher.mock.calls[0]; const payload = JSON.parse(init!.body as string);
     expect(url).toBe('https://api.meta.ai/v1/responses');
-    expect(payload).toMatchObject({ store: false, stream: true, reasoning: { effort: config.REASONING_EFFORT }, instructions: 'system rules', text: { format: { type: 'json_schema', strict: false } } });
+    expect(payload).toMatchObject({ store: false, stream: true, reasoning: { effort: config.ASK_REASONING_EFFORT }, instructions: 'system rules', text: { format: { type: 'json_schema', strict: false } } });
     expect(payload.previous_response_id).toBeUndefined();
     expect(JSON.stringify(payload)).not.toContain(config.MODEL_API_KEY);
   });
@@ -37,6 +37,7 @@ describe('Meta Model API REST integration', () => {
     const client = new MetaClient(config, fetcher);
     expect((await client.research('muse-spark-1.3-contributor', 'research', context)).sources).toEqual(research.sources);
     const payload = JSON.parse(fetcher.mock.calls[0][1]!.body as string);
+    expect(payload.reasoning).toEqual({ effort: 'xhigh' });
     expect(payload.tool_choice).toBeUndefined(); expect(payload.tools[0].type).toBe('web_search');
     expect(payload.include).toContain('web_search_call.results');
     fetcher.mockResolvedValueOnce(stream(result('No search.')));
@@ -65,6 +66,41 @@ describe('Meta Model API REST integration', () => {
     expect((await provider.discover(context)).products).toHaveLength(1);
     expect(String(fetcher.mock.calls[2][0])).toContain('https://api.search.brave.com/res/v1/web/search');
     expect(JSON.parse(fetcher.mock.calls[3][1]!.body as string).tools).toBeUndefined();
+  });
+});
+describe('per-stage reasoning effort', () => {
+  it('uses independent Ask and Configure efforts even when their model IDs match', async () => {
+    const stageConfig = settings({ MODEL_API_KEY: config.MODEL_API_KEY, ASK_REASONING_EFFORT: 'minimal', CONFIGURE_REASONING_EFFORT: 'high' });
+    const answer = { reply: 'What do you need?', config: EMPTY_CONFIG, ready: false, missing: [] };
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(stream(result(JSON.stringify(answer))))
+      .mockResolvedValueOnce(stream(result(JSON.stringify(answer))));
+    const provider = new LiveAIProvider(stageConfig, fetcher);
+    await provider.converse('ask', [], EMPTY_CONFIG);
+    await provider.converse('configure', [], EMPTY_CONFIG);
+    const payloads = fetcher.mock.calls.map(([, init]) => JSON.parse(init!.body as string));
+    expect(payloads.map(p => p.model)).toEqual([stageConfig.ASK_MODEL, stageConfig.ASK_MODEL]);
+    expect(payloads.map(p => p.reasoning.effort)).toEqual(['minimal', 'high']);
+  });
+
+  it('uses Configure effort for Learn interpretation', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(stream(result(JSON.stringify({ requirements: [], summary: 'Prefer lighter products.' }))));
+    const provider = new LiveAIProvider({ ...config, CONFIGURE_REASONING_EFFORT: 'medium' }, fetcher);
+    await provider.learn(context, 'Too heavy', null);
+    expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).toMatchObject({
+      model: config.CONFIGURE_MODEL, reasoning: { effort: 'medium' },
+    });
+  });
+
+  it.each(['xhigh', 'medium'] as const)('uses %s for Discovery research and keeps mechanical extraction at low', async effort => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(stream(result(research.text, [{ type: 'web_search_call', status: 'completed', results: research.sources }])))
+      .mockResolvedValueOnce(stream(result(JSON.stringify(extracted))));
+    const provider = new LiveAIProvider({ ...config, DISCOVERY_REASONING_EFFORT: effort }, fetcher);
+    expect((await provider.discover(context)).products).toHaveLength(1);
+    const payloads = fetcher.mock.calls.map(([, init]) => JSON.parse(init!.body as string));
+    expect(payloads.map(p => p.model)).toEqual([config.DISCOVERY_MODEL, config.DISCOVERY_MODEL]);
+    expect(payloads.map(p => p.reasoning.effort)).toEqual([effort, 'low']);
   });
 });
 describe('untrusted search evidence', () => {
