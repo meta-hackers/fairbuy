@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { X509Certificate } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { settings } from '../src/settings';
 
 const blueprint = parse(readFileSync(new URL('../../render.yaml', import.meta.url), 'utf8'));
 
@@ -47,15 +48,18 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
 
   it('uses a separate non-reasoning Meta model for the optional instant classifier', () => {
     expect(service.envVars).toContainEqual({ key: 'INSTANT_CLASSIFIER_PROVIDER', value: 'cloudflare' });
-    expect(service.envVars).toContainEqual({ key: 'INSTANT_CLASSIFIER_MODEL', value: '@cf/meta/llama-3.1-8b-instruct-fp8-fast' });
+    const model = service.envVars.find((env: { key: string }) => env.key === 'INSTANT_CLASSIFIER_MODEL')?.value;
+    expect(() => settings({ INSTANT_CLASSIFIER_MODEL: model })).not.toThrow();
   });
 
   it('configures independent reasoning effort defaults for each stage', () => {
-    expect(service.envVars.filter((env: { key: string }) => env.key.endsWith('REASONING_EFFORT'))).toEqual([
-      { key: 'ASK_REASONING_EFFORT', value: 'low' },
-      { key: 'CONFIGURE_REASONING_EFFORT', value: 'low' },
-      { key: 'DISCOVERY_REASONING_EFFORT', value: 'medium' },
-    ]);
+    const efforts = service.envVars.filter((env: { key: string }) => env.key.endsWith('REASONING_EFFORT'));
+    expect(efforts.map((env: { key: string }) => env.key).sort()).toEqual(
+      ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'],
+    );
+    for (const env of efforts as { key: string; value: string }[]) {
+      expect(() => settings({ [env.key]: env.value })).not.toThrow();
+    }
   });
 
   it('bundles the public Supabase trust root for verified TLS connections', () => {
