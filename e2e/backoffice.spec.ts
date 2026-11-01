@@ -1,0 +1,30 @@
+import { expect, test } from '@playwright/test';
+
+test('admin can inspect a historical session and sign out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const created = await page.request.post('/api/sessions', { headers: { 'X-Fairbuy-Request': '1' } });
+  expect(created.status()).toBe(201);
+  const session = await created.json();
+  await page.request.post(`/api/sessions/${session.id}/ask`, { headers: { 'X-Fairbuy-Request': '1' }, data: { message: 'Laptop for coding in Italy, budget €700' } });
+  await page.goto('/backoffice/');
+  await page.getByLabel('Username', { exact: true }).fill('TestAdmin');
+  await page.getByLabel('Password', { exact: true }).fill('e2e-only-password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Session history' })).toBeVisible();
+  await page.getByLabel('Search', { exact: true }).fill(session.id);
+  await page.getByRole('button', { name: 'Apply', exact: true }).click();
+  await expect(page.locator('#sessions tr')).toHaveCount(1);
+  await page.locator('#sessions button').click();
+  await expect(page.getByRole('heading', { name: 'Usage by phase' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ask conversation' })).toBeVisible();
+  await expect(page.locator('.message.user')).toContainText('Laptop for coding');
+  await expect(page.locator('#detail').getByText('Unknown', { exact: true }).first()).toBeVisible();
+  await page.getByText('Complete stored session and usage data', { exact: true }).click();
+  await expect(page.locator('details').last().locator('pre')).toContainText(session.id);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+  expect((await page.request.get('/api/admin/sessions')).status()).toBe(401);
+  expect(errors).toEqual([]);
+});

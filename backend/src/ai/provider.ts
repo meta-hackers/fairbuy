@@ -9,6 +9,7 @@ import { MetaClient, type Research } from './meta';
 import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, type Extraction } from './schemas';
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT } from './prompts';
 import { streamObjectArray } from './json-stream';
+import { recordUsage } from '../usage';
 
 export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
@@ -189,6 +190,15 @@ export class LiveAIProvider implements AIProvider {
     return result;
   }
   private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, policy: ReturnType<typeof discoveryPolicy>): Promise<Research> {
+    const started = Date.now();
+    let status = 'failed';
+    try {
+      const result = await this.braveResearchRequest(context, alreadyFound, pass, policy);
+      status = 'completed';
+      return result;
+    } finally { recordUsage('brave', 'web-search', 'search', status, Date.now() - started); }
+  }
+  private async braveResearchRequest(context: DiscoveryContext, alreadyFound: Product[], pass: number, policy: ReturnType<typeof discoveryPolicy>): Promise<Research> {
     this.ensureConfigured();
     const config = effectiveConfig(context);
     const focused = policy.matchStrategy === 'quick_start' || policy.matchStrategy === 'focused';

@@ -12,6 +12,7 @@ import { AppError, publicError } from './errors';
 import { LocationResolver } from './location';
 import { InstantClassifier } from './instant-classifier';
 import { logger } from './logger';
+import { adminRouter } from './admin';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b))); }
@@ -56,6 +57,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     res.locals.ownerToken = ownerToken;
     next();
   });
+  app.use('/api/admin', adminRouter(service, config));
   app.get('/api/bootstrap', async (_req, res) => {
     const latest = res.locals.access ? await service.store.latest(res.locals.owner) : null;
     res.json({
@@ -85,7 +87,9 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     const cancel = () => { if (!res.writableEnded) controller.abort(); };
     res.on('close', cancel);
     try {
-      const result = await classifier.classify(res.locals.owner, text, controller.signal);
+      const latest = await service.store.latest(res.locals.owner);
+      const classify = () => classifier.classify(res.locals.owner, text, controller.signal);
+      const result = latest ? await service.usage.capture(latest.id, 'preview', null, classify) : await classify();
       if (!res.destroyed) res.json(result);
     } finally { res.off('close', cancel); }
   });
@@ -131,6 +135,10 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     res.json(await service.navigate(String(req.params.id), res.locals.owner, stage));
   });
   app.use('/api', (_req, _res, next) => next(new AppError(404, 'API endpoint not found.')));
+  const backofficeRoot = fileURLToPath(new URL('../../backoffice/', import.meta.url));
+  app.get(/^\/backoffice$/, (_req, res) => { res.redirect('/backoffice/'); });
+  app.use('/backoffice', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); }, express.static(backofficeRoot, { maxAge: 0, dotfiles: 'deny' }));
+  app.use('/backoffice', (_req, _res, next) => next(new AppError(404, 'Backoffice resource not found.')));
   const webRoot = fileURLToPath(new URL('../../frontend/dist/', import.meta.url));
   if (existsSync(webRoot)) {
     app.use(express.static(webRoot, { index: false, maxAge: '1h' }));

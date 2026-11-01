@@ -58,3 +58,5 @@ projects:
                 value: meta
               - key: APP_ACCESS_TOKEN
                 sync: false # preserve the app password; never commit it
+              - key: BACKOFFICE_ADMINS
+                sync: false # JSON array of usernames and scrypt hashes, generated with npm run admin:create

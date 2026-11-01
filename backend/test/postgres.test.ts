@@ -3,6 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PostgresStore } from '../src/store';
 import { DemoAIProvider } from '../src/ai/demo';
 import { ShoppingService } from '../src/shopping-service';
+import { UsageStore, recordUsage } from '../src/usage';
+import { createApp } from '../src/app';
+import { settings } from '../src/settings';
+import { passwordHash } from '../src/admin';
+import request from 'supertest';
 
 describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownership and durable jobs', () => {
   const url = process.env.TEST_DATABASE_URL!;
@@ -17,6 +22,29 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownersh
     expect((await second.get(created.id, owner)).ready).toBe(true);
     await expect(second.get(created.id, 'other-owner')).rejects.toMatchObject({ status: 404 });
     expect((await second.latest(owner))?.id).toBe(created.id);
+  });
+  it('persists usage and admin logins across app instances, and cascades usage on deletion', async () => {
+    const usage = new UsageStore(store.pool);
+    const service = new ShoppingService(store, new DemoAIProvider(), 'demo', usage);
+    const created = await service.create(owner); ids.push(created.id);
+    // Flush happens after the parent row transaction releases its FOR UPDATE lock.
+    await usage.capture(created.id, 'ask', null, () => store.mutate(created.id, owner, () => {
+      recordUsage('meta', 'm', 'generation', 'completed', 10, { input_tokens: 200, output_tokens: 100 }, { '*': { input: 1, output: 3 } });
+    }));
+    expect((await new UsageStore(second.pool).get(created.id))[0]).toMatchObject({ inputTokens: 200, estimatedCostUsd: 0.0005 });
+    expect((await second.listSessions({ search: created.id, stage: 'ask', mode: 'demo', page: 1 })).total).toBe(1);
+    const config = settings({ NODE_ENV: 'test', BACKOFFICE_ADMINS: JSON.stringify([{ username: 'DatabaseAdmin', passwordHash: await passwordHash('db-test-only') }]) });
+    const login = await request(createApp(service, config)).post('/api/admin/login').set('X-Fairbuy-Request', '1').send({ username: 'DatabaseAdmin', password: 'db-test-only' }).expect(200);
+    const cookies = login.headers['set-cookie'] as unknown as string[];
+    const cookie = cookies.find(value => value.startsWith('fairbuy_admin='))!.split(';')[0];
+    const secondApp = createApp(new ShoppingService(second, new DemoAIProvider(), 'demo', new UsageStore(second.pool)), config);
+    await request(secondApp).get('/api/admin/me').set('Cookie', cookie).expect(200);
+    await request(secondApp).post('/api/admin/logout').set('Cookie', cookie).set('X-Fairbuy-Request', '1').expect(204);
+    await request(secondApp).get('/api/admin/me').set('Cookie', cookie).expect(401);
+    await store.delete(created.id, owner);
+    expect(await usage.get(created.id)).toEqual([]);
+    await usage.capture(created.id, 'ask', null, async () => { recordUsage('meta', 'm', 'generation', 'failed', 5); });
+    expect(await usage.get(created.id)).toEqual([]);
   });
   it('queues atomically, leases exclusively, recovers interruptions and deletes cascading data', async () => {
     const service = new ShoppingService(store, new DemoAIProvider(), 'demo');

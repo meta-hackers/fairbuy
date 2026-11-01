@@ -4,9 +4,11 @@ import { AppError } from '../errors';
 import { safeUrl } from '../links';
 import { logger } from '../logger';
 import type { Source } from '@fairbuy/core';
+import { recordUsage } from '../usage';
 
 const ResponseSchema = z.object({
   status: z.string(),
+  usage: z.unknown().optional(),
   incomplete_details: z.object({ reason: z.string().nullish() }).passthrough().nullish(),
   output: z.array(z.object({
     type: z.string(), status: z.string().nullish(),
@@ -26,6 +28,19 @@ export class MetaClient {
     if (this.config.SEARCH_PROVIDER === 'brave' && !this.config.BRAVE_API_KEY) throw new AppError(503, 'Add BRAVE_API_KEY or set SEARCH_PROVIDER=meta.', 'SEARCH_NOT_CONFIGURED');
   }
   async response(model: string, instructions: string, input: unknown, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>) {
+    const started = Date.now();
+    const operation = Array.isArray(extra.tools) ? 'research' : 'generation';
+    let reported = false;
+    try {
+      return await this.responseTracked(model, instructions, input, extra, onText, (status, usage) => {
+        reported = true;
+        recordUsage('meta', model, operation, status, Date.now() - started, usage, this.config.AI_PRICE_TABLE);
+      });
+    } finally {
+      if (!reported) recordUsage('meta', model, operation, 'failed', Date.now() - started);
+    }
+  }
+  private async responseTracked(model: string, instructions: string, input: unknown, extra: Record<string, unknown>, onText: ((delta: string) => Promise<void>) | undefined, report: (status: string, usage?: unknown) => void) {
     this.ensureConfigured();
     const started = Date.now();
     logger.info('ai.request.started', { model, stream: true, tools: Array.isArray(extra.tools) ? extra.tools.length : 0 });
@@ -63,6 +78,7 @@ export class MetaClient {
       throw new AppError(502, 'The AI provider rejected the request. Check that the configured model supports Responses and the requested tools.', 'AI_PROVIDER_ERROR');
     }
     const data = await this.readStream(response.body, onText);
+    report(data.status, data.usage);
     if (data.status !== 'completed') {
       logger.error('ai.response.incomplete', { status: data.status, model, durationMs: Date.now() - started, reason: data.incomplete_details?.reason ?? null });
       throw new AppError(502, 'The AI response was incomplete. Try a shorter request.', 'AI_INCOMPLETE');

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 const ReasoningEffortSchema = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']);
+const AdminsSchema = z.array(z.object({ username: z.string().min(1).max(80).regex(/^[a-zA-Z0-9_.-]+$/), passwordHash: z.string().regex(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/) })).max(100).refine(admins => new Set(admins.map(a => a.username.toLowerCase())).size === admins.length, 'Admin usernames must be unique');
 const Schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   FAIRBUY_MODE: z.enum(['live', 'demo']).default('live'),
@@ -19,6 +20,8 @@ const Schema = z.object({
   CLOUDFLARE_ACCOUNT_ID: z.union([z.literal(''), z.string().regex(/^[a-f0-9]{32}$/i)]).default(''),
   CLOUDFLARE_API_TOKEN: z.string().default(''),
   APP_ACCESS_TOKEN: z.string().default(''),
+  BACKOFFICE_ADMINS: z.string().default('[]').transform(value => AdminsSchema.parse(JSON.parse(value))),
+  AI_PRICE_TABLE: z.string().default('{"*":{"input":1,"output":3}}').transform(value => z.record(z.string(), z.object({ input: z.number().nonnegative().finite(), output: z.number().nonnegative().finite() })).parse(JSON.parse(value))),
   APP_ORIGIN: z.string().default(''),
   RENDER_EXTERNAL_URL: z.string().default(''),
 });

@@ -11,6 +11,7 @@ import { logger } from './logger';
 
 export interface Job { id: string; sessionId: string; attempts: number }
 export interface Store {
+  listSessions(query: { search: string; stage: string; mode: string; page: number }): Promise<{ sessions: SessionSummary[]; total: number }>;
   create(owner: string, session: ShoppingSession): Promise<void>;
   latest(owner: string): Promise<ShoppingSession | null>;
   get(id: string, owner?: string): Promise<ShoppingSession>;
@@ -22,6 +23,7 @@ export interface Store {
   health(): Promise<void>;
   close(): Promise<void>;
 }
+export interface SessionSummary { id: string; owner: string; stage: string; mode: string; category: string | null; createdAt: string; updatedAt: string }
 const notFound = () => new AppError(404, 'This search was not found or has expired.', 'NOT_FOUND');
 
 interface SessionRow extends QueryResultRow {
@@ -191,6 +193,7 @@ export class PostgresStore implements Store {
       await client.query('BEGIN');
       await client.query('SELECT pg_advisory_xact_lock(731692401)');
       await client.query(await readFile(new URL('../migrations/001_initial.sql', import.meta.url), 'utf8'));
+      await client.query(await readFile(new URL('../migrations/002_backoffice.sql', import.meta.url), 'utf8'));
       const legacyColumn = await client.query("SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'shopping_sessions' AND column_name = 'data'");
       let migrated = 0;
       if (legacyColumn.rowCount) {
@@ -233,6 +236,16 @@ export class PostgresStore implements Store {
       if (!result.rows[0]) return null;
       return await this.readSession(client, result.rows[0].id, owner);
     } finally { client.release(); }
+  }
+  async listSessions(query: { search: string; stage: string; mode: string; page: number }) {
+    const values = [query.search, query.stage, query.mode];
+    const where = `FROM shopping_sessions s LEFT JOIN session_configs c ON c.session_id = s.id AND c.scope = 'current'
+      WHERE s.expires_at > now() AND ($1 = '' OR strpos(lower(s.id::text), lower($1)) > 0 OR strpos(lower(s.owner_hash), lower($1)) > 0 OR strpos(lower(COALESCE(c.category, '')), lower($1)) > 0)
+      AND ($2 = '' OR s.stage = $2) AND ($3 = '' OR s.mode = $3)`;
+    const total = await this.pool.query(`SELECT count(*) ${where}`, values);
+    const result = await this.pool.query(`SELECT s.id, s.owner_hash AS owner, s.stage, s.mode, c.category, s.created_at AS "createdAt", s.updated_at AS "updatedAt" ${where}
+      ORDER BY s.created_at DESC, s.id LIMIT 30 OFFSET $4`, [...values, (query.page - 1) * 30]);
+    return { sessions: result.rows as SessionSummary[], total: Number(total.rows[0].count) };
   }
   async get(id: string, owner?: string): Promise<ShoppingSession> {
     const client = await this.pool.connect();
@@ -597,6 +610,12 @@ export class MemoryStore implements Store {
   private sessions = new Map<string, { owner: string; data: ShoppingSession }>();
   private locks = new Map<string, Promise<unknown>>();
   private jobs = new Map<string, Job & { state: 'queued' | 'running' | 'done' }>();
+  async listSessions(query: { search: string; stage: string; mode: string; page: number }) {
+    const all = [...this.sessions.values()].map(({ owner, data: s }) => ({ id: s.id, owner, stage: s.stage, mode: s.mode, category: s.config.category, createdAt: s.createdAt, updatedAt: s.updatedAt }))
+      .filter(s => (!query.stage || s.stage === query.stage) && (!query.mode || s.mode === query.mode) && [s.id, s.owner, s.category ?? ''].some(value => value.toLowerCase().includes(query.search.toLowerCase())))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { sessions: all.slice((query.page - 1) * 30, query.page * 30), total: all.length };
+  }
   async create(owner: string, session: ShoppingSession) {
     if ([...this.sessions.values()].filter(s => s.owner === owner).length >= 15) throw new AppError(429, 'Search limit reached.');
     this.sessions.set(session.id, { owner, data: structuredClone(session) });

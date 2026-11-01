@@ -7,9 +7,10 @@ import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './
 import type { Store, Job } from './store';
 import { AppError, publicError } from './errors';
 import { logger } from './logger';
+import { UsageStore } from './usage';
 
 export class ShoppingService {
-  constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo') {}
+  constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo', readonly usage = new UsageStore()) {}
   async create(owner: string, location?: ShoppingLocation) {
     const now = new Date().toISOString();
     const session: ShoppingSession = {
@@ -66,6 +67,9 @@ export class ShoppingService {
     });
   }
   async message(id: string, owner: string, phase: 'ask' | 'configure', message: string) {
+    return this.usage.capture(id, phase, null, () => this.messageWithUsage(id, owner, phase, message));
+  }
+  private async messageWithUsage(id: string, owner: string, phase: 'ask' | 'configure', message: string) {
     this.ai.ensureConfigured();
     const started = Date.now();
     const session = await this.store.mutate(id, owner, async session => {
@@ -107,6 +111,9 @@ export class ShoppingService {
     return session;
   }
   async learn(id: string, owner: string, input: { productId: string | null; reason: string }) {
+    return this.usage.capture(id, 'learn', null, () => this.learnWithUsage(id, owner, input));
+  }
+  private async learnWithUsage(id: string, owner: string, input: { productId: string | null; reason: string }) {
     this.ai.ensureConfigured();
     const started = Date.now();
     const session = await this.store.mutate(id, owner, async session => {
@@ -158,6 +165,9 @@ export class ShoppingService {
     return session;
   }
   async runJob(job: Job) {
+    return this.usage.capture(job.sessionId, 'discovery', job.id, () => this.runJobWithUsage(job));
+  }
+  private async runJobWithUsage(job: Job) {
     const jobStarted = Date.now();
     let context: DiscoveryContext | null = null;
     let startedAt: string | null = null;
