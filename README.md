@@ -9,7 +9,7 @@ A full-stack AI shopping research application combining [Alberto’s demo](https
 - **Ask:** a real AI conversation collects enough context to search, asking useful follow-ups rather than enforcing a fixed number of answers.
 - **Instant classifier (optional):** Cloudflare-hosted Meta Llama shows provisional category, explicit budget, condition and requirement hints after a 600 ms typing pause in Ask. It has no separate reasoning phase, no web search and no fixed price estimates. Nothing updates the brief until you send the message to the existing Ask conversation.
 - **Configure:** edit the extracted brief, budget, country and soft preferences/must-haves. A separate smaller AI helps incorporate extra requirements.
-- **Discovery:** a new AI session researches products on the web, extracts source-backed offers and explains fit and trade-offs. Deterministic rules handle hard constraints and numerical ranking.
+- **Discovery:** a new AI session researches products on the web, extracts source-backed offers and explains fit and trade-offs. Compare final listed prices without shipping/delivery estimates, see elapsed search time, and view official-site product images when available. Deterministic rules handle hard constraints and numerical ranking.
 - **Learn:** reject a product or add feedback. Every submission starts fresh discovery with the original configuration, current brief, all prior products, discarded products and accumulated feedback. Undo preserves unrelated edits and starts another search.
 - **Buy:** inspect the chosen product’s seller offers and visit a source page yourself. **No automatic checkout or payment.**
 
@@ -80,7 +80,7 @@ The Blueprint declares the Render project, environment, build, startup and healt
 ## Trust and limitations
 
 - Every live offer links to a provider-returned source, includes retrieved time and retains evidence. AI extraction is **not independent verification**; search snippets may be stale or incomplete.
-- Unknown shipping, taxes, stock, compatibility and warranty remain unknown. An incomplete cost is a known minimum, not a delivered price. No exchange rates are invented.
+- Prices are the seller’s final listed product prices, not delivered totals. Location-dependent shipping/delivery is not estimated or added. Unknown prices, stock, compatibility and warranty remain unknown; no exchange rates are invented.
 - No arbitrary URL crawler, payment, booking, seller-message or order endpoint exists. Meta Model API, optional Cloudflare classification and Brave calls use fixed provider endpoints.
 - Anonymous, cookie-isolated searches expire after **7 days**. “New search” deletes the active search. There is no login or cross-device recovery. Avoid sensitive personal information.
 - There are bounded model calls, job concurrency and rate limits, but configure provider billing limits too. There is no promise of exhaustive market coverage or guaranteed savings.

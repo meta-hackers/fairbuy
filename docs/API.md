@@ -30,6 +30,10 @@ Ask/configure/learn mutations commit only after a valid AI response. Do not auto
 
 Discovery is progressive: a `running` round can already contain grounded `products`, `sources` and a current `ranking`. Render eligible products immediately and continue polling until `complete` or `failed`; do not wait for four cards to render the first one. Mutations remain blocked while searching. Already-persisted products remain available if a later provider request fails. Live searches target at least four distinct eligible models, with up to three complementary search/extraction passes; insufficient evidence is disclosed rather than replaced with invented offers.
 
+Rounds expose nullable `startedAt`, `finishedAt` and `durationMs` alongside `createdAt`. Show elapsed time while queued/running and the recorded duration after completion/failure. Products expose nullable `imageUrl`: a public HTTPS image sharing a site with a research source, requested from official product sites. Images can be unavailable; clients should provide a fallback.
+
+Offer `price` is `{currency, amountCents}` with nullable `amountCents`. It represents only the final listed product price; no shipping/delivery or fee estimates are included. Ranked offers expose `price: {cents, known}`. Unknown prices are not zero-price offers. The legacy `item`, `shipping` and `fees` price fields are no longer returned.
+
 ## Instant classifier
 
 `GET /api/bootstrap` also returns `instantClassifierConfigured`, a boolean only; no Cloudflare credentials are exposed. Show the typing-preview disclosure before sending drafts. Classifier output is a separate contract in `packages/core/src/instant-classifier.ts`, not confirmed `ShoppingConfig`. Unknown values are `null`; an explicit amount without an explicit supported currency retains `currency: null`. An unavailable/invalid provider result returns `503`, and a busy/exhausted preview returns `429`; neither prevents normal Ask submission. Do not automatically retry previews.
@@ -56,7 +60,7 @@ Discovery is progressive: a `running` round can already contain grounded `produc
 }
 ```
 
-Budget values in configuration are major currency units; offer prices and the pseudo-attribute `total` use integer minor units. Uninterpreted requirements retain `label` and nullable structured fields; they remain part of research but do not pass a deterministic constraint without evidence.
+Budget values in configuration are major currency units; offer prices and the pseudo-attribute `total` use integer minor units. `total` now means the final listed product price, not a delivered total. Uninterpreted requirements retain `label` and nullable structured fields; they remain part of research but do not pass a deterministic constraint without evidence.
 
 ## Limits
 

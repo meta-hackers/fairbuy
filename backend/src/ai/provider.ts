@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig, type Source, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
-import { safeUrl } from '../links';
+import { safeImageUrl, safeUrl } from '../links';
+import { logger } from '../logger';
 import { MetaClient, type Research } from './meta';
 import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, type Extraction } from './schemas';
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT } from './prompts';
@@ -35,12 +36,15 @@ export function productId(name: string) {
 }
 export function normalizeExtraction(extracted: Extraction, research: Research, context: DiscoveryContext): DiscoveryResult {
   const allowed = new Set(research.sources.map(s => s.url));
+  const sourceUrls = [...allowed];
   const discarded = new Set(context.discardedProducts.map(p => p.id));
   const now = new Date().toISOString();
-  let rejected = 0;
+  let rejected = 0, rejectedImages = 0;
   const products = extracted.products.flatMap(raw => {
     const id = productId(raw.name);
     if (discarded.has(id)) return [];
+    const imageUrl = safeImageUrl(raw.imageUrl, sourceUrls);
+    if (raw.imageUrl && !imageUrl) rejectedImages++;
     const offers = raw.offers.flatMap(rawOffer => {
       const url = safeUrl(rawOffer.url);
       if (!url || !allowed.has(url) || !rawOffer.quote.trim() || !research.text.includes(rawOffer.quote)) { rejected++; return []; }
@@ -53,26 +57,22 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
           : attr.text !== null ? { kind: 'text', value: attr.text } : null;
         if (value) attributes[attr.key] = { status: 'seller_claim', value, evidence: [{ ...evidence[0], snippet: attr.quote }] };
       }
-      const components = ([['item', rawOffer.price], ['shipping', rawOffer.shipping], ['other', rawOffer.fees]] as const).map(([kind, amount]) => ({
-        kind, amountCents: amount === null ? 0 : Math.round(amount * 100), status: amount === null ? 'unknown' as const : 'seller_claim' as const,
-        label: kind === 'other' ? 'Taxes / fees' : kind,
-      }));
       const missing = [...new Set([
         ...rawOffer.missing,
-        ...(rawOffer.price === null ? ['Item price'] : []), ...(rawOffer.shipping === null ? ['Shipping'] : []),
-        ...(rawOffer.fees === null ? ['Taxes / fees'] : []), ...(rawOffer.availability === 'unknown' ? ['Availability'] : []),
+        ...(rawOffer.price === null ? ['Final listed price'] : []),
+        ...(rawOffer.availability === 'unknown' ? ['Availability'] : []),
       ])];
       const offer = OfferSchema.parse({
         schemaVersion: 1, id: createHash('sha256').update(url).digest('hex').slice(0, 20),
         category: context.config.category ?? 'products', mode: 'live', provenanceUrl: url,
         fetchedAt: now, title: raw.name, seller: rawOffer.seller, availability: rawOffer.availability,
         condition: rawOffer.condition === 'unknown' ? { status: 'unknown' } : { status: 'seller_claim', value: rawOffer.condition, evidence },
-        price: { currency: rawOffer.currency, components, totalIsLowerBound: components.some(c => c.status === 'unknown') },
+        price: { currency: rawOffer.currency, amountCents: rawOffer.price === null ? null : Math.round(rawOffer.price * 100) },
         attributes, missing, evidence,
       });
       return [offer];
     });
-    return offers.length ? [{ id, name: raw.name, summary: raw.summary, why: raw.why, tradeoffs: raw.tradeoffs, offers }] : [];
+    return offers.length ? [{ id, name: raw.name, summary: raw.summary, why: raw.why, tradeoffs: raw.tradeoffs, imageUrl, offers }] : [];
   });
   // A duplicated model/offer cannot crowd the shortlist.
   const unique = new Map<string, Product>();
@@ -83,7 +83,7 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
   }
   return {
     products: [...unique.values()], sources: research.sources,
-    summary: `${extracted.summary}${rejected ? ` ${rejected} offer(s) were rejected because their URL or evidence could not be grounded in this search.` : ''}`,
+    summary: `${extracted.summary}${rejected ? ` ${rejected} offer(s) were rejected because their URL or evidence could not be grounded in this search.` : ''}${rejectedImages ? ` ${rejectedImages} image(s) were rejected because they were not hosted on a returned official source.` : ''}`,
   };
 }
 
@@ -105,20 +105,35 @@ export class LiveAIProvider implements AIProvider {
   }
   async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress) {
     let result: DiscoveryResult = { products: [], sources: [], summary: '' };
+    const started = Date.now();
+    const roundId = context.discoverySessionId;
     const eligibleCount = () => {
       const ranked = new Set(rankProducts(result.products, context).ranked.map(r => r.offerId));
       return result.products.filter(p => p.offers.some(o => ranked.has(o.id))).length;
     };
+    logger.info('discovery.run.started', {
+      roundId, provider: this.config.SEARCH_PROVIDER, previousProducts: context.previousProducts.length,
+      discardedProducts: context.discardedProducts.length, feedback: context.feedback.length,
+    });
     // Bounded complementary searches, not retries of failed provider requests.
     for (let pass = 0; pass < 3 && eligibleCount() < DISCOVERY_MIN_PRODUCTS; pass++) {
+      const passStarted = Date.now();
       const input = {
         ...context, effectiveConfig: effectiveConfig(context), searchPass: pass + 1,
         minimumProducts: DISCOVERY_MIN_PRODUCTS, productsNeeded: DISCOVERY_MIN_PRODUCTS - eligibleCount(),
         alreadyFound: result.products, excludedOffers: rankProducts(result.products, context).excluded,
       };
+      logger.info('discovery.pass.started', { roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded });
       const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass)
         : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
-      if (!research.sources.length) continue;
+      logger.info('discovery.research.completed', {
+        roundId, pass: pass + 1, durationMs: Date.now() - passStarted,
+        sources: research.sources.length, researchChars: research.text.length,
+      });
+      if (!research.sources.length) {
+        logger.warn('discovery.research.empty', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted });
+        continue;
+      }
       const accept = async (incoming: DiscoveryResult) => {
         result = mergeDiscoveryResults(result, incoming);
         await onProgress?.(result);
@@ -130,20 +145,28 @@ export class LiveAIProvider implements AIProvider {
         const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context);
         if (grounded.products.length) {
           grounded.products.forEach(p => streamed.add(p.id));
+          logger.info('discovery.product.streamed', { roundId, pass: pass + 1, productId: grounded.products[0].id, offers: grounded.products[0].offers.length });
           await accept(grounded);
         }
       });
+      const extractionStarted = Date.now();
       const extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema, {
         // Extraction is mechanical: spend fewer tokens reasoning and more on the JSON result.
         max_output_tokens: 16000, reasoning: { effort: 'low' },
       }, onText);
       // Also handles providers that send only a terminal event, and commits the final summary.
       const grounded = normalizeExtraction(extracted, research, context);
+      logger.info('discovery.extraction.completed', {
+        roundId, pass: pass + 1, durationMs: Date.now() - extractionStarted,
+        extractedProducts: extracted.products.length, acceptedProducts: grounded.products.length,
+      });
       for (const product of grounded.products) if (!streamed.has(product.id)) await accept({ products: [product], sources: grounded.sources, summary: '' });
       await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
+      logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount() });
     }
     const count = eligibleCount();
     if (count < DISCOVERY_MIN_PRODUCTS) result.summary = `${result.summary}${result.summary ? ' ' : ''}Only ${count} distinct eligible product${count === 1 ? '' : 's'} could be grounded after additional searches. We could not reach ${DISCOVERY_MIN_PRODUCTS} without relaxing your requirements or inventing offers.`;
+    logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length });
     return result;
   }
   private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number): Promise<Research> {

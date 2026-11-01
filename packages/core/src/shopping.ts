@@ -23,6 +23,7 @@ export const LearnInputSchema = z.object({ productId: z.string().max(100).nullab
 export interface ChatMessage { role: 'user' | 'assistant'; content: string }
 export interface Product {
   id: string; name: string; summary: string; why: string; tradeoffs: string[]; offers: Offer[];
+  imageUrl: string | null;
 }
 export interface Source { url: string; title: string }
 export interface Feedback { id: string; productId: string | null; productName: string | null; reason: string; at: string; learned: Requirement[] }
@@ -32,7 +33,8 @@ export interface DiscoveryContext {
 }
 export interface DiscoveryRound {
   id: string; number: number; attempt: number; trigger: 'configure' | 'learn' | 'refresh';
-  status: 'queued' | 'running' | 'complete' | 'failed'; createdAt: string; finishedAt: string | null;
+  status: 'queued' | 'running' | 'complete' | 'failed';
+  createdAt: string; startedAt: string | null; finishedAt: string | null; durationMs: number | null;
   products: Product[]; sources: Source[]; summary: string; error: string | null;
   context: DiscoveryContext; ranking: ComparisonResult | null;
 }

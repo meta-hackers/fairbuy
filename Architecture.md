@@ -23,7 +23,7 @@ flowchart LR
 ## Combining the demos
 
 - **Alberto:** the Ask → Configure → Discovery ↔ Learn → Buy journey, restrained green visual language, editable brief, product reasons/trade-offs, Learn modal, Undo and read-only seller selection. Rebuilt around persistent API state, not the category-specific fixture router.
-- **Alessandro:** the Zod-validated shared contract, field-level provenance, unknown values, delivered-cost handling, deterministic hard-constraint filtering and transparent ranking. Adapted to generic attributes and EUR/CHF/USD/GBP.
+- **Alessandro:** the Zod-validated shared contract, field-level provenance, unknown values, deterministic hard-constraint filtering and transparent ranking. Adapted to final listed prices, generic attributes and EUR/CHF/USD/GBP.
 - **New:** real Meta Model API REST orchestration, optional Brave search, isolated anonymous sessions, PostgreSQL persistence/queue, source validation, cost guards, deployment and CI. The old NestJS/in-memory skeleton and client-side keyword interpreter are not parallel production engines. Express is intentionally the smaller same-origin hosting layer; Meta Model API remains the interpreter of confirmed shopping configuration. The optional Cloudflare classifier only produces provisional UI hints.
 
 ## Instant classifier
@@ -52,23 +52,28 @@ All Model API calls use `https://api.meta.ai/v1/responses`, server-side `fetch`,
 - Only public HTTPS non-IP links without credentials or nonstandard ports are accepted. An offer URL must exactly match a source returned in that run; its quoted evidence must be a literal substring of the research. Attributes without literal research evidence are dropped. Data is rendered as text, never HTML.
 - These checks establish provenance, **not factual verification**. Model extraction can still misread evidence, and search snippets can be stale. Fields remain seller claims/unknown, not verified. The server never fetches a model/user-selected URL, eliminating an arbitrary-URL SSRF surface.
 - Product grouping uses normalized model names, not a manufacturer identity catalog. A model renamed by the AI could evade a past dismissal; this limitation is not hidden. Query coverage, stock, seller legitimacy, compatibility and prices are not guaranteed.
+- Extraction requests official-site product images. Public HTTPS image URLs must share a site with a returned research source; this domain check is not independent verification of official status. The browser loads accepted images directly, with a glyph fallback on missing/failed images.
+- Rounds persist `startedAt`, `finishedAt` and `durationMs`. Discovery shows live elapsed time while queued/running and the recorded duration afterward.
 
 ## Deterministic decision layer
 
-Amounts are integer minor units. Unknown costs are excluded from sums and mark totals as lower bounds, never free. Unknown item prices do not earn a low-cost advantage. Different currencies are excluded instead of silently converted. Known hard failures and sold-out offers are excluded before scoring; unknown hard checks remain visibly unverified.
+Amounts are integer minor units. Only the final listed product price is compared; shipping/delivery and extra fees are neither estimated nor added. The compatibility pseudo-attribute `total` refers to this listed price, not a delivered total. Unknown prices do not earn a low-price advantage. Different currencies are excluded instead of silently converted. Known hard failures and sold-out offers are excluded before scoring; unknown hard checks remain visibly unverified.
 
-Ranking version `1.0.0`: **30% normalized complete cost + 50% matched soft constraints + 20% evidence reliability**. Incomplete totals earn no cost credit. Unknown preferences do not count as matched. Stable offer IDs resolve ties; near ties are disclosed. The score is a reproducible preference/evidence measure, not a quality, fraud or safety guarantee. No LLM writes a numerical match score.
+Ranking version `2.0.0`: **30% normalized final listed price + 50% matched soft constraints + 20% evidence reliability**. Unknown prices earn no price credit. Unknown preferences do not count as matched. Stable offer IDs resolve ties; near ties are disclosed. The score is a reproducible preference/evidence measure, not a quality, fraud or safety guarantee. No LLM writes a numerical match score.
 
 ## Persistence, queue and security
 
-- `shopping_sessions`: owner hash, JSONB state and immutable round snapshots, seven-day expiry.
+- `shopping_sessions`: owner hash, stage, session identifiers, version and seven-day expiry; no large `data` JSONB column.
+- Session state is normalized into `session_messages`, `session_configs`, `session_config_requirements`, `session_missing`, `session_feedback` and `feedback_requirements`. Round snapshots use `discovery_rounds`, `round_configs`, `round_config_requirements`, `round_feedback` and `round_feedback_requirements`. Products, trade-offs, offers, attributes, evidence, missing fields and sources each have separate child tables. Ranking is derived on read, not stored as a duplicate blob.
 - `discovery_jobs`: atomically inserted with session updates, claimed with `FOR UPDATE SKIP LOCKED`, five-minute leases, at most two research attempts after interruptions. Ordinary provider failures are not automatically retried; the user can refresh. Two concurrent jobs per process.
 - Session mutations use row locks/transactions. Overlapping discovery clicks are idempotent. Async results commit only to their running round. Completed jobs cannot resurrect deleted sessions; foreign-key cascade removes jobs with their search.
 - Schema initialization is idempotent and serialized with a PostgreSQL advisory lock. Startup reruns it before accepting requests; `db:migrate` is also available for explicit maintenance. Free Render services do not support a pre-deploy command. Add versioned migrations for future incompatible schema changes.
+- Existing JSONB sessions are copied transactionally into normalized rows before the legacy `data` column is dropped. Legacy item prices are retained; old shipping/fee estimates are discarded. Back up populated databases before upgrading.
 - Random 256-bit anonymous-owner capability in an HttpOnly, SameSite=Lax cookie (Secure in production), with only its SHA-256 hash in PostgreSQL. Resource IDs do not confer ownership. This is not an account system or multi-device authentication.
 - Custom request header + origin checks on writes, no cross-origin API access, Helmet/CSP, input/body limits, sanitized errors and no conversation/provider-body logging.
 - A fixed deployment app password (`APP_ACCESS_TOKEN`) gates the app. Per-owner AI rate limits and a per-IP daily limit help cap abuse; provider billing caps must also be configured. These limiters are process-local: Blueprint intentionally runs one instance. Shared rate-limit storage is required before horizontal scaling.
 - Sessions are inaccessible immediately on expiry; hourly cleanup removes expired data. “New search” deletes the active search. Backups and provider retention are separate policies.
+- One-line structured JSON logs cover HTTP outcomes, session mutations, queue/worker activity, provider calls, discovery passes and database migration, including durations and result counts without chat text, prompts, secrets or provider bodies. Informational logs are suppressed in tests unless `FAIRBUY_LOG=1`.
 
 ## Deployment boundaries
 

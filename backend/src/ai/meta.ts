@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeUrl } from '../links';
+import { logger } from '../logger';
 import type { Source } from '@fairbuy/core';
 
 const ResponseSchema = z.object({
@@ -26,6 +27,8 @@ export class MetaClient {
   }
   async response(model: string, instructions: string, input: unknown, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>) {
     this.ensureConfigured();
+    const started = Date.now();
+    logger.info('ai.request.started', { model, stream: true, tools: Array.isArray(extra.tools) ? extra.tools.length : 0 });
     let response: Response;
     try {
       response = await this.fetcher('https://api.meta.ai/v1/responses', {
@@ -37,7 +40,10 @@ export class MetaClient {
         // Generous client-side backstop only; normal long generations stream incrementally.
         signal: AbortSignal.timeout(600000), redirect: 'error',
       });
-    } catch { throw new AppError(502, 'The AI provider timed out or could not be reached. Please retry.', 'AI_UNREACHABLE'); }
+    } catch {
+      logger.error('ai.request.unreachable', { model, durationMs: Date.now() - started });
+      throw new AppError(502, 'The AI provider timed out or could not be reached. Please retry.', 'AI_UNREACHABLE');
+    }
     if (!response.ok || !response.body) {
       // Do not log/return upstream bodies: they can contain prompts, credentials or PII.
       // Log only provider error metadata so production failures are diagnosable in Render logs.
@@ -46,8 +52,8 @@ export class MetaClient {
         const body = JSON.parse(await response.text()) as { error?: { code?: string; type?: string; param?: string } };
         providerError = body.error ?? {};
       } catch { /* non-JSON error body: status alone is enough */ }
-      console.error('AI provider request failed', {
-        status: response.status, model, code: providerError.code ?? null, type: providerError.type ?? null,
+      logger.error('ai.request.failed', {
+        status: response.status, model, durationMs: Date.now() - started, code: providerError.code ?? null, type: providerError.type ?? null,
         param: providerError.param ?? null, requestId: response.headers.get('x-request-id'),
       });
       if (response.status === 429) throw new AppError(503, 'The AI provider is rate-limited or out of credit. Check your Meta Model API account and retry.', 'AI_RATE_LIMITED');
@@ -58,12 +64,13 @@ export class MetaClient {
     }
     const data = await this.readStream(response.body, onText);
     if (data.status !== 'completed') {
-      console.error('AI provider response not completed', { status: data.status, model, reason: data.incomplete_details?.reason ?? null });
+      logger.error('ai.response.incomplete', { status: data.status, model, durationMs: Date.now() - started, reason: data.incomplete_details?.reason ?? null });
       throw new AppError(502, 'The AI response was incomplete. Try a shorter request.', 'AI_INCOMPLETE');
     }
     const content = data.output.flatMap(o => o.content ?? []);
     const text = content.filter(c => c.type === 'output_text').map(c => c.text ?? '').join('\n');
     if (!text) throw new AppError(502, 'The AI could not answer this request. Try rephrasing it.', 'AI_EMPTY_RESPONSE');
+    logger.info('ai.request.completed', { model, durationMs: Date.now() - started, outputChars: text.length, outputItems: data.output.length });
     return { data, text, content };
   }
   /** Read an SSE stream and return the terminal response.completed payload. */

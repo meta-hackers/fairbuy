@@ -28,23 +28,20 @@ export const AttrValueSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('text'), value: z.string() }),
 ]);
 export type AttrValue = z.infer<typeof AttrValueSchema>;
-export const PriceBreakdownSchema = z.object({
+// Discovery compares the seller's final listed price only. Shipping, delivery,
+// taxes and fees depend on the destination and are deliberately not estimated.
+export const FinalPriceSchema = z.object({
   currency: CurrencySchema,
-  components: z.array(z.object({
-    kind: z.enum(['item', 'shipping', 'travel', 'accessory', 'other']),
-    amountCents: z.number().int().nonnegative(), status: FieldStatusSchema,
-    label: z.string().optional(),
-  })),
-  totalIsLowerBound: z.boolean(),
+  amountCents: z.number().int().nonnegative().nullable(),
 });
-export type PriceBreakdown = z.infer<typeof PriceBreakdownSchema>;
+export type FinalPrice = z.infer<typeof FinalPriceSchema>;
 export const OfferSchema = z.object({
   schemaVersion: z.literal(1), id: z.string().min(1), category: z.string().min(1),
   mode: z.enum(['live', 'fixture']), provenanceUrl: z.string(), fetchedAt: z.iso.datetime(),
   availability: z.enum(['available', 'sold_out', 'stale', 'unknown']),
   title: z.string(), seller: z.string(),
   condition: fieldSchema(z.enum(['new', 'refurbished', 'used'])),
-  price: PriceBreakdownSchema,
+  price: FinalPriceSchema,
   attributes: z.record(z.string(), fieldSchema(AttrValueSchema)), missing: z.array(z.string()),
   evidence: z.array(EvidenceSchema).min(1),
 });

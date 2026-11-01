@@ -9,9 +9,9 @@ import { safeUrl } from '../src/links';
 
 const config = settings({ MODEL_API_KEY: 'test-not-a-real-key' });
 const context: DiscoveryContext = { sessionId: 'shopping', discoverySessionId: 'unique-round', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG, config: EMPTY_CONFIG, previousProducts: [], discardedProducts: [], feedback: [] };
-const research = { text: 'Aster Laptop costs EUR 590. Free shipping. Fees included. 16 GB RAM.', sources: [{ url: 'https://shop.fairbuy-fixture.org/aster', title: 'Aster' }] };
-const extracted = ExtractionSchema.parse({ summary: 'Found one.', products: [{ name: 'Aster', summary: 'A laptop', why: '16 GB RAM', tradeoffs: [], offers: [{
-  url: research.sources[0].url, seller: 'Test-only seller', price: 590, shipping: 0, fees: null, currency: 'EUR', availability: 'unknown', condition: 'unknown', quote: research.text,
+const research = { text: 'Aster Laptop costs EUR 590. 16 GB RAM. Official image available.', sources: [{ url: 'https://shop.fairbuy-fixture.org/aster', title: 'Aster' }] };
+const extracted = ExtractionSchema.parse({ summary: 'Found one.', products: [{ name: 'Aster', summary: 'A laptop', why: '16 GB RAM', tradeoffs: [], imageUrl: 'https://cdn.shop.fairbuy-fixture.org/aster.png', offers: [{
+  url: research.sources[0].url, seller: 'Test-only seller', price: 590, currency: 'EUR', availability: 'unknown', condition: 'unknown', quote: research.text,
   attributes: [{ key: 'ramGb', number: 16, text: null, boolean: null, unit: 'GB', quote: '16 GB RAM' }], missing: [],
 }] }] });
 function result(text: string, extra: unknown[] = []) { return { status: 'completed', output: [...extra, { type: 'message', content: [{ type: 'output_text', text }] }] }; }
@@ -190,17 +190,24 @@ describe('per-stage reasoning effort', () => {
   });
 });
 describe('untrusted search evidence', () => {
-  it('only accepts product URLs and literal evidence returned by this search', () => {
-    expect(normalizeExtraction(extracted, research, context).products).toHaveLength(1);
+  it('only accepts product URLs, official-site images and literal evidence returned by this search', () => {
+    const normalized = normalizeExtraction(extracted, research, context);
+    expect(normalized.products).toHaveLength(1);
+    expect(normalized.products[0].imageUrl).toBe('https://cdn.shop.fairbuy-fixture.org/aster.png');
     const fabricated = structuredClone(extracted); fabricated.products[0].offers[0].url = 'https://another-shop.org/invented';
     expect(normalizeExtraction(fabricated, research, context).products).toHaveLength(0);
     fabricated.products[0].offers[0].url = research.sources[0].url; fabricated.products[0].offers[0].quote = 'An invented quote';
     expect(normalizeExtraction(fabricated, research, context).products).toHaveLength(0);
+    const unrelatedImage = structuredClone(extracted); unrelatedImage.products[0].imageUrl = 'https://unrelated.example.net/aster.png';
+    const imageResult = normalizeExtraction(unrelatedImage, research, context);
+    expect(imageResult.products[0].imageUrl).toBeNull();
+    expect(imageResult.summary).toContain('1 image(s) were rejected');
   });
-  it('keeps unknown prices/fees/stock unknown and never marks extraction verified', () => {
-    const offer = normalizeExtraction(extracted, research, context).products[0].offers[0];
-    expect(offer.price.totalIsLowerBound).toBe(true);
-    expect(offer.price.components[2].status).toBe('unknown');
+  it('keeps an unknown final price and stock unknown and never marks extraction verified', () => {
+    const missingPrice = structuredClone(extracted); missingPrice.products[0].offers[0].price = null;
+    const offer = normalizeExtraction(missingPrice, research, context).products[0].offers[0];
+    expect(offer.price).toEqual({ currency: 'EUR', amountCents: null });
+    expect(offer.missing).toContain('Final listed price');
     expect(offer.attributes.ramGb.status).toBe('seller_claim');
     expect(offer.availability).toBe('unknown');
   });

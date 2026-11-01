@@ -1,4 +1,5 @@
 import type { ShoppingService } from './shopping-service';
+import { logger } from './logger';
 export function startWorker(service: ShoppingService) {
   let stopped = false, pumping = false, active = 0;
   const tasks = new Set<Promise<void>>();
@@ -10,14 +11,15 @@ export function startWorker(service: ShoppingService) {
         const job = await service.store.claim();
         if (!job) break;
         active++;
-        const task = service.runJob(job).catch(() => { console.error('Discovery job persistence failed; its lease will expire and recover.'); }).finally(() => { active--; tasks.delete(task); });
+        logger.info('discovery.job.claimed', { sessionId: job.sessionId, roundId: job.id, attempt: job.attempts, active });
+        const task = service.runJob(job).catch(() => { logger.error('discovery.job.persistence_failed', { sessionId: job.sessionId, roundId: job.id }); }).finally(() => { active--; tasks.delete(task); });
         tasks.add(task);
       }
-    } catch { console.error('Discovery queue temporarily unavailable.'); }
+    } catch { logger.error('discovery.queue.unavailable'); }
     finally { pumping = false; }
   };
   const timer = setInterval(() => { void pump(); }, 1000);
-  const cleanup = setInterval(() => { void service.store.cleanup().catch(() => console.error('Retention cleanup failed.')); }, 60 * 60 * 1000);
+  const cleanup = setInterval(() => { void service.store.cleanup().catch(() => logger.error('retention.cleanup.failed')); }, 60 * 60 * 1000);
   void pump(); void service.store.cleanup().catch(() => {});
   return async () => { stopped = true; clearInterval(timer); clearInterval(cleanup); await Promise.allSettled([...tasks]); };
 }

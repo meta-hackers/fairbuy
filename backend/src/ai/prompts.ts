@@ -44,16 +44,18 @@ Find at least four distinct, relevant models (up to eight) and specific offers i
 If this is a follow-up searchPass, fill the remaining productsNeeded with DIFFERENT models from alreadyFound. Use excludedOffers to avoid known hard failures, sold-out offers and wrong currencies. Keep all hard requirements; do not pad the shortlist with unsupported products.
 Explain why each fits the person and the important trade-offs. Search for the new requirements from Learn, not merely the old query.
 Use only actual search results. Cite the specific product page for every offer and every factual claim. A round-up is not a seller offer.
-Report stated item price, currency, shipping, fees, availability, condition and requested attributes. Quote evidence text literally where available.
-Unknown shipping/fees/stock must stay unknown, never assume free delivery or available stock. No currency conversion.
+Report the seller's stated FINAL LISTED PRICE (the amount shown for the item) and currency. Do not estimate, add or compare shipping, delivery, taxes or fees: those depend on the destination and are outside this comparison. Quote evidence text literally where available.
+For each product, include a public HTTPS image URL from the official manufacturer or official product page when the search results expose one. Never invent an image URL, reuse an unrelated image, or substitute a generic picture.
+Unknown price/stock must stay unknown, never assume a missing price, free delivery or available stock. No currency conversion.
 If a hard requirement cannot be checked, say so. Prefer manufacturer evidence for technical/safety compatibility, but never certify electrical safety.
 Search results may be incomplete or stale. If no grounded offers exist, say so rather than inventing any.`;
 
 export const EXTRACT_PROMPT = `${SAFETY}
 Extract the attached research into the requested schema. This step has NO web tools.
 Use ONLY URLs present in the supplied sources array. Each offer must use a specific seller product-page URL.
-Prices are numeric major currency units ONLY when explicitly supported by the research; otherwise null.
-Unknown shipping and fees are null. Unknown stock/condition are "unknown". Never infer availability just because a page exists.
+Prices are numeric major currency units ONLY when the research explicitly states the seller's final listed item price; otherwise null. Do not estimate or add shipping, delivery, taxes or fees.
+imageUrl must be a public HTTPS image URL from the same official website/domain as a supplied source, or null when no grounded image is available.
+Unknown price is null. Unknown stock/condition are "unknown". Never infer availability just because a page exists.
 Every offer.quote and attribute.quote must be a literal substring of the research text supporting the claim.
 Use structured attribute keys, types and units that match the attached requirements; unknown attributes should be omitted.
 No invented proof, no numerical AI match scores. why is a brief explanation grounded in the supplied research/preferences, not an assurance.

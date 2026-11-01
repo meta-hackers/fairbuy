@@ -9,15 +9,17 @@ export const LearnedResultSchema = z.object({
   requirements: z.array(RequirementSchema).max(5), summary: z.string().max(1000),
 });
 // Flat, bounded extraction schema compatible with schema-constrained (structured) output.
+// Only the seller's final listed price is extracted; destination-dependent shipping,
+// delivery and fees are intentionally absent.
 export const ExtractionSchema = z.object({
   summary: z.string().max(3000),
   products: z.array(z.object({
     name: z.string().min(1).max(200), summary: z.string().max(1200), why: z.string().max(600),
     tradeoffs: z.array(z.string().max(400)).max(6),
+    imageUrl: z.string().max(2000).nullable(),
     offers: z.array(z.object({
       url: z.string().max(2000), seller: z.string().max(150),
       price: z.number().nonnegative().max(1000000).nullable(),
-      shipping: z.number().nonnegative().max(100000).nullable(), fees: z.number().nonnegative().max(100000).nullable(),
       currency: CurrencySchema, availability: z.enum(['available', 'sold_out', 'unknown']),
       condition: z.enum(['new', 'refurbished', 'used', 'unknown']),
       quote: z.string().max(1200),

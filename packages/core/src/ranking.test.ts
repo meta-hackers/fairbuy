@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DemoAIProvider } from '../../../backend/src/ai/demo';
 import { EMPTY_CONFIG, constraintsFor, effectiveConfig, type DiscoveryContext, type Offer } from './index';
-import { computeTotal, rankOffers } from './ranking';
+import { finalPrice, rankOffers } from './ranking';
 
 const context: DiscoveryContext = {
   sessionId: 'test', discoverySessionId: 'round-1', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG,
@@ -12,25 +12,19 @@ const rank = (items: Offer[], hard = true) => rankOffers({ offers: items, constr
 describe('deterministic ranking inherited from Alessandro', () => {
   it('excludes failed hard constraints before scoring', () => {
     const result = rank(offers);
-    expect(result.excluded).toHaveLength(5);
-    expect(result.ranked.every(r => r.total.cents <= 70000)).toBe(true);
+    expect(result.excluded).toHaveLength(4);
+    expect(result.ranked.every(r => r.price.cents !== null && r.price.cents <= 70000)).toBe(true);
   });
   it('keeps soft mismatches as trade-offs', () => { expect(rank(offers, false).ranked).toHaveLength(offers.length); });
   it('is independent of input order', () => { expect(rank([...offers].reverse()).ranked).toEqual(rank(offers).ranked); });
-  it('never treats unknown charges as zero or passes an incomplete budget', () => {
-    const incomplete = structuredClone(offers[0]);
-    incomplete.price.components[1] = { kind: 'shipping', amountCents: 99999, status: 'unknown' };
-    incomplete.price.totalIsLowerBound = true;
-    expect(computeTotal(incomplete.price)).toEqual({ cents: 59000, isLowerBound: true });
-    const candidate = rank([incomplete]).ranked[0];
+  it('never treats an unlisted final price as zero or passes an unknown budget', () => {
+    const unknown = structuredClone(offers[0]);
+    unknown.price.amountCents = null;
+    expect(finalPrice(unknown.price)).toEqual({ cents: null, known: false });
+    const candidate = rank([unknown]).ranked[0];
     expect(candidate.status).toBe('unverified');
     expect(candidate.breakdown.cost).toBe(0);
     expect(candidate.constraints.find(c => c.constraint.attribute === 'total')?.outcome).toBe('unknown');
-  });
-  it('does not reward a missing item price', () => {
-    const unknown = structuredClone(offers[0]); unknown.price.components = [];
-    expect(computeTotal(unknown.price).isLowerBound).toBe(true);
-    expect(rank([unknown]).ranked[0].breakdown.cost).toBe(0);
   });
   it('does not compare different currencies or numeric units', () => {
     const currency = structuredClone(offers[0]); currency.price.currency = 'CHF';

@@ -11,6 +11,7 @@ import type { ShoppingService } from './shopping-service';
 import { AppError, publicError } from './errors';
 import { LocationResolver } from './location';
 import { InstantClassifier } from './instant-classifier';
+import { logger } from './logger';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b))); }
@@ -21,13 +22,19 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   const app = express();
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
-  app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
+  app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'https:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
   app.get(['/health', '/healthz'], async (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try { await service.store.health(); res.json({ status: 'ok' }); }
     catch { res.status(503).json({ status: 'unavailable' }); }
   });
   app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+  app.use('/api', (req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const started = Date.now();
+    res.on('finish', () => logger.info('http.write', { method: req.method, path: req.path, status: res.statusCode, durationMs: Date.now() - started }));
+    next();
+  });
   app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 1800, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } }));
   app.use('/api', express.json({ limit: '32kb' }));
   app.use('/api', (req, res, next) => {
@@ -133,7 +140,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     if (error instanceof z.ZodError) { res.status(400).json({ error: 'Some input is invalid or too long. Please review it.', code: 'INVALID_INPUT' }); return; }
     const bodyError = error as { type?: string };
     if (bodyError?.type === 'entity.too.large' || bodyError?.type === 'entity.parse.failed') { res.status(400).json({ error: 'Invalid JSON or request too large.', code: 'INVALID_BODY' }); return; }
-    if (!(error instanceof AppError)) console.error('Unexpected API error.');
+    if (!(error instanceof AppError)) logger.error('http.request.unexpected', { path: _req.path, name: error instanceof Error ? error.name : 'unknown' });
     res.status(error instanceof AppError ? error.status : 500).json({ error: publicError(error), code: error instanceof AppError ? error.code : 'INTERNAL_ERROR' });
   });
   return app;

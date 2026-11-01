@@ -30,19 +30,16 @@ export class DemoAIProvider implements AIProvider {
     const discarded = new Set(context.discardedProducts.map(p => p.id));
     const products: Product[] = names.map((name, i) => ({
       id: productId(name), name, summary: ['A balanced refurbished notebook for everyday work.', 'More memory and a larger screen, with extra weight.', 'A small, light notebook with less memory.', 'A premium notebook with room to grow.', 'A compact notebook with a mid-range price.', 'An everyday notebook with a little more storage.'][i],
-      why: i === 0 ? 'Its stated 16 GB RAM aligns with the example preference, with a complete fictional delivered cost.' : 'An alternative trade-off in the synthetic catalog. No live recommendation is implied.',
+      why: i === 0 ? 'Its stated 16 GB RAM aligns with the example preference, with a complete fictional final price.' : 'An alternative trade-off in the synthetic catalog. No live recommendation is implied.',
       tradeoffs: [i === 2 ? 'Only 8 GB RAM; below the example preference.' : 'Battery health is unknown; verify it with the seller.'],
+      imageUrl: null,
       offers: [0, 1].map(seller => {
         const evidence = [{ sourceType: 'user_input' as const, ref: 'Synthetic fixture — invented for offline preview', at: '2026-01-01T00:00:00.000Z' }];
         return {
           schemaVersion: 1 as const, id: `demo-${i}-${seller}`, category: 'laptop', mode: 'fixture' as const, provenanceUrl: '',
           fetchedAt: '2026-01-01T00:00:00.000Z', title: name, seller: seller ? 'Bright Parcel (fictional)' : 'Lantern Lane (fictional)', availability: 'available' as const,
           condition: { status: 'seller_claim' as const, value: 'refurbished' as const, evidence },
-          price: { currency: context.config.currency, totalIsLowerBound: false, components: [
-            { kind: 'item' as const, amountCents: [59000, 67000, 48000, 82000, 54000, 62000][i] + seller * 1800, status: 'seller_claim' as const },
-            { kind: 'shipping' as const, amountCents: 1500, status: 'seller_claim' as const },
-            { kind: 'other' as const, amountCents: 0, status: 'seller_claim' as const, label: 'Fees' },
-          ] },
+          price: { currency: context.config.currency, amountCents: [59000, 67000, 48000, 82000, 54000, 62000][i] + seller * 1800 },
           attributes: { ramGb: { status: 'seller_claim' as const, value: { kind: 'number' as const, value: [16, 32, 8, 32, 16, 16][i], unit: 'GB' }, evidence } },
           missing: ['Battery health', 'Warranty and returns'], evidence,
         };

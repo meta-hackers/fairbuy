@@ -15,6 +15,24 @@ const titles: Record<Stage, [string, string]> = {
   ask: ['A good buy starts with', 'a better question.'], configure: ['A little clarity.', 'A much better fit.'],
   discovery: ['Less searching.', 'More finding.'], buy: ['Your choice.', 'On your terms.'],
 };
+function formatDuration(ms: number) {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  if (seconds < 1) return 'under 1s';
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}m ${String(rest).padStart(2, '0')}s`;
+}
+function useClock(active: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
+  return now;
+}
 export default function App() {
   const [boot, setBoot] = useState<Bootstrap | null>(null); const [session, setSession] = useState<ShoppingSession | null>(null);
   const [stage, setStage] = useState<Stage>('ask'); const [draft, setDraft] = useState<ShoppingConfig | null>(null);
@@ -41,6 +59,12 @@ export default function App() {
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [stage]);
   const round = session ? latestRound(session) : undefined;
   const searching = !!round && ['queued', 'running'].includes(round.status);
+  const clock = useClock(searching);
+  const searchStarted = round?.startedAt ?? round?.createdAt;
+  const searchTime = round && searchStarted
+    ? round.durationMs ?? (round.finishedAt ? Math.max(0, Date.parse(round.finishedAt) - Date.parse(searchStarted)) : searching ? Math.max(0, clock - Date.parse(searchStarted)) : null)
+    : null;
+  const timingLabel = round?.status === 'queued' ? 'queued' : searching ? 'searching' : 'took';
   useEffect(() => {
     if (!session || !searching) return;
     let cancelled = false;
@@ -149,13 +173,14 @@ export default function App() {
           <div className="principles"><div><span>01 / UNDERSTAND</span><h3>Your needs come first.</h3><p>We ask before we recommend.</p></div><div><span>02 / EXPLAIN</span><h3>No mystery recommendations.</h3><p>Sources, trade-offs and unknowns stay visible.</p></div><div><span>03 / RESPECT</span><h3>You make the call.</h3><p>No auto-checkouts. No pressure.</p></div></div></>}
         {stage === 'configure' && draft && session && <div className="configure-layout"><Configure config={draft} onChange={setDraft} onSearch={() => { void findProducts(); }} busy={busy} /><div className="configure-aside"><Chat compact messages={session.configureMessages} busy={busy} onSend={message => send('configure', message)} disabled={!boot.aiConfigured} /><p className="aside-note">Your brief is a starting point, not a box. You can keep refining it after seeing products.</p>{!!session.feedback.length && <div className="panel"><h3>Also learned along the way</h3>{session.feedback.map(f => <p className="micro" key={f.id}>{f.reason}</p>)}</div>}</div></div>}
         {stage === 'discovery' && session && <section aria-label="Product discovery">
-          <div className="discovery-toolbar"><div><span className="status-dot" /><strong>{searching ? `${visibleProducts.length} options found · still searching` : `${visibleProducts.length} options worth a closer look`}</strong><span className="micro">{session.config.category} · {session.config.country} · search {round?.number ?? 0}</span></div><div className="toolbar-actions"><button className="text-button" disabled={unavailable} onClick={() => { void navigate('configure'); }}>Edit brief</button><button className="button secondary" disabled={unavailable} onClick={() => { void perform(async () => accept(await api<ShoppingSession>(`/sessions/${session.id}/discovery`, 'POST'))); }}>Refresh search ↻</button></div></div>
+          <div className="discovery-toolbar"><div><span className="status-dot" /><strong>{searching ? `${visibleProducts.length} options found · still searching` : `${visibleProducts.length} options worth a closer look`}</strong><span className="micro">{session.config.category} · {session.config.country} · search {round?.number ?? 0}{searchTime !== null && ` · ${timingLabel} ${formatDuration(searchTime)}`}</span></div><div className="toolbar-actions"><button className="text-button" disabled={unavailable} onClick={() => { void navigate('configure'); }}>Edit brief</button><button className="button secondary" disabled={unavailable} onClick={() => { void perform(async () => accept(await api<ShoppingSession>(`/sessions/${session.id}/discovery`, 'POST'))); }}>Refresh search ↻</button></div></div>
           {notice && <div className="success-banner" role="status">✓ {notice}</div>}
           {stale && !searching && <div className="notice"><p>Your brief changed. These results reflect the previous configuration. Refresh search before choosing a product.</p></div>}
-          {searching && <div className="search-progress panel" role="status"><span className="spinner large" /><div><h2>{round?.status === 'queued' ? 'Your research is queued.' : visibleProducts.length ? `${visibleProducts.length} ${visibleProducts.length === 1 ? 'option' : 'options'} ready to explore. More on the way.` : 'Looking beyond the obvious.'}</h2><p className="muted">{round?.status === 'queued' ? 'A fresh discovery session will begin shortly.' : `Searching for at least ${DISCOVERY_MIN_PRODUCTS} distinct products that meet your brief. Grounded matches appear as soon as they’re found; you can read their sources while we keep searching.`}</p><p className="micro">Context carried forward: {round?.context.previousProducts.length ?? 0} previous products · {round?.context.discardedProducts.length ?? 0} discarded · {session.feedback.length} feedback entries</p></div></div>}
-          {round?.status === 'failed' && <div className="error-banner" role="alert"><p>{round.error} Your brief and feedback are saved. Use Refresh search to retry.</p></div>}
+          {searching && <div className="search-progress panel" role="status"><span className="spinner large" /><div><h2>{round?.status === 'queued' ? 'Your research is queued.' : visibleProducts.length ? `${visibleProducts.length} ${visibleProducts.length === 1 ? 'option' : 'options'} ready to explore. More on the way.` : 'Looking beyond the obvious.'}</h2><p className="muted">{round?.status === 'queued' ? 'A fresh discovery session will begin shortly.' : `Searching for at least ${DISCOVERY_MIN_PRODUCTS} distinct products that meet your brief. Grounded matches appear as soon as they’re found; you can read their sources while we keep searching.`}</p><p className="micro search-timer" role="timer"><span aria-hidden="true">◷</span> {round?.status === 'queued' ? `Queued for ${formatDuration(searchTime ?? 0)}` : `Search time ${formatDuration(searchTime ?? 0)}`} · {round?.context.previousProducts.length ?? 0} previous products · {round?.context.discardedProducts.length ?? 0} discarded · {session.feedback.length} feedback entries</p></div></div>}
+          {round?.status === 'failed' && <div className="error-banner" role="alert"><p>{round.error} Your brief and feedback are saved. Use Refresh search to retry.{round.durationMs !== null && ` Search stopped after ${formatDuration(round.durationMs)}.`}</p></div>}
           {round && (round.products.length > 0 || round.status === 'complete') && <>
             {round.summary && <p className="research-summary">{round.summary}</p>}
+            {round.durationMs !== null && <p className="micro search-completed"><span aria-hidden="true">◷</span> Search took {formatDuration(round.durationMs)} · {round.products.length} {round.products.length === 1 ? 'product' : 'products'} · {round.sources.length} {round.sources.length === 1 ? 'source' : 'sources'}</p>}
             {boot.mode === 'live' && <p className="evidence-disclaimer">AI-extracted web evidence, not independently verified. Search snippets may be stale; unknown charges are never assumed to be zero.</p>}
             {(round.ranking?.warnings ?? []).map((w, i) => <p className="micro ranking-warning" key={i}>{w}</p>)}
             <div className="product-grid">{visibleProducts.map(({ product, ranked }, i) => <ProductCard key={product.id} product={product} ranked={ranked} index={i} busy={unavailable || stale}

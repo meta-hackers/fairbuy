@@ -96,12 +96,16 @@ describe('real backend shopping orchestration', () => {
     const partial = await store.get(session.id, 'alice');
     expect(partial.version).toBeGreaterThan(queued.version);
     expect(partial.rounds[0].status).toBe('running');
+    expect(partial.rounds[0].startedAt).not.toBeNull();
+    expect(partial.rounds[0].durationMs).toBeNull();
     expect(partial.rounds[0].products).toHaveLength(1);
     expect(partial.rounds[0].ranking?.ranked).toHaveLength(2);
     await expect(service.select(session.id, 'alice', partial.rounds[0].products[0].id)).rejects.toMatchObject({ status: 409 });
     release(); await pending;
     const complete = await store.get(session.id, 'alice');
     expect(complete.rounds[0].status).toBe('complete');
+    expect(complete.rounds[0].durationMs).toBeGreaterThanOrEqual(0);
+    expect(complete.rounds[0].finishedAt).not.toBeNull();
     expect(complete.rounds[0].products).toHaveLength(6);
     expect(complete.rounds[0].products[0].offers).toHaveLength(2);
   });

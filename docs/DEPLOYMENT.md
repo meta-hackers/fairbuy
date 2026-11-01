@@ -52,7 +52,9 @@ Use **Connect → Session pooler**, port **5432**, for the Render backend's IPv4
 postgresql://fairbuy_app.<project-ref>:<percent-encoded-password>@<session-pooler-host>:5432/postgres?sslmode=verify-full&sslrootcert=certs/supabase-ca.crt
 ```
 
-The checked-in [public Supabase root certificate](../certs/README.md) verifies the server certificate and hostname. Run the app from the repository root (`npm start`) so the certificate path resolves. Never disable certificate verification to work around a connection error. The app's existing PostgreSQL store creates `shopping_sessions` and `discovery_jobs` inside the private schema on startup; no Supabase SDK, service-role API key or frontend credentials are required.
+The checked-in [public Supabase root certificate](../certs/README.md) verifies the server certificate and hostname. Run the app from the repository root (`npm start`) so the certificate path resolves. Never disable certificate verification to work around a connection error. The PostgreSQL store creates normalized session, configuration, message, feedback, round, product, offer, evidence and source tables plus `discovery_jobs` inside the private schema on startup; no Supabase SDK, service-role API key or frontend credentials are required.
+
+Before upgrading a populated deployment, take and verify a database backup. Startup migration copies legacy `shopping_sessions.data` JSONB sessions into normalized rows transactionally, then drops `data`. Old item prices are retained while shipping/fee estimates are discarded. Allow migration to finish before sending traffic; inspect migration logs and verify an existing search after deployment. Do not run an old application version against the new schema.
 
 `SUPABASE_PAT` is an operator-only management credential, not an app runtime variable. If it is set in the ignored `.env`, explicitly load that value for management operations rather than assuming a stale inherited shell variable has been overridden. Never print or commit the token.
 
@@ -116,7 +118,7 @@ Add `BRAVE_API_KEY`, change `SEARCH_PROVIDER` to `brave`, and redeploy/restart. 
 - Review Supabase's plan limits, inactivity pausing and backup/recovery coverage before relying on this as a production service. Application retention is separate from provider retention and backups.
 - Set Meta Model API/Brave project billing budgets/alerts. Rate limits, output tokens, search tool limits and two concurrent jobs reduce usage but are **not a dollar-denominated spending guarantee**. Rotate `APP_ACCESS_TOKEN` and API keys if exposed.
 - Custom domain: set `APP_ORIGIN=https://your-domain.example` exactly. Browser writes from other origins are rejected. API and frontend must stay on the same origin.
-- Logs intentionally omit request bodies, chat text and upstream error bodies. Provider failures log only HTTP status, model, provider error code/type/param and request id. Do not add secret/prompt logging during troubleshooting.
+- Structured one-line JSON logs cover HTTP outcomes, session/queue/worker activity, provider calls, discovery passes and database migration, with elapsed milliseconds and result counts. Logs intentionally omit request bodies, chat text, prompts, secrets and upstream error bodies. Provider failures include HTTP status, model, provider error code/type/param and request id. Informational logs are suppressed in tests unless `FAIRBUY_LOG=1`. Do not add secret/prompt logging during troubleshooting.
 
 ## What is not deployed by the code
 
