@@ -1,4 +1,5 @@
 import { z } from 'zod';
+const ReasoningEffortSchema = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']);
 const Schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   FAIRBUY_MODE: z.enum(['live', 'demo']).default('live'),
@@ -8,7 +9,9 @@ const Schema = z.object({
   ASK_MODEL: z.string().default('muse-spark-1.3-contributor'),
   CONFIGURE_MODEL: z.string().default('muse-spark-1.3-contributor'),
   DISCOVERY_MODEL: z.string().default('muse-spark-1.3-contributor'),
-  REASONING_EFFORT: z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']).default('medium'),
+  ASK_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
+  CONFIGURE_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
+  DISCOVERY_REASONING_EFFORT: ReasoningEffortSchema.default('xhigh'),
   SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('meta'),
   BRAVE_API_KEY: z.string().default(''),
   APP_ACCESS_TOKEN: z.string().default(''),

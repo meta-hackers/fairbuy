@@ -33,7 +33,7 @@ export class MetaClient {
         // Non-streaming requests are subject to the provider's server-side time limit (HTTP 504);
         // streaming is exempt, so every call streams through the terminal response.completed event.
         // Reasoning tokens share this budget; keep it above the largest structured result.
-        body: JSON.stringify({ model, instructions, input: JSON.stringify(input), store: false, stream: true, max_output_tokens: 10000, reasoning: { effort: this.config.REASONING_EFFORT }, ...extra }),
+        body: JSON.stringify({ model, instructions, input: JSON.stringify(input), store: false, stream: true, max_output_tokens: 10000, ...extra }),
         // Generous client-side backstop only; normal long generations stream incrementally.
         signal: AbortSignal.timeout(600000), redirect: 'error',
       });
@@ -110,6 +110,7 @@ export class MetaClient {
   }
   async research(model: string, instructions: string, context: unknown): Promise<Research> {
     const { data, text, content } = await this.response(model, instructions, context, {
+      reasoning: { effort: this.config.DISCOVERY_REASONING_EFFORT },
       tools: [{ type: 'web_search', search_context_size: 'medium' }],
       include: ['web_search_call.results'],
       // Research answers are long; give reasoning + visible output more room than chat turns.
