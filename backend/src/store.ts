@@ -8,11 +8,12 @@ import {
 } from '@fairbuy/core';
 import { AppError } from './errors';
 import { logger } from './logger';
+import type { SessionStartup } from './session-startup';
 
 export interface Job { id: string; sessionId: string; attempts: number }
 export interface Store {
   listSessions(query: { search: string; stage: string; mode: string; page: number }): Promise<{ sessions: SessionSummary[]; total: number }>;
-  create(owner: string, session: ShoppingSession): Promise<void>;
+  create(owner: string, session: ShoppingSession, startup: SessionStartup): Promise<void>;
   latest(owner: string): Promise<ShoppingSession | null>;
   get(id: string, owner?: string): Promise<ShoppingSession>;
   mutate(id: string, owner: string | null, action: (session: ShoppingSession) => Promise<void> | void): Promise<ShoppingSession>;
@@ -194,6 +195,7 @@ export class PostgresStore implements Store {
       await client.query('SELECT pg_advisory_xact_lock(731692401)');
       await client.query(await readFile(new URL('../migrations/001_initial.sql', import.meta.url), 'utf8'));
       await client.query(await readFile(new URL('../migrations/002_backoffice.sql', import.meta.url), 'utf8'));
+      await client.query(await readFile(new URL('../migrations/003_session_startup.sql', import.meta.url), 'utf8'));
       const legacyColumn = await client.query("SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'shopping_sessions' AND column_name = 'data'");
       let migrated = 0;
       if (legacyColumn.rowCount) {
@@ -216,7 +218,7 @@ export class PostgresStore implements Store {
     } catch (error) { await client.query('ROLLBACK'); throw error; }
     finally { client.release(); }
   }
-  async create(owner: string, session: ShoppingSession) {
+  async create(owner: string, session: ShoppingSession, startup: SessionStartup) {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -224,6 +226,7 @@ export class PostgresStore implements Store {
       const count = await client.query('SELECT count(*) FROM shopping_sessions WHERE owner_hash = $1 AND expires_at > now()', [owner]);
       if (Number(count.rows[0].count) >= 15) throw new AppError(429, 'Search limit reached. Delete an older search or return after it expires.');
       await this.writeSession(client, session, owner);
+      await client.query('UPDATE shopping_sessions SET startup_config = $2::jsonb WHERE id = $1 AND startup_config IS NULL', [session.id, JSON.stringify(startup)]);
       await client.query('COMMIT');
       logger.info('database.session.created', { sessionId: session.id, version: session.version });
     } catch (error) { await client.query('ROLLBACK'); throw error; }
@@ -607,7 +610,7 @@ function buildAttrValue(attr: AttributeRow): AttrValue | null {
 
 // Deliberately ephemeral; only local demo and automated tests. Production refuses it.
 export class MemoryStore implements Store {
-  private sessions = new Map<string, { owner: string; data: ShoppingSession }>();
+  private sessions = new Map<string, { owner: string; data: ShoppingSession; startup: SessionStartup }>();
   private locks = new Map<string, Promise<unknown>>();
   private jobs = new Map<string, Job & { state: 'queued' | 'running' | 'done' }>();
   async listSessions(query: { search: string; stage: string; mode: string; page: number }) {
@@ -616,9 +619,9 @@ export class MemoryStore implements Store {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { sessions: all.slice((query.page - 1) * 30, query.page * 30), total: all.length };
   }
-  async create(owner: string, session: ShoppingSession) {
+  async create(owner: string, session: ShoppingSession, startup: SessionStartup) {
     if ([...this.sessions.values()].filter(s => s.owner === owner).length >= 15) throw new AppError(429, 'Search limit reached.');
-    this.sessions.set(session.id, { owner, data: structuredClone(session) });
+    this.sessions.set(session.id, { owner, data: structuredClone(session), startup: structuredClone(startup) });
   }
   async latest(owner: string) { return structuredClone([...this.sessions.values()].filter(s => s.owner === owner).at(-1)?.data ?? null); }
   async get(id: string, owner?: string) {

@@ -6,6 +6,7 @@ import { ShoppingService } from '../src/shopping-service';
 import { UsageStore, recordUsage } from '../src/usage';
 import { createApp } from '../src/app';
 import { settings } from '../src/settings';
+import { sessionStartup } from '../src/session-startup';
 import { passwordHash } from '../src/admin';
 import request from 'supertest';
 
@@ -15,6 +16,16 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownersh
   const owner = `test-${randomUUID()}`; const ids: string[] = [];
   beforeAll(async () => { store = new PostgresStore(url); second = new PostgresStore(url); await Promise.all([store.migrate(), second.migrate()]); });
   afterAll(async () => { for (const id of ids) await store.delete(id, owner); await Promise.all([store.close(), second.close()]); });
+  it('atomically persists startup settings and preserves them across mutations and migrations', async () => {
+    const config = settings({ FAIRBUY_MODE: 'demo', ASK_MODEL: 'startup-model', DISCOVERY_REASONING_EFFORT: 'medium' });
+    const service = new ShoppingService(store, new DemoAIProvider(), 'demo', undefined, config);
+    const created = await service.create(owner); ids.push(created.id);
+    const read = async () => (await second.pool.query('SELECT startup_config FROM shopping_sessions WHERE id = $1', [created.id])).rows[0].startup_config;
+    expect(await read()).toEqual(sessionStartup(config));
+    await service.message(created.id, owner, 'ask', 'Laptop for coding in Italy, budget €700');
+    await second.migrate();
+    expect(await read()).toEqual(sessionStartup(config));
+  });
   it('persists through a new repository connection and isolates owner queries', async () => {
     const service = new ShoppingService(store, new DemoAIProvider(), 'demo');
     const created = await service.create(owner); ids.push(created.id);

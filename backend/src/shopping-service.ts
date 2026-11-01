@@ -8,9 +8,14 @@ import type { Store, Job } from './store';
 import { AppError, publicError } from './errors';
 import { logger } from './logger';
 import { UsageStore } from './usage';
+import { settings, type Settings } from './settings';
+import { sessionStartup, type SessionStartup } from './session-startup';
 
 export class ShoppingService {
-  constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo', readonly usage = new UsageStore()) {}
+  private readonly startup: SessionStartup;
+  constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo', readonly usage = new UsageStore(), config: Settings = settings({})) {
+    this.startup = sessionStartup(config, mode);
+  }
   async create(owner: string, location?: ShoppingLocation) {
     const now = new Date().toISOString();
     const session: ShoppingSession = {
@@ -19,7 +24,7 @@ export class ShoppingService {
       config: structuredClone(EMPTY_CONFIG), initialConfig: null, ready: false, missing: [], feedback: [], rounds: [], selectedProductId: null,
     };
     if (location) session.config = { ...session.config, ...location, currency: location.currency ?? session.config.currency };
-    await this.store.create(owner, session);
+    await this.store.create(owner, session, this.startup);
     logger.info('session.created', { sessionId: session.id, mode: this.mode, country: session.config.country, currency: session.config.currency });
     return session;
   }

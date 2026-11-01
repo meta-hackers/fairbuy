@@ -12,7 +12,7 @@ if (!config.DATABASE_URL && config.FAIRBUY_MODE !== 'demo') throw new Error('Liv
 const store = config.DATABASE_URL ? new PostgresStore(config.DATABASE_URL) : new MemoryStore();
 if (store instanceof PostgresStore) await store.migrate();
 const ai = config.FAIRBUY_MODE === 'demo' ? new DemoAIProvider() : new LiveAIProvider(config);
-const service = new ShoppingService(store, ai, config.FAIRBUY_MODE, new UsageStore(store instanceof PostgresStore ? store.pool : undefined));
+const service = new ShoppingService(store, ai, config.FAIRBUY_MODE, new UsageStore(store instanceof PostgresStore ? store.pool : undefined), config);
 const app = createApp(service, config);
 const server = app.listen(config.PORT, '0.0.0.0', () => { console.info(`FairBuy listening on port ${config.PORT} (${config.FAIRBUY_MODE}).`); });
 const stopWorker = startWorker(service);
