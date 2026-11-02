@@ -51,6 +51,28 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownersh
     await expect(second.get(created.id, 'other-owner')).rejects.toMatchObject({ status: 404 });
     expect((await second.latest(owner))?.id).toBe(created.id);
   });
+  it('restores Ask cards once across connections, including after a typed answer', async () => {
+    const ai = new DemoAIProvider();
+    const service = new ShoppingService(store, ai, 'demo');
+    const created = await service.create(owner); ids.push(created.id);
+    const question = {
+      prompt: 'What condition are you open to?',
+      options: [{ id: 'new', label: 'New only' }, { id: 'used', label: 'Used is fine' }],
+      multiSelect: false, allowFreeText: true,
+    };
+    vi.spyOn(ai, 'converse').mockResolvedValueOnce({
+      reply: 'Choose one.', config: created.config, ready: false, missing: [], question,
+    });
+    await service.message(created.id, owner, 'ask', 'Laptop for coding');
+    const restored = await second.get(created.id, owner);
+    expect(restored.askMessages).toEqual([
+      { role: 'user', content: 'Laptop for coding' }, { role: 'assistant', content: 'Choose one.', question },
+    ]);
+    await new ShoppingService(second, new DemoAIProvider(), 'demo').message(created.id, owner, 'ask', 'New only');
+    const answered = await store.get(created.id, owner);
+    expect(answered.askMessages.filter(message => message.question)).toEqual([restored.askMessages[1]]);
+    expect(answered.askMessages[2]).toEqual({ role: 'user', content: 'New only' });
+  });
   it('persists usage and admin logins across app instances, and cascades usage on deletion', async () => {
     const usage = new UsageStore(store.pool);
     const service = new ShoppingService(store, new DemoAIProvider(), 'demo', usage);

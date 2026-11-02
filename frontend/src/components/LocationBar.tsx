@@ -40,6 +40,5 @@ export default function LocationBar({ location, pending, message, busy, onLocate
       {country.length === 2 && !currencyForCountry(country) && <p className="micro">Choose a supported shopping currency; no exchange rate is assumed.</p>}
       <div className="location-actions"><button type="button" className="text-button" onClick={() => setEditing(false)}>Cancel</button><button className="button primary" disabled={!/^[A-Z]{2}$/.test(country)}>Save location</button></div>
     </fieldset></form>}
-    <p className="location-credit micro">Automatic lookup uses rounded coordinates via <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>. No exact address is saved.</p>
   </section>;
 }

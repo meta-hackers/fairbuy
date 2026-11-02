@@ -90,7 +90,10 @@ export class ShoppingService {
     const result = await this.ai.converse(phase, [...transcript, { role: 'user', content: message }], base.config);
     const session = await this.store.append(id, owner, session => {
       const messages = phase === 'ask' ? session.askMessages : session.configureMessages;
-      messages.push({ role: 'user', content: message }, { role: 'assistant', content: result.reply });
+      messages.push(
+        { role: 'user', content: message },
+        { role: 'assistant', content: result.reply, ...(result.question ? { question: result.question } : {}) },
+      );
       session.config = result.config;
       // The model decides when the brief is well understood, but it cannot keep the
       // user in Ask: after ASK_QUESTION_CAP replies a searchable brief is enough.

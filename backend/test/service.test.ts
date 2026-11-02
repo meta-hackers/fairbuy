@@ -176,6 +176,28 @@ describe('real backend shopping orchestration', () => {
   });
 });
 
+describe('Ask structured questions (issue #17)', () => {
+  it('stores a bounded question with the assistant reply and leaves text-only replies unchanged', async () => {
+    const { service, store, session, ai } = await setup();
+    const question = {
+      prompt: 'What condition are you open to?',
+      options: [{ id: 'new', label: 'New only' }, { id: 'used', label: 'Used is fine' }],
+      multiSelect: false, allowFreeText: true,
+    };
+    vi.spyOn(ai, 'converse').mockResolvedValueOnce({
+      reply: 'One quick choice for you.', config: session.config, ready: false, missing: [], question,
+    });
+    const answered = await service.message(session.id, 'alice', 'ask', 'New only');
+    expect(answered.askMessages.at(-1)).toMatchObject({ role: 'assistant', content: 'One quick choice for you.', question });
+    // The question is part of the persisted transcript, not a transient UI hint.
+    expect((await store.get(session.id)).askMessages.at(-1)?.question).toEqual(question);
+
+    vi.spyOn(ai, 'converse').mockResolvedValueOnce({ reply: 'Plain text is still enough.', config: session.config, ready: true, missing: [] });
+    const plain = await service.message(session.id, 'alice', 'ask', 'Anything else?');
+    expect(plain.askMessages.at(-1)).toEqual({ role: 'assistant', content: 'Plain text is still enough.' });
+  });
+});
+
 describe('Ask question cap (issue #18)', () => {
   const brief = (extra: Partial<ShoppingConfig> = {}): ShoppingConfig => ({ ...EMPTY_CONFIG, category: 'laptop', purpose: 'coding', country: 'IT', ...extra });
   async function ask(rounds: number, config: ShoppingConfig, phaseReady = false) {

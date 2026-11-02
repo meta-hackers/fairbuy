@@ -16,7 +16,7 @@ Same-origin JSON API; no CORS. All writes require `X-Fairbuy-Request: 1`. Browse
 | GET | `/api/sessions/:id` | Complete owned state, or `404`. Poll only while queued/running. |
 | DELETE | `/api/sessions/:id` | Close the owned search by appending an archive version; `204`. Does not delete history, jobs or usage. Closed searches return `404` to owner requests. |
 | PATCH | `/api/sessions/:id/location` | `{country, city, currency, onlyIfMissing?}`: set shopping location, including during Ask. `onlyIfMissing: true` preserves an existing country; manual edits omit it. Blocked during active discovery. |
-| POST | `/api/sessions/:id/ask` | `{message}`: 1–3000 characters; AI response + revised brief. |
+| POST | `/api/sessions/:id/ask` | `{message}`: 1–3000 characters; AI response + revised brief. An assistant message may also carry an optional bounded `question` (`prompt`, 2–6 `options` with unique ids, `multiSelect`, `allowFreeText`) for an inline answer card; card answers are sent as ordinary `message` text. Free-text answers are always available in the UI, regardless of the compatibility field `allowFreeText`. |
 | PUT | `/api/sessions/:id/configure` | Full validated `ShoppingConfig`; no AI call. |
 | POST | `/api/sessions/:id/configure/chat` | `{message}`: separate small-model conversation. |
 | POST | `/api/sessions/:id/discovery` | Queue fresh discovery; `202` with session state. Repeated click while pending does not create another round. |

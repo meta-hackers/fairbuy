@@ -22,7 +22,34 @@ export type ShoppingConfig = z.infer<typeof ConfigSchema>;
 export const EMPTY_CONFIG: ShoppingConfig = { category: null, purpose: null, budgetMax: null, budgetHard: false, currency: 'EUR', country: null, city: null, requirements: [] };
 export const MessageInputSchema = z.object({ message: z.string().trim().min(1).max(3000) }).strict();
 export const LearnInputSchema = z.object({ productId: z.string().max(100).nullable(), reason: z.string().trim().min(1).max(2000) }).strict();
-export interface ChatMessage { role: 'user' | 'assistant'; content: string }
+/** A bounded, optional structured question the Ask model may attach to a reply. */
+export const AskQuestionOptionSchema = z.object({
+  id: z.string().min(1).max(40), label: z.string().min(1).max(160),
+});
+export const AskQuestionSchema = z.object({
+  prompt: z.string().min(1).max(300),
+  options: z.array(AskQuestionOptionSchema).min(2).max(6).refine(
+    options => new Set(options.map(option => option.id)).size === options.length,
+    { message: 'Question option ids must be unique' },
+  ),
+  multiSelect: z.boolean(),
+  // Kept for wire compatibility; the UI always offers a free-text answer.
+  allowFreeText: z.boolean().default(true),
+});
+export type AskQuestionOption = z.infer<typeof AskQuestionOptionSchema>;
+export type AskQuestion = z.infer<typeof AskQuestionSchema>;
+export interface ChatMessage {
+  role: 'user' | 'assistant'; content: string;
+  /** Present on an assistant reply that offers quick choices. Older stored messages have none. */
+  question?: AskQuestion | null;
+}
+/** The plain-text message sent through the existing Ask endpoint for a card answer. */
+export function formatQuestionAnswer(options: AskQuestionOption[], selectedIds: string[], freeText: string): string {
+  const selected = new Set(selectedIds);
+  const labels = options.filter(option => selected.has(option.id)).map(option => option.label);
+  const other = freeText.trim();
+  return [labels.join(', '), other].filter(Boolean).join(' — ');
+}
 export interface Product {
   id: string; name: string; summary: string; why: string; tradeoffs: string[]; offers: Offer[];
   imageUrl: string | null;
