@@ -24,7 +24,7 @@ export default function LocationBar({ location, pending, message, busy, onLocate
       ? `Shopping in ${[location.city, countryName(location.country)].filter(Boolean).join(', ')} · ${location.currency ?? 'choose currency'}`
       : 'Where are you shopping?'}</strong>
       <p className="micro" role="status">{pending ? 'Finding your location… You can keep shopping.' : message || (location
-        ? location.currency ? 'City and country only. Your shopping location is always editable.' : 'The local currency is not supported yet. Choose a supported shopping currency manually.'
+        ? location.currency ? '' : 'The local currency is not supported yet. Choose a supported shopping currency manually.'
         : 'Allow location access to suggest your city, country and currency, or set them manually.')}</p></div>
       <div className="location-actions"><button className="text-button" disabled={busy || pending} onClick={onLocate}>Use my location</button><button className="button secondary" disabled={busy} onClick={edit}>{location ? 'Change location' : 'Set location'}</button></div>
     </div>

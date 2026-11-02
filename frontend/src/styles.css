@@ -53,3 +53,19 @@
   .ask-question-actions .button{width:100%}
   .ask-question-actions .micro{max-width:none;text-align:center}
 }
+
+.site-header .progress{padding:0;border-bottom:0;min-width:0}
+.site-header .progress ol{gap:18px}
+.site-header .header-right{gap:20px}
+.site-header .header-tagline{max-width:150px}
+.site-header .brand,.site-header .new-search{flex-shrink:0}
+@media(max-width:1100px){
+  .site-header{flex-wrap:wrap}
+  .site-header .progress{order:3;width:100%}
+  .site-header .progress ol{width:100%;justify-content:space-between}
+  .site-header .header-right{margin-left:auto}
+  .site-header .header-tagline{max-width:none}
+}
+@media(max-width:540px){
+  .site-header .progress ol{gap:8px}
+}

@@ -151,19 +151,19 @@ export default function App() {
   return <div className="app-shell">
     <a className="skip-link" href="#main">Skip to content</a>
     <header className="site-header"><a className="brand" href="/" aria-label="FairBuy home"><span className="brand-icon" aria-hidden="true">◇</span>fairbuy<span className="brand-dot">.</span></a>
+      <nav className="progress" aria-label="Shopping steps"><ol>{([
+      ['ask', '01', 'Ask'], ['configure', '02', 'Configure'], ['discovery', '03', 'Discovery'], ['buy', '04', 'Buy'],
+    ] as const).map(([key, number, label]) => <li key={key} className={stage === key ? 'current' : ''}>
+      <button aria-current={stage === key ? 'step' : undefined} disabled={unavailable || (key === 'configure' && !session?.ready) || (key === 'discovery' && !session?.rounds.length) || (key === 'buy' && !selected)} onClick={() => { void navigate(key); }}><span className="step-number">{number}</span>{label}</button>
+      {key === 'discovery' && <><span className="learn-arrow" aria-hidden="true">↔</span><button className={`learn-nav ${learning ? 'active' : ''}`} disabled={unavailable || !session?.rounds.length} onClick={() => setLearning({ product: null })}>Learn</button></>}
+    </li>)}</ol></nav>
       <div className="header-right"><span className="header-tagline">Buy less on impulse. More on purpose.</span><button className="text-button new-search" disabled={unavailable || !session} onClick={() => { void perform(async () => {
         if (session) await api(`/sessions/${session.id}`, 'DELETE');
         setSession(null); setDraft(null); setStage('ask'); setNotice(''); setRefinement('');
       }); }}>New search <span aria-hidden="true">↗</span></button></div></header>
     {boot?.mode === 'demo' && <div className="mode-banner" role="note"><strong>Scripted preview</strong><span>Fictional products, prices and sellers. No live AI or current offers.{!boot.persistent && ' Changes are lost when the server restarts.'}</span></div>}
-    <nav className="progress" aria-label="Shopping steps"><ol>{([
-      ['ask', '01', 'Ask'], ['configure', '02', 'Configure'], ['discovery', '03', 'Discovery'], ['buy', '04', 'Buy'],
-    ] as const).map(([key, number, label]) => <li key={key} className={stage === key ? 'current' : ''}>
-      <button aria-current={stage === key ? 'step' : undefined} disabled={unavailable || (key === 'configure' && !session?.ready) || (key === 'discovery' && !session?.rounds.length) || (key === 'buy' && !selected)} onClick={() => { void navigate(key); }}><span className="step-number">{number}</span>{label}</button>
-      {key === 'discovery' && <><span className="learn-arrow" aria-hidden="true">↔</span><button className={`learn-nav ${learning ? 'active' : ''}`} disabled={unavailable || !session?.rounds.length} onClick={() => setLearning({ product: null })}>Learn</button></>}
-    </li>)}</ol><span className="progress-note">A more considered kind of shopping.</span></nav>
     <main id="main">
-      <div className="page-heading"><div><div className="eyebrow">{stage === 'ask' ? 'YOUR AI SHOPPING COMPANION' : stage === 'configure' ? 'GOOD DETAILS. BETTER DISCOVERIES.' : stage === 'discovery' ? 'CURATED AROUND YOU' : 'THE FINAL SAY IS YOURS'}</div>
+      <div className="page-heading"><div>{stage !== 'ask' && <div className="eyebrow">{stage === 'configure' ? 'GOOD DETAILS. BETTER DISCOVERIES.' : stage === 'discovery' ? 'CURATED AROUND YOU' : 'THE FINAL SAY IS YOURS'}</div>}
         <h1 ref={heading} tabIndex={-1}>{titles[stage][0]}<br /><em>{titles[stage][1]}</em></h1></div>
         <p className="heading-aside">{stage === 'ask' ? 'Not a wall of products. A conversation that leads to the right ones.' : stage === 'configure' ? 'Fine-tune what matters. We’ll take it from here.' : stage === 'discovery' ? 'Explore, react, refine. Your feedback makes the next search smarter.' : 'Real information. Clear trade-offs. Your decision.'}</p>
       </div>

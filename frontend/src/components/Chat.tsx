@@ -59,7 +59,7 @@ export default function Chat({ messages, busy, onSend, compact = false, disabled
     if (await onSend(sent)) setText('');
   };
   return <section className={`chat ${compact ? 'chat--compact' : ''}`} aria-label={compact ? 'Configure assistant' : 'Ask assistant'}>
-    <div className="chat-heading"><span className="spark" aria-hidden="true">✳</span><strong>{compact ? 'A little help, if you need it.' : 'Your shopping conversation'}</strong><span className="micro">{compact ? 'Configure assistant' : 'Ask assistant'}</span></div>
+    {compact && <div className="chat-heading"><span className="spark" aria-hidden="true">✳</span><strong>A little help, if you need it.</strong><span className="micro">Configure assistant</span></div>}
     <div className="chat-log" role="log" aria-label="Conversation" aria-live="polite">
       {!messages.length && <div className="chat-welcome">
         <p>{compact ? '“I need it to fit in my carry-on.”' : 'What are you looking for?'}</p>
