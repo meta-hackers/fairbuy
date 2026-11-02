@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, sourcePlan, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
+import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeImageUrl, safeUrl } from '../links';
@@ -76,7 +76,17 @@ export function mergeDiscoveryResults(current: DiscoveryResult, incoming: Discov
 export function productId(name: string) {
   return createHash('sha256').update(name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')).digest('hex').slice(0, 20);
 }
-export function normalizeExtraction(extracted: Extraction, research: Research, context: DiscoveryContext, plan = sourcePlan(effectiveConfig(context))): DiscoveryResult {
+// ISO codes that are also common uppercase words or brands ("ALL", "TOP", "AMD 7840").
+const AMBIGUOUS_CURRENCY_CODES = new Set(['ALL', 'AMD', 'BAM', 'BOB', 'CUP', 'GEL', 'MAD', 'MOP', 'PEN', 'SOS', 'TOP', 'TRY']);
+const CURRENCY_CODES = new Set<string>(CURRENCIES);
+/** The one ISO currency code the quote attaches to an amount, if exactly one. */
+export function quotedCurrency(quote: string): Currency | null {
+  const codes = new Set([...quote.matchAll(/\b([A-Z]{3})\s?\d|\d[\d.,']*\s?([A-Z]{3})\b/g)]
+    .map(match => match[1] ?? match[2])
+    .filter(code => CURRENCY_CODES.has(code) && !AMBIGUOUS_CURRENCY_CODES.has(code)));
+  return codes.size === 1 ? [...codes][0] as Currency : null;
+}
+export function normalizeExtraction(extracted: Extraction, research: Research, context: DiscoveryContext, plan = sourcePlan(effectiveConfig(context)), markets: SellerMarkets = {}): DiscoveryResult {
   const allowed = new Set(research.sources.map(s => s.url));
   const sourceUrls = [...allowed];
   const discarded = new Set(context.discardedProducts.map(p => p.id));
@@ -105,13 +115,16 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
         ...(rawOffer.price === null ? ['Final listed price'] : []),
         ...(rawOffer.availability === 'unknown' ? ['Availability'] : []),
       ])];
+      const sellerMarket = sellerMarketFor(url, markets);
       const offer = OfferSchema.parse({
         schemaVersion: 1, id: createHash('sha256').update(url).digest('hex').slice(0, 20),
         category: context.config.category ?? 'products', mode: 'live', provenanceUrl: url,
         fetchedAt: now, title: raw.name, seller: rawOffer.seller, availability: rawOffer.availability,
         condition: rawOffer.condition === 'unknown' ? { status: 'unknown' } : { status: 'seller_claim', value: rawOffer.condition, evidence },
-        price: { currency: rawOffer.currency, amountCents: rawOffer.price === null ? null : Math.round(rawOffer.price * 100) },
+        // The quote is the price evidence, so its stated currency wins over the model's field.
+        price: { currency: (rawOffer.price !== null && quotedCurrency(rawOffer.quote)) || rawOffer.currency, amountCents: rawOffer.price === null ? null : Math.round(rawOffer.price * 100) },
         attributes, missing, evidence,
+        ...(sellerMarket ? { sellerMarket } : {}),
       });
       return [offer];
     });
@@ -191,7 +204,8 @@ export class LiveAIProvider implements AIProvider {
     };
     const config = effectiveConfig(context);
     let plan = sourcePlan(config);
-    try { plan = sourcePlan(config, await this.catalog.effective()); }
+    let markets: SellerMarkets = {};
+    try { const catalog = await this.catalog.effective(); plan = sourcePlan(config, catalog); markets = sellerMarkets(catalog); }
     catch (error) { logger.error('discovery.source_catalog.failed', { roundId, error: error instanceof Error ? error.name : 'unknown' }); }
     logger.info('discovery.run.started', {
       roundId, provider: this.config.SEARCH_PROVIDER, previousProducts: context.previousProducts.length,
@@ -241,7 +255,7 @@ export class LiveAIProvider implements AIProvider {
         const onText = streamObjectArray('products', async raw => {
           const parsed = ExtractionSchema.shape.products.element.safeParse(raw);
           if (!parsed.success) return;
-          const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context, plan);
+          const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context, plan, markets);
           if (grounded.products.length) {
             grounded.products.forEach(p => streamed.add(p.id));
             logger.info('discovery.product.streamed', {
@@ -265,7 +279,7 @@ export class LiveAIProvider implements AIProvider {
           throw error;
         }
         // Also handles providers that send only a terminal event, and commits the final summary.
-        const grounded = normalizeExtraction(extracted, research, context, plan);
+        const grounded = normalizeExtraction(extracted, research, context, plan, markets);
         logger.info('discovery.extraction.completed', {
           roundId, pass: pass + 1, durationMs: Date.now() - extractionStarted,
           extractedProducts: extracted.products.length, acceptedProducts: grounded.products.length,

@@ -19,7 +19,8 @@ export const ExtractionSchema = z.object({
     imageUrl: z.string().max(2000).nullable(),
     offers: z.array(z.object({
       url: z.string().max(2000), seller: z.string().max(150),
-      price: z.number().nonnegative().max(1000000).nullable(),
+      // Major units: a laptop costs millions in currencies such as KRW, IDR or VND.
+      price: z.number().nonnegative().max(10_000_000_000).nullable(),
       currency: CurrencySchema, availability: z.enum(['available', 'sold_out', 'unknown']),
       condition: z.enum(['new', 'refurbished', 'used', 'unknown']),
       quote: z.string().max(1200),
