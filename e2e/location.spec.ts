@@ -50,7 +50,7 @@ test('denied permission leaves manual country, city and currency available befor
   await expect(location).toContainText('Location access was denied');
   await location.getByRole('button', { name: 'Set location' }).click();
   const countrySelect = page.getByLabel('Shopping country');
-  await expect(countrySelect.locator('option[value="IT"]')).toContainText('🇮🇹 Italy (IT)');
+  await expect(countrySelect.locator('option[value="IT"]')).toContainText('Italy (IT) 🇮🇹');
   await countrySelect.selectOption('IT');
   await page.getByLabel('Shopping city').fill('Milan');
   await expect(page.getByLabel('Shopping currency')).toHaveValue('EUR');
@@ -61,6 +61,24 @@ test('denied permission leaves manual country, city and currency available befor
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
   await expect(page.getByLabel('Country', { exact: true })).toHaveValue('IT');
   await expect(page.getByLabel('City / region')).toHaveValue('Milan');
+});
+
+test('country and currency dropdowns can be searched by typing names', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'geolocation', { value: {
+    getCurrentPosition: (_success: unknown, failure: (error: { code: number }) => void) => failure({ code: 1 }),
+  } }));
+  await page.goto('/');
+  const location = page.getByRole('region', { name: 'Shopping location' });
+  await location.getByRole('button', { name: 'Set location' }).click();
+  const country = page.getByLabel('Shopping country');
+  await country.focus();
+  await country.pressSequentially('Italy');
+  await expect(country).toHaveValue('IT');
+  const currency = page.getByLabel('Shopping currency');
+  await expect(currency).toHaveValue('EUR');
+  await currency.focus();
+  await currency.pressSequentially('Swiss');
+  await expect(currency).toHaveValue('CHF');
 });
 
 test('a currency changed in chat is reflected in the top location panel', async ({ page }) => {

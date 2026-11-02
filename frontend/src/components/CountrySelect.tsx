@@ -7,7 +7,7 @@ export default function CountrySelect({ id, value, onChange, disabled = false, a
     onChange={event => onChange(event.target.value)}>
     <option value="">Select a country</option>
     {COUNTRIES.map(country => <option key={country.code} value={country.code}>
-      {country.flag} {country.name} ({country.code})
+      {country.name} ({country.code}) {country.flag}
     </option>)}
   </select>;
 }

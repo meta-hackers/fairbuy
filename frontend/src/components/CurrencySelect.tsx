@@ -4,7 +4,7 @@ const currencyNames = new Intl.DisplayNames(['en'], { type: 'currency' });
 const common = new Set<Currency>(COMMON_CURRENCIES);
 function label(code: Currency) {
   const name = currencyNames.of(code);
-  return name ? `${code} · ${name}` : code;
+  return name ? `${name} (${code})` : code;
 }
 
 export default function CurrencySelect({ id, value, onChange, disabled = false }: {
