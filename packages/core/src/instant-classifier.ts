@@ -48,12 +48,27 @@ const conditionMarkers = {
   refurbished: /\b(refurbished|renewed|reconditionne|reconditionnee|generaluberholt|ricondizionato|ricondizionata)\b/,
 };
 
+const collapse = (text: string) => normalize(text).replace(/\s+/g, ' ').trim();
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export function groundInstantClassification(value: unknown, text: string): InstantClassification {
   const parsed = InstantClassificationSchema.parse(value);
-  const grounded = (evidence: string) => text.includes(evidence);
+  // Evidence must quote whole words of the draft. Case, accents and spacing may
+  // differ, so "Laptop" grounds in "laptop", but "Mac" never grounds in "machine".
+  const draft = collapse(text);
+  const grounded = (evidence: string) => {
+    const quote = collapse(evidence);
+    return !!quote && new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(quote)}(?![\\p{L}\\p{N}])`, 'u').test(draft);
+  };
   let budget = parsed.budget && grounded(parsed.budget.evidence) && hasAmount(parsed.budget.evidence, parsed.budget.amount) ? parsed.budget : null;
   if (budget) {
     if (budget.currency && !hasCurrencyMarker(budget.currency, budget.evidence)) budget = { ...budget, currency: null };
+    // Small models often leave the currency empty for "500 euro" or "400 €". The quote
+    // itself names it, so fill it only when exactly one currency is unmistakable.
+    if (!budget.currency) {
+      const named = CurrencySchema.options.filter(currency => hasCurrencyMarker(currency, budget!.evidence));
+      if (named.length === 1) budget = { ...budget, currency: named[0] };
+    }
     // A model must not silently turn an approximate budget into a hard ceiling.
     if (/\b(around|about|approximately|environ|circa|ungefahr)\b/.test(normalize(budget.evidence))) budget = { ...budget, hard: false };
   }
@@ -66,4 +81,21 @@ export function groundInstantClassification(value: unknown, text: string): Insta
       && (normalize(requirement.label).match(/[\p{L}\p{N}]+/gu) ?? []).some(word => word.length > 1 && tokens(requirement.evidence).has(word))),
     clarification: parsed.clarification,
   };
+}
+
+export interface InstantHint { kind: 'Category' | 'Budget' | 'Condition' | 'Requirement'; text: string; evidence: string }
+/** Every validated hint in display order, so nothing the classifier found stays invisible. */
+export function instantHints(result: InstantClassification): InstantHint[] {
+  const hints: InstantHint[] = [];
+  if (result.category) hints.push({ kind: 'Category', text: result.category.value, evidence: result.category.evidence });
+  if (result.budget) {
+    const amount = result.budget.amount.toLocaleString('en');
+    const money = result.budget.currency ? `${result.budget.currency} ${amount}` : amount;
+    hints.push({ kind: 'Budget', text: `${money} · ${result.budget.hard ? 'firm' : 'flexible'}`, evidence: result.budget.evidence });
+  }
+  if (result.condition) hints.push({ kind: 'Condition', text: result.condition.value, evidence: result.condition.evidence });
+  for (const requirement of result.requirements) {
+    hints.push({ kind: 'Requirement', text: `${requirement.label}${requirement.hard ? ' · must-have' : ''}`, evidence: requirement.evidence });
+  }
+  return hints;
 }
