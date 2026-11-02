@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DemoAIProvider } from '../../../backend/src/ai/demo';
 import { EMPTY_CONFIG, constraintsFor, effectiveConfig, type Constraint, type DiscoveryContext, type Offer } from './index';
 import { finalPrice, rankOffers, scorePoints } from './ranking';
-import { rankProducts } from './shopping';
+import { rankProducts, roundOutcome } from './shopping';
 
 const context: DiscoveryContext = {
   sessionId: 'test', discoverySessionId: 'round-1', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG,
@@ -189,5 +189,16 @@ describe('shopping country (issue #27)', () => {
     expect(rankProducts(products([offers[0]]), chile).ranked[0].constraints.some(c => c.constraint.attribute === 'sellerMarket')).toBe(false);
     const noCountry = { ...context, config: { ...context.config, country: null } };
     expect(rankProducts(products([live('x', 'https://www.galaxus.de/p/1', { countries: ['DE'], basis: 'domain' })]), noCountry).ranked).toHaveLength(1);
+  });
+});
+
+describe('round outcome (issue #19)', () => {
+  const ranking = (ranked: number) => ({ rankingVersion: 'x', ranked: Array.from({ length: ranked }, () => ({}) as never), excluded: [], warnings: [] });
+  const source = { url: 'https://shop.example.org/p', title: 'p' };
+  it('separates not found from found but rejected', () => {
+    expect(roundOutcome({ products: [], sources: [], ranking: null })).toBe('nothing_retrieved');
+    expect(roundOutcome({ products: [], sources: [source], ranking: ranking(0) })).toBe('nothing_grounded');
+    expect(roundOutcome({ products: [{} as never], sources: [source], ranking: ranking(0) })).toBe('all_excluded');
+    expect(roundOutcome({ products: [{} as never], sources: [source], ranking: ranking(1) })).toBe('found');
   });
 });

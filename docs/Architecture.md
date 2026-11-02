@@ -74,6 +74,16 @@ Ranking version `3.1.0`: **30% final listed price + 50% matched soft constraints
 
 Hard-constraint, sold-out, currency and seller-country exclusions happen before scoring. Stable offer IDs resolve ties; near ties are disclosed. The score is a reproducible preference/evidence measure, not a quality, fraud or safety guarantee. No LLM writes a numerical match score.
 
+Offers that never reach ranking are not silent either. Extraction records each dropped offer in `round.dropped` with a reason code and the product, seller and host (capped at 50 per round):
+
+- `url_not_in_sources`: the link was not a returned page;
+- `quote_not_grounded`: the quote was not found in the research;
+- `not_a_seller`: a specification, review or comparison host;
+- `previously_discarded`;
+- `duplicate`: a merged model.
+
+`roundOutcome()` tells an empty round apart: no pages retrieved, pages without a verifiable offer, or offers that all failed a check. Discovery shows these in a "Why these results" panel, separately from ranking exclusions, and the backoffice shows them per round. A product that never appeared in the research is reported as not found, never as rejected.
+
 ## Persistence, queue and security
 
 - `shopping_sessions`: immutable identity, owner hash and startup configuration. Legacy mutable columns remain for upgrade compatibility but are not current-state projections. `expires_at` is ignored; new identities have no expiry.

@@ -213,7 +213,7 @@ async function detail(id) {
       const card = node('div', null, 'product'); card.append(node('h4', `${product.name}${s.selectedProductId === product.id ? ' · Selected' : ''}`), node('p', product.summary), node('p', product.why));
       card.append(jsonDisclosure('Offers, prices, attributes and evidence', product.offers), jsonDisclosure('Tradeoffs', product.tradeoffs)); panel.append(card);
     }
-    panel.append(jsonDisclosure('Sources', round.sources), jsonDisclosure('Round configuration, context and ranking', { context: round.context, ranking: round.ranking }), jsonDisclosure('Full round record', round)); rounds.append(panel);
+    panel.append(jsonDisclosure('Sources', round.sources), jsonDisclosure('Excluded and dropped offers', { excluded: round.ranking?.excluded ?? [], dropped: round.dropped ?? [] }), jsonDisclosure('Round configuration, context and ranking', { context: round.context, ranking: round.ranking }), jsonDisclosure('Full round record', round)); rounds.append(panel);
   }
   root.append(rounds, jsonDisclosure('Complete stored session and usage data', result));
   const history = section('Immutable version history');

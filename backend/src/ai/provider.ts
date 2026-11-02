@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
+import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, MAX_DROPPED, OfferSchema, hostOf, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type DropReason, type DroppedOffer, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeImageUrl, safeUrl } from '../links';
@@ -15,7 +15,7 @@ import { findSellerImage } from '../product-images';
 
 export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
-export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string }
+export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string; dropped?: DroppedOffer[] }
 export type DiscoveryProgress = (result: DiscoveryResult) => Promise<void>;
 interface BraveItem { title: string; url: string; description: string; extra_snippets?: string[] }
 
@@ -68,9 +68,12 @@ export function mergeDiscoveryResults(current: DiscoveryResult, incoming: Discov
     const existing = products.get(product.id);
     products.set(product.id, { ...product, imageUrl: product.imageUrl ?? existing?.imageUrl ?? null, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
   }
+  // Passes report the same drop again when they meet the same page; keep each once.
+  const dropped = [...new Map([...current.dropped ?? [], ...incoming.dropped ?? []]
+    .map(d => [`${d.reason}|${d.product}|${d.seller}|${d.host}`, d])).values()].slice(0, MAX_DROPPED);
   return {
     products: [...products.values()], sources: [...new Map([...current.sources, ...incoming.sources].map(s => [s.url, s])).values()],
-    summary: incoming.summary || current.summary,
+    summary: incoming.summary || current.summary, dropped,
   };
 }
 export function productId(name: string) {
@@ -92,15 +95,19 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
   const discarded = new Set(context.discardedProducts.map(p => p.id));
   const now = new Date().toISOString();
   let rejected = 0, rejectedImages = 0, rejectedNonSeller = 0;
+  const dropped: DroppedOffer[] = [];
+  const drop = (reason: DropReason, product: string, seller: string | null, url: string | null) =>
+    dropped.push({ reason, product, seller, host: url ? hostOf(url) : null });
   const products = extracted.products.flatMap(raw => {
     const id = productId(raw.name);
-    if (discarded.has(id)) return [];
+    if (discarded.has(id)) { drop('previously_discarded', raw.name, null, null); return []; }
     const imageUrl = safeImageUrl(raw.imageUrl, sourceUrls);
     if (raw.imageUrl && !imageUrl) rejectedImages++;
     const offers = raw.offers.flatMap(rawOffer => {
       const url = safeUrl(rawOffer.url);
-      if (!url || !allowed.has(url) || !rawOffer.quote.trim() || !research.text.includes(rawOffer.quote)) { rejected++; return []; }
-      if (isNonSellerHost(url, plan)) { rejectedNonSeller++; return []; }
+      if (!url || !allowed.has(url)) { rejected++; drop('url_not_in_sources', raw.name, rawOffer.seller, url); return []; }
+      if (!rawOffer.quote.trim() || !research.text.includes(rawOffer.quote)) { rejected++; drop('quote_not_grounded', raw.name, rawOffer.seller, url); return []; }
+      if (isNonSellerHost(url, plan)) { rejectedNonSeller++; drop('not_a_seller', raw.name, rawOffer.seller, url); return []; }
       const evidence = [{ sourceType: 'url' as const, ref: url, snippet: rawOffer.quote, at: now }];
       const attributes: Record<string, Field<AttrValue>> = {};
       for (const attr of rawOffer.attributes) {
@@ -134,11 +141,13 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
   const unique = new Map<string, Product>();
   for (const product of products) {
     const existing = unique.get(product.id);
-    if (existing) existing.offers = [...new Map([...existing.offers, ...product.offers].map(o => [o.id, o])).values()];
-    else unique.set(product.id, product);
+    if (existing) {
+      existing.offers = [...new Map([...existing.offers, ...product.offers].map(o => [o.id, o])).values()];
+      drop('duplicate', product.name, null, null);
+    } else unique.set(product.id, product);
   }
   return {
-    products: [...unique.values()], sources: research.sources,
+    products: [...unique.values()], sources: research.sources, dropped: dropped.slice(0, MAX_DROPPED),
     summary: `${extracted.summary}${rejected ? ` ${rejected} offer(s) were rejected because their URL or evidence could not be grounded in this search.` : ''}${rejectedImages ? ` ${rejectedImages} image(s) were rejected because they were not hosted on a returned official source.` : ''}${rejectedNonSeller ? ` ${rejectedNonSeller} offer(s) were rejected because a specification, review or comparison page is not a seller.` : ''}`,
   };
 }
