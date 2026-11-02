@@ -7,6 +7,7 @@ import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
 import { safeUrl } from '../src/links';
+import { logger } from '../src/logger';
 
 vi.mock('../src/product-images', () => ({ findSellerImage: vi.fn().mockResolvedValue(null) }));
 
@@ -148,6 +149,48 @@ describe('progressive multi-product discovery', () => {
     expect(rankProducts(result.products, brief)).toEqual(ranking);
     brief.config.requirements[1].hard = true;
     expect(acceptableProductCount(result, brief, 180000)).toBe(0);
+  });
+  it('ignores only uninterpreted preferences when counting acceptable products', () => {
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const brief = structuredClone(context);
+    brief.config.requirements = [{ label: 'Comfortable keyboard', hard: false, attribute: null, op: null, value: null, unit: null }];
+    const found = normalizeExtraction(data.extracted, data.research, brief);
+    const ranking = rankProducts(found.products, brief);
+    expect(acceptableProductCount(found, brief, 0)).toBe(4);
+    expect(rankProducts(found.products, brief)).toEqual(ranking);
+    expect(ranking.ranked[0].constraints[0].outcome).toBe('unknown');
+
+    brief.config.requirements.push({ label: '32 GB RAM', hard: false, attribute: 'ramGb', op: '>=', value: 32, unit: 'GB' });
+    expect(acceptableProductCount(found, brief, 0)).toBe(0);
+    brief.config.requirements[1].value = 8;
+    expect(acceptableProductCount(found, brief, 0)).toBe(4);
+    brief.config.requirements.push({ label: 'Long battery life', hard: false, attribute: 'batteryHours', op: '>=', value: 12, unit: 'h' });
+    expect(acceptableProductCount(found, brief, 0)).toBe(0);
+    // Missing evidence for a structured preference still counts as unmatched.
+    expect(acceptableProductCount(found, brief, 45000)).toBe(4);
+    brief.config.requirements[1].hard = true;
+    brief.config.requirements[1].value = 32;
+    expect(acceptableProductCount(found, brief, 180000)).toBe(0);
+  });
+  it('stops after one pass with four grounded products and an uninterpreted preference', async () => {
+    const log = vi.spyOn(logger, 'info').mockImplementation(() => undefined);
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const brief = structuredClone(context);
+    brief.config.requirements = [{ label: 'Comfortable keyboard', hard: false, attribute: null, op: null, value: null, unit: null }];
+    const fetcher = vi.fn<typeof fetch>();
+    for (let pass = 0; pass < 3; pass++) {
+      fetcher.mockResolvedValueOnce(researchStream(data.research))
+        .mockResolvedValueOnce(stream(result(JSON.stringify(data.extracted))));
+    }
+    const updates: number[] = [];
+    const discovered = await new LiveAIProvider(config, fetcher).discover(brief, async update => { updates.push(update.products.length); });
+    expect(discovered.products).toHaveLength(4);
+    expect(updates).toContain(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledWith('discovery.pass.completed', expect.objectContaining({ pass: 1, eligible: 4, acceptable: 4 }));
+    expect(log).toHaveBeenCalledWith('discovery.run.completed', expect.objectContaining({ passes: 1, firstEligibleProductMs: 0, acceptable: 4 }));
+    expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string).reasoning.effort).toBe(config.DISCOVERY_REASONING_EFFORT);
   });
   it('publishes imperfect options immediately but stops further research only when time makes them acceptable', async () => {
     let now = 0;

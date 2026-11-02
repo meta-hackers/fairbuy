@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, MAX_DROPPED, OfferSchema, hostOf, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type DropReason, type DroppedOffer, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
+import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, MAX_DROPPED, UNINTERPRETED_PREFIX, OfferSchema, hostOf, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type DropReason, type DroppedOffer, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeImageUrl, safeUrl } from '../links';
@@ -51,7 +51,10 @@ export function discoveryPolicy(pass: number, elapsedMs: number) {
 export function acceptableProductCount(result: DiscoveryResult, context: DiscoveryContext, elapsedMs: number) {
   const threshold = discoveryPolicy(0, elapsedMs).minimumSoftMatch;
   const acceptable = new Set(rankProducts(result.products, context).ranked.filter(offer => {
-    const soft = offer.constraints.filter(c => !c.constraint.hard);
+    // Free-text requirements have no machine-checkable attribute. Keep their
+    // unknown outcome in ranking/evidence, but do not let them force extra
+    // searches. Structured preferences with missing evidence still count.
+    const soft = offer.constraints.filter(c => !c.constraint.hard && !c.constraint.attribute.startsWith(UNINTERPRETED_PREFIX));
     return !soft.length || soft.filter(c => c.outcome === 'pass').length / soft.length >= threshold;
   }).map(offer => offer.offerId));
   return result.products.filter(product => product.offers.some(offer => acceptable.has(offer.id))).length;
@@ -206,6 +209,8 @@ export class LiveAIProvider implements AIProvider {
     const timeout = setTimeout(() => controller.abort(), DISCOVERY_TIMEOUT_MS);
     timeout.unref();
     let timedOut = false;
+    let passes = 0;
+    let firstEligibleProductMs: number | null = null;
     const roundId = context.discoverySessionId;
     const eligibleCount = () => {
       const ranked = new Set(rankProducts(result.products, context).ranked.map(r => r.offerId));
@@ -227,6 +232,7 @@ export class LiveAIProvider implements AIProvider {
       for (let pass = 0; pass < 3 && acceptableProductCount(result, context, Date.now() - started) < DISCOVERY_MIN_PRODUCTS; pass++) {
         if (controller.signal.aborted || Date.now() >= deadline) { timedOut = true; break; }
         const passStarted = Date.now();
+        passes++;
         const searchPolicy = discoveryPolicy(pass, passStarted - started);
         const input = {
           ...context, effectiveConfig: config, sourcePlan: plan, searchPass: pass + 1,
@@ -257,6 +263,7 @@ export class LiveAIProvider implements AIProvider {
         const accept = async (incoming: DiscoveryResult) => {
           for (const product of incoming.products) startImage(product);
           result = mergeDiscoveryResults(result, incoming);
+          if (firstEligibleProductMs === null && eligibleCount() > 0) firstEligibleProductMs = Date.now() - started;
           applyImages();
           await emit();
         };
@@ -295,7 +302,7 @@ export class LiveAIProvider implements AIProvider {
         });
         for (const product of grounded.products) if (!streamed.has(product.id)) await accept({ products: [product], sources: grounded.sources, summary: '' });
         await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
-        logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount() });
+        logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount(), acceptable: acceptableProductCount(result, context, Date.now() - started) });
       }
       // Apply images that finished while research was running. The final wait is
       // bounded by the discovery signal, so a slow seller cannot extend the
@@ -309,7 +316,7 @@ export class LiveAIProvider implements AIProvider {
     const count = eligibleCount();
     if (count < DISCOVERY_MIN_PRODUCTS) result.summary = `${result.summary}${result.summary ? ' ' : ''}Only ${count} distinct eligible product${count === 1 ? '' : 's'} could be grounded after additional searches. We could not reach ${DISCOVERY_MIN_PRODUCTS} without breaking your must-haves or inventing offers.`;
     if (timedOut) result.summary = `${result.summary}${result.summary ? ' ' : ''}Search stopped at the 5-minute limit; the products already found are kept.`;
-    logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length, timedOut });
+    logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, acceptable: acceptableProductCount(result, context, Date.now() - started), sources: result.sources.length, timedOut, passes, firstEligibleProductMs });
     return result;
   }
   private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, plan: SourcePlan, signal?: AbortSignal): Promise<Research> {
