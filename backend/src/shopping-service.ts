@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, explainMissing, isConfigReady, MAX_MISSING_QUESTIONS, latestRound, rankProducts,
+  ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, explainMissing, isConfigReady, MAX_MISSING_QUESTIONS, latestRound, rankProducts, withCurrentRankings,
   type DiscoveryContext, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
 import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
@@ -161,7 +161,9 @@ export class ShoppingService {
     const session = await this.store.append(id, owner, session => {
       this.idle(session);
       if (JSON.stringify(latestRound(session)?.context.config) !== JSON.stringify(session.config)) throw new AppError(409, 'Your brief changed. Refresh discovery before choosing a product.');
-      if (!activeProducts(session).some(p => p.id === productId && p.offers.some(o => latestRound(session)?.ranking?.ranked.some(r => r.offerId === o.id)))) throw new AppError(400, 'This product is not eligible in the current shortlist.');
+      // Judge eligibility by the current ranking, as the user sees it, not a stored snapshot.
+      const ranked = latestRound(withCurrentRankings(session))?.ranking?.ranked ?? [];
+      if (!activeProducts(session).some(p => p.id === productId && p.offers.some(o => ranked.some(r => r.offerId === o.id)))) throw new AppError(400, 'This product is not eligible in the current shortlist.');
       session.selectedProductId = productId; session.stage = 'buy';
     });
     logger.info('session.product.selected', { sessionId: id, productId });
@@ -173,7 +175,7 @@ export class ShoppingService {
       this.idle(session);
       const round = latestRound(session);
       if (!round) throw new AppError(409, 'Start a discovery search first.');
-      round.missingQuestions = [...round.missingQuestions ?? [], { ...explainMissing(session, query), at: new Date().toISOString() }].slice(-MAX_MISSING_QUESTIONS);
+      round.missingQuestions = [...round.missingQuestions ?? [], { ...explainMissing(withCurrentRankings(session), query), at: new Date().toISOString() }].slice(-MAX_MISSING_QUESTIONS);
     });
     logger.info('session.missing.explained', { sessionId: id, cause: latestRound(session)?.missingQuestions?.at(-1)?.cause });
     return session;
