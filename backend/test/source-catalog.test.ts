@@ -33,12 +33,21 @@ describe('remote source catalog cache', () => {
     expect(init).toMatchObject({ redirect: 'error', cache: 'no-store' });
   });
 
+  it('accepts catalog entries with a new vertical key', async () => {
+    const extended = [{ ...remote[0], verticals: ['instruments'] }];
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json(envelope(extended)));
+    const service = new SourceCatalogService(config, fetcher, fallback);
+    const status = await service.sync();
+    expect(status).toMatchObject({ source: 'github', count: 1, error: null });
+    expect((await service.effective())[0].verticals).toEqual(['instruments']);
+  });
+
   it.each([
     ['network failure', vi.fn<typeof fetch>().mockRejectedValue(new Error('offline')), 'host could not be reached'],
     ['HTTP failure', vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 503 })), 'request failed (503)'],
     ['invalid JSON', vi.fn<typeof fetch>().mockResolvedValue(new Response('not json', { status: 200 })), 'not valid JSON'],
     ['wrong schema', vi.fn<typeof fetch>().mockResolvedValue(json({ schemaVersion: 2, entries: remote })), 'schemaVersion 1'],
-    ['invalid entry', vi.fn<typeof fetch>().mockResolvedValue(json(envelope([{ domain: 'bad host' }]))), 'failed validation'],
+    ['invalid entry', vi.fn<typeof fetch>().mockResolvedValue(json(envelope([{ domain: 'bad host' }]))), 'validation issue(s)'],
     ['empty catalog', vi.fn<typeof fetch>().mockResolvedValue(json(envelope([]))), 'has no entries'],
     ['oversized catalog', vi.fn<typeof fetch>().mockResolvedValue(new Response('x'.repeat(512 * 1024 + 1), { status: 200 })), 'too large'],
   ])('keeps the last-known-good catalog on %s', async (_label, fetcher, message) => {

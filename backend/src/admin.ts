@@ -93,18 +93,20 @@ export function adminRouter(service: ShoppingService, config: Settings, catalog 
     logger.warn('maintenance.session.purge.completed', { sessionId: id, admin: res.locals.admin });
     res.status(204).end();
   });
+  const sourceMetadata = async () => {
+    const entries = await catalog.effective();
+    return {
+      entries, roles: SOURCE_ROLES,
+      // Include known classifier verticals plus any new keys from the catalog.
+      verticals: [...new Set([...SOURCE_VERTICALS, ...entries.flatMap(entry => entry.verticals)])].sort(),
+    };
+  };
   router.get('/sources', async (_req, res) => {
-    res.json({
-      ...catalog.status(), entries: await catalog.effective(),
-      roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
-    });
+    res.json({ ...catalog.status(), ...(await sourceMetadata()) });
   });
   router.post('/sources/sync', async (_req, res) => {
     const status = await catalog.sync();
-    res.json({
-      ...status, entries: await catalog.effective(),
-      roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
-    });
+    res.json({ ...status, ...(await sourceMetadata()) });
   });
   router.use((_req, _res, next) => next(new AppError(404, 'Admin endpoint not found.')));
   return router;

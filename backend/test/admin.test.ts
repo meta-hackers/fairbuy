@@ -135,7 +135,7 @@ describe('backoffice session data', () => {
   it('serves the bundled catalog and syncs the published JSON on admin request', async () => {
     const remote = [
       { domain: 'remote.ch', name: 'Remote', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3 },
-      { domain: 'spec.ch', name: 'Spec', roles: ['spec'], verticals: ['computers'], countries: 'global', priority: 2 },
+      { domain: 'spec.ch', name: 'Spec', roles: ['spec'], verticals: ['watches'], countries: 'global', priority: 2 },
     ];
     const catalog = new SourceCatalogService(
       { CATALOG_URL: 'https://example.test/sources.json' },
@@ -153,6 +153,7 @@ describe('backoffice session data', () => {
     const synced = await client.post('/api/admin/sources/sync').set(write).send({}).expect(200);
     expect(synced.body).toMatchObject({ source: 'github', count: 2, error: null });
     expect(synced.body.entries.map((entry: any) => entry.domain)).toEqual(['remote.ch', 'spec.ch']);
+    expect(synced.body.verticals).toContain('watches');
     const status = await client.get('/api/admin/sources').expect(200);
     expect(status.body).toMatchObject({ source: 'github', count: 2 });
   });

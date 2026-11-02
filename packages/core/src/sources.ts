@@ -6,7 +6,7 @@ import type { ShoppingConfig } from './shopping';
  * model which kinds of sites are worth searching for a category and country.
  * Every offer still has to be grounded in an actual returned search result.
  */
-export const SOURCE_VERTICALS = ['computers', 'electronics', 'food_delivery', 'fashion', 'home', 'sports', 'books', 'auto', 'general'] as const;
+export const SOURCE_VERTICALS = ['computers', 'electronics', 'food_delivery', 'fashion', 'watches', 'home', 'sports', 'books', 'auto', 'general'] as const;
 export type Vertical = (typeof SOURCE_VERTICALS)[number];
 
 export const SOURCE_ROLES = ['seller', 'marketplace', 'spec', 'review', 'comparison'] as const;
@@ -21,7 +21,10 @@ export const SourceEntrySchema = z.object({
   name: z.string().trim().min(1).max(120),
   roles: z.array(z.enum(SOURCE_ROLES)).min(1).max(SOURCE_ROLES.length)
     .refine(values => new Set(values).size === values.length, 'Roles must be unique'),
-  verticals: z.array(z.enum(SOURCE_VERTICALS)).min(1).max(SOURCE_VERTICALS.length)
+  // Verticals are intentionally open-ended: the catalog may add a new key
+  // without waiting for an app deploy. Only the format is enforced.
+  verticals: z.array(z.string().trim().min(1).max(60).regex(/^[a-z][a-z0-9_]*$/, 'Use a lowercase vertical key such as watches'))
+    .min(1).max(30)
     .refine(values => new Set(values).size === values.length, 'Verticals must be unique'),
   countries: z.union([
     z.literal('global'),
@@ -59,7 +62,7 @@ const MAX_SELLERS = 8;
 const MAX_SPECS = 3;
 const MAX_REFERENCES = 4;
 
-const VERTICAL_ORDER: Exclude<Vertical, 'general'>[] = ['computers', 'electronics', 'food_delivery', 'fashion', 'home', 'sports', 'books', 'auto'];
+const VERTICAL_ORDER: Exclude<Vertical, 'general'>[] = ['computers', 'electronics', 'food_delivery', 'fashion', 'watches', 'home', 'sports', 'books', 'auto'];
 
 const VERTICAL_KEYWORDS: Record<Exclude<Vertical, 'general'>, string[]> = {
   computers: [
@@ -83,9 +86,13 @@ const VERTICAL_KEYWORDS: Record<Exclude<Vertical, 'general'>, string[]> = {
   ],
   fashion: [
     'clothing', 'clothes', 'shoes', 'sneakers', 'jacket', 'dress', 'jeans', 'shirt', 't-shirt',
-    'fashion', 'bag', 'handbag', 'watch', 'sunglasses', 'vestiti', 'abbigliamento', 'scarpe',
+    'fashion', 'bag', 'handbag', 'sunglasses', 'vestiti', 'abbigliamento', 'scarpe',
     'giacca', 'vestito', 'borsa', 'occhiali da sole', 'kleidung', 'schuhe', 'jacke', 'kleid',
     'tasche', 'vêtements', 'chaussures', 'veste', 'robe', 'sac',
+  ],
+  watches: [
+    'watch', 'wristwatch', 'chronograph', 'orologio', 'orologi', 'uhr', 'uhren', 'montre', 'montres',
+    'watchmaking', 'watchmaker',
   ],
   home: [
     'furniture', 'mobili', 'mobile', 'divano', 'sofa', 'couch', 'bed', 'letto', 'mattress',
@@ -183,14 +190,50 @@ export function sourcePlan(config: ShoppingConfig, catalog: SourceEntry[] = []):
   };
 }
 
-/** Validate a seed file as a whole: every entry must be valid and domains unique. */
-export function validateSourceCatalog(entries: SourceEntry[]): SourceEntry[] {
-  const parsed = entries.map(entry => SourceEntrySchema.parse(entry));
-  const seen = new Set<string>();
-  for (const entry of parsed) {
-    if (seen.has(entry.domain)) throw new Error(`Duplicate source domain: ${entry.domain}`);
-    seen.add(entry.domain);
+export interface SourceCatalogIssue {
+  index: number;
+  domain: string | null;
+  path: string;
+  code: string;
+  message: string;
+}
+
+export class SourceCatalogValidationError extends Error {
+  readonly issues: SourceCatalogIssue[];
+  constructor(issues: SourceCatalogIssue[]) {
+    super(`Source catalog validation failed with ${issues.length} issue(s).`);
+    this.name = 'SourceCatalogValidationError';
+    this.issues = issues;
   }
+}
+
+/** Validate a catalog payload as a whole and report every entry-level issue. */
+export function validateSourceCatalog(entries: unknown[]): SourceEntry[] {
+  const parsed: SourceEntry[] = [];
+  const issues: SourceCatalogIssue[] = [];
+  const firstIndex = new Map<string, number>();
+  entries.forEach((entry, index) => {
+    const record = entry && typeof entry === 'object' ? entry as Record<string, unknown> : null;
+    const domain = typeof record?.domain === 'string' ? record.domain : null;
+    const result = SourceEntrySchema.safeParse(entry);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        issues.push({ index, domain, path: issue.path.join('.'), code: issue.code, message: issue.message });
+      }
+      return;
+    }
+    const seenAt = firstIndex.get(result.data.domain);
+    if (seenAt !== undefined) {
+      issues.push({
+        index, domain: result.data.domain, path: 'domain', code: 'duplicate_domain',
+        message: `Duplicate domain; first seen at entries[${seenAt}]`,
+      });
+      return;
+    }
+    firstIndex.set(result.data.domain, index);
+    parsed.push(result.data);
+  });
+  if (issues.length) throw new SourceCatalogValidationError(issues);
   return parsed;
 }
 
