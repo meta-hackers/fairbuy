@@ -132,7 +132,8 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
 
 export class LiveAIProvider implements AIProvider {
   private client: MetaClient;
-  constructor(private config: Settings, private fetcher: typeof fetch = fetch, private imageFinder = findSellerImage,
+  constructor(private config: Settings, private fetcher: typeof fetch = fetch,
+    private imageFinder: (product: Product, preferredImage: string | null, signal?: AbortSignal) => Promise<string | null> = findSellerImage,
     private catalog: SourceCatalogLoader = DEFAULT_CATALOG_LOADER) { this.client = new MetaClient(config, fetcher); }
   ensureConfigured() { this.client.ensureConfigured(); }
   async converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig) {
@@ -149,10 +150,37 @@ export class LiveAIProvider implements AIProvider {
   }
   async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress) {
     let result: DiscoveryResult = { products: [], sources: [], summary: '' };
+    const controller = new AbortController();
     const images = new Map<string, Promise<string | null>>();
+    const resolvedImages = new Map<string, string>();
+    let emitting: Promise<void> = Promise.resolve();
+    // Serialise progress notifications: image fetches can finish while a
+    // research/extraction update is being persisted.
+    const emit = () => {
+      emitting = emitting.then(() => onProgress?.(result)).catch(() => undefined);
+      return emitting;
+    };
+    const applyImages = () => {
+      let changed = false;
+      for (const product of result.products) {
+        const image = resolvedImages.get(product.id);
+        if (image && image !== product.imageUrl) { product.imageUrl = image; changed = true; }
+      }
+      return changed;
+    };
+    const startImage = (product: Product) => {
+      if (images.has(product.id)) return;
+      const pending = this.imageFinder(product, product.imageUrl, controller.signal).then(image => {
+        if (image) {
+          resolvedImages.set(product.id, image);
+          if (applyImages()) void emit();
+        }
+        return image;
+      }).catch(() => null);
+      images.set(product.id, pending);
+    };
     const started = Date.now();
     const deadline = started + DISCOVERY_TIMEOUT_MS;
-    const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DISCOVERY_TIMEOUT_MS);
     timeout.unref();
     let timedOut = false;
@@ -204,11 +232,10 @@ export class LiveAIProvider implements AIProvider {
           continue;
         }
         const accept = async (incoming: DiscoveryResult) => {
-          for (const product of incoming.products) {
-            if (!images.has(product.id)) images.set(product.id, this.imageFinder(product).catch(() => null));
-          }
+          for (const product of incoming.products) startImage(product);
           result = mergeDiscoveryResults(result, incoming);
-          await onProgress?.(result);
+          applyImages();
+          await emit();
         };
         const streamed = new Set<string>();
         const onText = streamObjectArray('products', async raw => {
@@ -247,16 +274,13 @@ export class LiveAIProvider implements AIProvider {
         await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
         logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount() });
       }
-      // Fetch images alongside research without delaying the first visible products.
-      // Once the hard limit is reached, stop waiting instead of extending the round.
-      if (!controller.signal.aborted && Date.now() < deadline) {
-        let imagesChanged = false;
-        await Promise.all(result.products.map(async product => {
-          const image = await images.get(product.id);
-          if (image && image !== product.imageUrl) { product.imageUrl = image; imagesChanged = true; }
-        }));
-        if (imagesChanged) await onProgress?.(result);
-      }
+      // Apply images that finished while research was running. The final wait is
+      // bounded by the discovery signal, so a slow seller cannot extend the
+      // round past its hard limit, and resolved images are never discarded.
+      applyImages();
+      await Promise.all([...images.values()]);
+      applyImages();
+      await emitting;
     } finally { clearTimeout(timeout); }
     if (controller.signal.aborted) timedOut = true;
     const count = eligibleCount();

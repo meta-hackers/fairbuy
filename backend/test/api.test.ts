@@ -79,6 +79,13 @@ describe('HTTP API security and validation', () => {
     expect((await client.get('/api/bootstrap')).body.accessRequired).toBe(false);
     await client.post('/api/sessions').set('X-Fairbuy-Request', '1').expect(201);
   });
+  it('rejects private image-proxy targets', async () => {
+    const { app } = setup(); const client = request.agent(app);
+    await client.get('/api/image').expect(400);
+    await client.get('/api/image?url=http://127.0.0.1/x.jpg').expect(400);
+    await client.get('/api/image?url=https://127.0.0.1/x.jpg').expect(400);
+    await client.get('/api/image?url=https://localhost/x.jpg').expect(400);
+  });
   it('starts without a key but never falls back to a demo', async () => {
     const { app } = setup({ FAIRBUY_MODE: 'live', MODEL_API_KEY: '' }); const client = request.agent(app);
     const boot = (await client.get('/api/bootstrap')).body;

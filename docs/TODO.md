@@ -6,7 +6,6 @@ This is a maintainer follow-up list, not a promise that an item is already imple
 
 - [ ] Review and refine the UI to make it more visually appealing.
 - [ ] Improve discovery result relevance and overall quality.
-- [ ] Investigate and fix product images that do not consistently load.
 - [x] Add category- and country-aware source hints for discovery. See [source hints](SOURCES.md).
 - [ ] Assign a source-catalog owner and a review cadence for the [fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog) repository.
 - [ ] Add user login via a one-time code sent by email.

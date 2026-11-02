@@ -14,6 +14,8 @@ import { InstantClassifier } from './instant-classifier';
 import { logger } from './logger';
 import { adminRouter } from './admin';
 import type { SourceCatalogService } from './source-catalog';
+import { safeUrl } from './links';
+import { getPublicImage } from './image-proxy';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b))); }
@@ -24,7 +26,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   const app = express();
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
-  app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'https:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
+  app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
   app.get('/healthz', (_req, res) => {
     // Liveness: the process is running and serving HTTP. Never touches the DB
     // so Render does not kill a cold-starting instance during migration.
@@ -144,6 +146,19 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   app.patch('/api/sessions/:id/stage', async (req, res) => {
     const { stage } = z.object({ stage: z.enum(['ask', 'configure', 'discovery', 'buy']) }).strict().parse(req.body);
     res.json(await service.navigate(String(req.params.id), res.locals.owner, stage));
+  });
+  // Same-origin image proxy: seller CDNs often reject direct embedding or
+  // request-dependent referrers. The backend validates public HTTPS targets,
+  // pins DNS, limits redirects/type/size and caches the result.
+  app.get('/api/image', async (req, res) => {
+    const { url } = z.object({ url: z.string().max(2000) }).strict().parse(req.query);
+    if (!safeUrl(url)) throw new AppError(400, 'Invalid image URL.');
+    const image = await getPublicImage(url);
+    if (!image) throw new AppError(404, 'Image not available.', 'IMAGE_UNAVAILABLE');
+    res.setHeader('Content-Type', image.contentType);
+    res.setHeader('Content-Length', String(image.body.length));
+    res.setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800');
+    res.send(image.body);
   });
   app.use('/api', (_req, _res, next) => next(new AppError(404, 'API endpoint not found.')));
   const backofficeRoot = fileURLToPath(new URL('../../backoffice/', import.meta.url));

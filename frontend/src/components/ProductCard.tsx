@@ -11,8 +11,11 @@ export function ProductGlyph({ category = '', small = false }: { category?: stri
 export function ProductImage({ product, category, small = false }: { product: Product; category?: string; small?: boolean }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!product.imageUrl || failedUrl === product.imageUrl) return <ProductGlyph category={category ?? product.offers[0]?.category ?? ''} small={small} />;
-  return <img className={`product-photo ${small ? 'product-photo--small' : ''}`} src={product.imageUrl} alt={`${product.name} product image`}
-    loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailedUrl(product.imageUrl)} />;
+  // Load through the same-origin proxy: seller CDNs often reject direct
+  // cross-site embedding, and the proxy also keeps the browser request private.
+  const src = `/api/image?url=${encodeURIComponent(product.imageUrl)}`;
+  return <img className={`product-photo ${small ? 'product-photo--small' : ''}`} src={src} alt={`${product.name} product image`}
+    loading="lazy" decoding="async" onError={() => setFailedUrl(product.imageUrl)} />;
 }
 export default function ProductCard({ product, ranked, index, onLearn, onSelect, busy }: {
   product: Product; ranked: RankedOffer[]; index: number; onLearn: () => void; onSelect: () => void; busy: boolean;
