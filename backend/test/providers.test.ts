@@ -7,6 +7,7 @@ import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
 import { safeUrl } from '../src/links';
+import { logger } from '../src/logger';
 
 vi.mock('../src/product-images', () => ({ findSellerImage: vi.fn().mockResolvedValue(null) }));
 
@@ -172,6 +173,8 @@ describe('progressive multi-product discovery', () => {
     expect(acceptableProductCount(found, brief, 180000)).toBe(0);
   });
   it('stops after one pass with four grounded products and an uninterpreted preference', async () => {
+    const log = vi.spyOn(logger, 'info').mockImplementation(() => undefined);
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
     const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
     const brief = structuredClone(context);
     brief.config.requirements = [{ label: 'Comfortable keyboard', hard: false, attribute: null, op: null, value: null, unit: null }];
@@ -185,6 +188,8 @@ describe('progressive multi-product discovery', () => {
     expect(discovered.products).toHaveLength(4);
     expect(updates).toContain(1);
     expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledWith('discovery.pass.completed', expect.objectContaining({ pass: 1, eligible: 4, acceptable: 4 }));
+    expect(log).toHaveBeenCalledWith('discovery.run.completed', expect.objectContaining({ passes: 1, firstEligibleProductMs: 0, acceptable: 4 }));
     expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string).reasoning.effort).toBe(config.DISCOVERY_REASONING_EFFORT);
   });
   it('publishes imperfect options immediately but stops further research only when time makes them acceptable', async () => {

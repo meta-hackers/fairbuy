@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
+import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, UNINTERPRETED_PREFIX, OfferSchema, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeImageUrl, safeUrl } from '../links';
@@ -54,7 +54,7 @@ export function acceptableProductCount(result: DiscoveryResult, context: Discove
     // Free-text requirements have no machine-checkable attribute. Keep their
     // unknown outcome in ranking/evidence, but do not let them force extra
     // searches. Structured preferences with missing evidence still count.
-    const soft = offer.constraints.filter(c => !c.constraint.hard && !c.constraint.attribute.startsWith('uninterpreted_'));
+    const soft = offer.constraints.filter(c => !c.constraint.hard && !c.constraint.attribute.startsWith(UNINTERPRETED_PREFIX));
     return !soft.length || soft.filter(c => c.outcome === 'pass').length / soft.length >= threshold;
   }).map(offer => offer.offerId));
   return result.products.filter(product => product.offers.some(offer => acceptable.has(offer.id))).length;
