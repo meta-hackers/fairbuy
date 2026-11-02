@@ -73,7 +73,7 @@ const VERTICAL_KEYWORDS: Record<Exclude<Vertical, 'general'>, string[]> = {
   electronics: [
     'phone', 'smartphone', 'iphone', 'galaxy', 'pixel', 'tv', 'television', 'televisore', 'camera',
     'fotocamera', 'mirrorless', 'dslr', 'headphone', 'cuffie', 'earbuds', 'speaker', 'diffusore',
-    'console', 'playstation', 'xbox', 'nintendo', 'tablet', 'ipad', 'smartwatch', 'apple watch',
+    'console', 'playstation', 'xbox', 'nintendo', 'tablet', 'ipad', 'smartwatch', 'smart watch', 'apple watch',
     'washing machine', 'lavatrice', 'fridge', 'frigorifero', 'dishwasher', 'lavastoviglie', 'fernseher',
     'handy', 'kopfhorer', 'staubsauger', 'aspirapolvere', 'elettrodomestico', 'elettronica', 'electronics',
     'food processor', 'robot da cucina', 'kuchenmaschine',

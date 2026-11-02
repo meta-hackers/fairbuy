@@ -19,6 +19,7 @@ export const InstantClassificationSchema = z.object({
 export type InstantClassification = z.infer<typeof InstantClassificationSchema>;
 
 const normalize = (text: string) => text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+function tokens(text: string) { return new Set((normalize(text).match(/[\p{L}\p{N}]+/gu) ?? [])); }
 function hasAmount(evidence: string, amount: number) {
   return (evidence.match(/\d+(?:[.,'’]\d+)*(?:[ \u00a0]\d{3})*/g) ?? []).some(token => {
     const digits = token.replace(/[ '\u00a0’]/g, '');
@@ -44,11 +45,12 @@ export function groundInstantClassification(value: unknown, text: string): Insta
     if (/\b(around|about|approximately|environ|circa|ungefahr)\b/.test(normalize(budget.evidence))) budget = { ...budget, hard: false };
   }
   return {
-    category: parsed.category && grounded(parsed.category.evidence) ? parsed.category : null,
+    category: parsed.category && grounded(parsed.category.evidence)
+      && (normalize(parsed.category?.value ?? '').match(/[\p{L}\p{N}]+/gu) ?? []).some(word => word.length > 1 && tokens(parsed.category?.evidence ?? '').has(word)) ? parsed.category : null,
     budget,
     condition: parsed.condition && grounded(parsed.condition.evidence) && conditionMarkers[parsed.condition.value].test(normalize(parsed.condition.evidence)) ? parsed.condition : null,
     requirements: parsed.requirements.filter(requirement => grounded(requirement.evidence)
-      && (normalize(requirement.label).match(/[\p{L}\p{N}]+/gu) ?? []).some(word => word.length > 2 && normalize(requirement.evidence).includes(word))),
+      && (normalize(requirement.label).match(/[\p{L}\p{N}]+/gu) ?? []).some(word => word.length > 1 && tokens(requirement.evidence).has(word))),
     clarification: parsed.clarification,
   };
 }
