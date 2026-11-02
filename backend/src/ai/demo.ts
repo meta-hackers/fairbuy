@@ -1,6 +1,6 @@
 import type { AIProvider, ConversationResult, DiscoveryProgress } from './provider';
 import { productId } from './provider';
-import type { ChatMessage, DiscoveryContext, Product, ShoppingConfig } from '@fairbuy/core';
+import { CurrencySchema, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig } from '@fairbuy/core';
 
 // An explicit, offline scripted preview, NEVER an automatic fallback for live AI.
 export class DemoAIProvider implements AIProvider {
@@ -12,6 +12,12 @@ export class DemoAIProvider implements AIProvider {
     config.category = 'laptop'; config.purpose = users[0]?.content.slice(0, 500) ?? 'Everyday development';
     if (/italy|italia|milan/i.test(text)) { if (config.country !== 'IT') config.city = null; config.country = 'IT'; config.currency = 'EUR'; }
     if (/switzerland|zurich|swiss/i.test(text)) { if (config.country !== 'CH') config.city = null; config.country = 'CH'; config.currency = 'CHF'; }
+    // The scripted preview still honours an explicit currency code in the latest
+    // message so the location panel can mirror the same session config as live mode.
+    const latest = users.at(-1)?.content ?? '';
+    const requested = latest.match(/\b[A-Z]{3}\b/gi)?.reverse().map(code => code.toUpperCase())
+      .find(code => CurrencySchema.safeParse(code).success);
+    if (requested) config.currency = CurrencySchema.parse(requested);
     const budget = text.match(/(?:€|EUR|CHF|budget|max|under)\s*(\d{2,5})/i) ?? text.match(/(\d{2,5})\s*(?:€|EUR|CHF)/i);
     if (budget) config.budgetMax = Number(budget[1]);
     if (!config.requirements.length) config.requirements = [{ label: 'At least 16 GB RAM', hard: false, attribute: 'ramGb', op: '>=', value: 16, unit: 'GB' }];

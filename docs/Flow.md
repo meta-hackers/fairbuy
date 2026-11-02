@@ -11,7 +11,7 @@
 
 ## Location
 
-On page load, FairBuy requests browser location permission (HTTPS or localhost required). With permission, a rounded position is reverse-geocoded via OpenStreetMap Nominatim to suggest the city, country and supported local currency (EUR, CHF, USD or GBP). Other local currencies require a manual supported-currency choice; no conversion is assumed. Denied/unavailable location never blocks shopping. The location bar and Configure remain editable, and automatic detection never replaces an existing shopping country. No geocoding key is needed; only city/country/currency enter the shopping brief, not precise coordinates or a street address.
+On page load, FairBuy requests browser location permission (HTTPS or localhost required). With permission, a rounded position is reverse-geocoded via OpenStreetMap Nominatim to suggest the city, country and local currency when that currency is supported. Countries and currencies are chosen from dropdowns, with flag labels and common currencies listed first. If the local currency is not supported, the user can choose another supported currency manually; no conversion is assumed. Denied/unavailable location never blocks shopping. The location bar and Configure remain editable, and automatic detection never replaces an existing shopping country. A currency changed in either chat updates the top location panel immediately. No geocoding key is needed; only city/country/currency enter the shopping brief, not precise coordinates or a street address.
 
 ## Sequence diagram
 

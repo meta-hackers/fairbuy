@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CurrencySchema } from './contract';
+import { CurrencySchema, type Currency } from './contract';
 
 export const InstantClassifierInputSchema = z.object({ text: z.string().trim().min(3).max(3000) }).strict();
 const EvidenceSchema = z.string().min(1).max(240);
@@ -28,7 +28,20 @@ function hasAmount(evidence: string, amount: number) {
     return value === amount;
   });
 }
-const currencyMarkers = { EUR: /\beur\b|€|\beuros?\b/i, CHF: /\bchf\b|\bswiss francs?\b/i, USD: /\busd\b|us\$/i, GBP: /\bgbp\b|£/i };
+const currencySymbols: Partial<Record<Currency, RegExp>> = {
+  EUR: /€|\beuros?\b/i, CHF: /\bswiss francs?\b/i, USD: /us\$|\bus dollars?\b/i, GBP: /£|\bpounds?\b/i,
+  AUD: /a\$|\baustralian dollars?\b/i, CAD: /c(?:a)?\$|\bcanadian dollars?\b/i, CNY: /\brmb\b|\byuan\b|元/i,
+  JPY: /\byen\b|円/i, INR: /₹|\brupees?\b/i, BRL: /r\$|\breais\b/i, MXN: /mx\$/i,
+  SGD: /s\$|\bsingapore dollars?\b/i, HKD: /hk\$|\bhong kong dollars?\b/i, NZD: /nz\$|\bnew zealand dollars?\b/i,
+  PLN: /zł/i, CZK: /kč/i, HUF: /\bft\b/i, TRY: /₺|\bliras?\b/i, ILS: /₪|\bshekels?\b/i,
+  KRW: /₩|\bwon\b/i, THB: /฿|\bbaht\b/i, MYR: /\brm\b|\bringgit\b/i, IDR: /\brp\b|\brupiah\b/i,
+  PHP: /₱|\bpiso\b/i, VND: /₫|\bdong\b/i, NGN: /₦|\bnaira\b/i, UAH: /₴|\bhryvnia\b/i,
+  RUB: /₽|\brubles?\b/i, KZT: /₸|\btenge\b/i, GEL: /₾|\blari\b/i, BDT: /৳|\btaka\b/i,
+  TWD: /nt\$/i,
+};
+function hasCurrencyMarker(currency: Currency, evidence: string) {
+  return new RegExp(`\\b${currency}\\b`, 'i').test(evidence) || currencySymbols[currency]?.test(evidence) === true;
+}
 const conditionMarkers = {
   new: /\b(new|neuf|neuve|neu|nuovo|nuova)\b/,
   used: /\b(used|second[ -]?hand|occasion|gebraucht|usato|usata)\b/,
@@ -40,7 +53,7 @@ export function groundInstantClassification(value: unknown, text: string): Insta
   const grounded = (evidence: string) => text.includes(evidence);
   let budget = parsed.budget && grounded(parsed.budget.evidence) && hasAmount(parsed.budget.evidence, parsed.budget.amount) ? parsed.budget : null;
   if (budget) {
-    if (budget.currency && !currencyMarkers[budget.currency].test(budget.evidence)) budget = { ...budget, currency: null };
+    if (budget.currency && !hasCurrencyMarker(budget.currency, budget.evidence)) budget = { ...budget, currency: null };
     // A model must not silently turn an approximate budget into a hard ceiling.
     if (/\b(around|about|approximately|environ|circa|ungefahr)\b/.test(normalize(budget.evidence))) budget = { ...budget, hard: false };
   }

@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { CoordinatesSchema, currencyForCountry, ShoppingLocationSchema } from './location';
 
 describe('shopping location', () => {
-  it.each([['CH', 'CHF'], ['LI', 'CHF'], ['IT', 'EUR'], ['FR', 'EUR'], ['BG', 'EUR'], ['US', 'USD'], ['GB', 'GBP'], ['ch', 'CHF']])('suggests %s → %s', (country, currency) => {
+  it.each([
+    ['CH', 'CHF'], ['LI', 'CHF'], ['IT', 'EUR'], ['FR', 'EUR'], ['BG', 'EUR'], ['US', 'USD'], ['GB', 'GBP'], ['ch', 'CHF'],
+    ['CA', 'CAD'], ['JP', 'JPY'], ['IN', 'INR'], ['AU', 'AUD'], ['BR', 'BRL'], ['ZA', 'ZAR'], ['AE', 'AED'], ['CN', 'CNY'],
+  ])('suggests %s → %s', (country, currency) => {
     expect(currencyForCountry(country)).toBe(currency);
   });
-  it.each(['CA', 'JP', 'IN', 'AU', 'ZZ', ''])('does not invent a supported currency for %s', country => {
+  it.each(['ZZ', ''])('returns no currency for unknown country code %s', country => {
     expect(currencyForCountry(country)).toBeNull();
   });
   it('validates coordinates and rejects extra fields or arbitrary URLs', () => {

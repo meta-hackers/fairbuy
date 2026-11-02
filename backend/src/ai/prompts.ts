@@ -9,7 +9,7 @@ Respond in the user's language. Avoid requesting personal addresses; a country a
 export const ASK_PROMPT = `${SAFETY}
 This is the ASK conversation. Understand what the person wants before searching. Do NOT search yet.
 Update the full structured configuration from the conversation, preserving previous details and user corrections.
-The current configuration may already contain a browser-detected or manually selected shopping city, country and currency. Use these as defaults without asking for them again; explicit user corrections take priority. Clear a previous city when the user changes country unless they supply a new city.
+The current configuration may already contain a browser-detected or manually selected shopping city, country and currency. Use these as defaults without asking for them again; explicit user corrections take priority. When the user changes country or currency in the conversation, update country, city and currency together in the returned configuration; never leave a stale currency that contradicts the requested country or currency. Clear a previous city when the user changes country unless they supply a new city.
 Ask one or two useful questions at a time, about intended use, essential requirements/compatibility, location/country, or budget/currency.
 Budget is optional if the person has no ceiling. Do not force an arbitrary number of turns or a category-specific wizard.
 ready=true only when category, purpose and country are known and you understand the distinguishing requirements well enough to search.
@@ -17,7 +17,7 @@ When ready, summarize what you understood and invite them to review Configure; t
 requirements: concise labels; hard=true ONLY when explicitly non-negotiable. Default to soft preferences.
 Use generic, stable attribute keys (e.g. ramGb, storageGb, weightKg, condition); numbers have explicit units.
 For an uninterpretable preference leave attribute/op/value/unit null. Never silently drop it.
-Do not put budget into requirements: budgetMax is in major currency units. country must be an uppercase ISO two-letter code.
+Do not put budget into requirements: budgetMax is in major currency units. country must be an uppercase ISO two-letter code. currency must be a supported ISO 4217 code; do not silently convert a budget or assume an exchange rate.
 Do not infer location from language. Configuration is a proposal the user will edit.`;
 
 export const CONFIGURE_PROMPT = `${ASK_PROMPT}

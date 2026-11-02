@@ -43,7 +43,7 @@ projects:
               - key: INSTANT_CLASSIFIER_PROVIDER
                 value: cloudflare
               - key: INSTANT_CLASSIFIER_MODEL
-                value: '@cf/meta/llama-3.1-8b-instruct-fp8'
+                value: '@cf/meta/llama-3.1-8b-instruct-fp8-fast'
               - key: CLOUDFLARE_ACCOUNT_ID
                 sync: false
               - key: CLOUDFLARE_API_TOKEN

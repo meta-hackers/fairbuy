@@ -23,7 +23,7 @@ flowchart LR
 ## Combining the demos
 
 - **Alberto:** the Ask → Configure → Discovery ↔ Learn → Buy journey, restrained green visual language, editable brief, product reasons/trade-offs, Learn modal, Undo and read-only seller selection. Rebuilt around persistent API state, not the category-specific fixture router.
-- **Alessandro:** the Zod-validated shared contract, field-level provenance, unknown values, deterministic hard-constraint filtering and transparent ranking. Adapted to final listed prices, generic attributes and EUR/CHF/USD/GBP.
+- **Alessandro:** the Zod-validated shared contract, field-level provenance, unknown values, deterministic hard-constraint filtering and transparent ranking. Adapted to final listed prices, generic attributes and the supported ISO 4217 currency set.
 - **New:** real Meta Model API REST orchestration, optional Brave search, isolated anonymous sessions, PostgreSQL persistence/queue, source validation, cost guards, deployment and CI. The old NestJS/in-memory skeleton and client-side keyword interpreter are not parallel production engines. Express is intentionally the smaller same-origin hosting layer; Meta Model API remains the interpreter of confirmed shopping configuration. The optional Cloudflare classifier only produces provisional UI hints.
 
 ## Instant classifier

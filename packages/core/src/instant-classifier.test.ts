@@ -39,13 +39,18 @@ describe('provisional instant-classifier contracts', () => {
     expect(groundInstantClassification({ ...empty, budget: { amount: 700, currency: 'USD', hard: true, evidence: '$700' } }, '$700').budget?.currency).toBeNull();
     expect(groundInstantClassification({ ...empty, budget: { amount: 700, currency: 'EUR', hard: true, evidence: 'around EUR 700' } }, 'around EUR 700').budget?.hard).toBe(false);
   });
-  it.each([['CHF 1’299.90', 1299.9, 'CHF'], ['EUR 1.299,90', 1299.9, 'EUR'], ['€1 299', 1299, 'EUR'], ['GBP 700', 700, 'GBP']])('validates amounts in %s without introducing an exchange rate', (evidence, amount, currency) => {
+  it.each([
+    ['CHF 1’299.90', 1299.9, 'CHF'], ['EUR 1.299,90', 1299.9, 'EUR'], ['€1 299', 1299, 'EUR'], ['GBP 700', 700, 'GBP'],
+    ['JPY 80,000', 80000, 'JPY'], ['50 CAD', 50, 'CAD'], ['INR 25,000', 25000, 'INR'],
+  ])('validates amounts in %s without introducing an exchange rate', (evidence, amount, currency) => {
     expect(groundInstantClassification({ ...empty, budget: { amount, currency, hard: true, evidence } }, evidence).budget?.amount).toBe(amount);
   });
-  it('bounds inputs, output length and supported currencies', () => {
+  it('bounds inputs and rejects unknown currencies', () => {
     for (const text of ['', 'ab', 'a'.repeat(3001)]) expect(InstantClassifierInputSchema.safeParse({ text }).success).toBe(false);
     expect(InstantClassifierInputSchema.parse({ text: '  baby  ' }).text).toBe('baby');
-    expect(() => groundInstantClassification({ ...empty, budget: { amount: 50, currency: 'JPY', hard: true, evidence: '50 JPY' } }, '50 JPY')).toThrow();
+    expect(() => groundInstantClassification({ ...empty, budget: { amount: 50, currency: 'XYZ', hard: true, evidence: '50 XYZ' } }, '50 XYZ')).toThrow();
     expect(() => groundInstantClassification({ ...empty, expectedPrice: 500 }, 'laptop')).toThrow();
+    // A bare currency symbol stays ambiguous; an explicit code or unmistakable symbol is required.
+    expect(groundInstantClassification({ ...empty, budget: { amount: 700, currency: 'JPY', hard: true, evidence: '¥700' } }, '¥700').budget?.currency).toBeNull();
   });
 });

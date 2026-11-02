@@ -1,7 +1,29 @@
 // Adapted from fairbuy-alessandro-demo: validated facts retain their provenance.
 import { z } from 'zod';
 
-export const CurrencySchema = z.enum(['EUR', 'CHF', 'USD', 'GBP']);
+// Common currencies are listed first so the dropdowns stay usable, followed by
+// every other ISO 4217 currency used by a country. No exchange rate is assumed.
+export const CURRENCIES = [
+  'EUR', 'USD', 'GBP', 'CHF', 'AUD', 'CAD', 'CNY', 'JPY', 'INR', 'BRL',
+  'MXN', 'SGD', 'HKD', 'NZD', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF',
+  'RON', 'TRY', 'ZAR', 'AED', 'SAR', 'QAR', 'ILS', 'KRW', 'THB', 'MYR',
+  'IDR', 'PHP', 'VND', 'EGP', 'NGN', 'KES', 'MAD', 'UAH', 'ISK', 'CLP',
+  'COP', 'ARS', 'PEN', 'TWD', 'BDT', 'PKR', 'LKR', 'NPR', 'RUB', 'RSD',
+  'KZT', 'GEL', 'UYU', 'TTD', 'JMD', 'AFN', 'ALL', 'AMD', 'AOA', 'AWG',
+  'AZN', 'BAM', 'BBD', 'BHD', 'BIF', 'BMD', 'BND', 'BOB', 'BSD', 'BTN',
+  'BWP', 'BYN', 'BZD', 'CDF', 'CRC', 'CUP', 'CVE', 'DJF', 'DOP', 'DZD',
+  'ERN', 'ETB', 'FJD', 'FKP', 'GHS', 'GIP', 'GMD', 'GNF', 'GTQ', 'GYD',
+  'HNL', 'HTG', 'IQD', 'IRR', 'JOD', 'KGS', 'KHR', 'KMF', 'KPW', 'KWD',
+  'KYD', 'LAK', 'LBP', 'LRD', 'LSL', 'LYD', 'MDL', 'MGA', 'MKD', 'MMK',
+  'MNT', 'MOP', 'MRU', 'MUR', 'MVR', 'MWK', 'MZN', 'NAD', 'NIO', 'OMR',
+  'PAB', 'PGK', 'PYG', 'RWF', 'SBD', 'SCR', 'SDG', 'SHP', 'SLE', 'SOS',
+  'SRD', 'SSP', 'STN', 'SYP', 'SZL', 'TJS', 'TMT', 'TND', 'TOP', 'TZS',
+  'UGX', 'UZS', 'VES', 'VUV', 'WST', 'XAF', 'XCD', 'XCG', 'XOF', 'XPF',
+  'YER', 'ZMW', 'ZWG',
+] as const;
+export type Currency = (typeof CURRENCIES)[number];
+export const CurrencySchema = z.enum(CURRENCIES);
+export const COMMON_CURRENCIES = CURRENCIES.slice(0, 55);
 export const EvidenceSchema = z.object({
   sourceType: z.enum(['url', 'screenshot', 'user_input']),
   ref: z.string(), snippet: z.string().optional(), at: z.iso.datetime(),

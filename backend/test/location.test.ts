@@ -31,9 +31,13 @@ describe('city-level reverse geocoding', () => {
     await expect(resolver.reverse(0, 0)).rejects.toThrow('busy');
     expect(fetcher).toHaveBeenCalledOnce();
   });
-  it('supports town results without inventing a currency', async () => {
+  it('supports town results with the local supported currency', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ address: { country_code: 'ca', town: 'Banff' } })));
-    expect(await new LocationResolver(fetcher).reverse(51.18, -115.57)).toEqual({ country: 'CA', city: 'Banff', currency: null });
+    expect(await new LocationResolver(fetcher).reverse(51.18, -115.57)).toEqual({ country: 'CA', city: 'Banff', currency: 'CAD' });
+  });
+  it('leaves the currency empty when a territory has no supported local currency', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ address: { country_code: 'aq', town: 'Research Station' } })));
+    expect(await new LocationResolver(fetcher).reverse(-77.85, 166.67)).toEqual({ country: 'AQ', city: 'Research Station', currency: null });
   });
   it.each([new Response('{}'), new Response('unavailable', { status: 503 })])('handles missing countries and upstream errors safely', async response => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response);

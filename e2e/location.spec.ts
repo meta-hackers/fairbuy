@@ -16,12 +16,12 @@ test('requests location on arrival, seeds Ask and preserves edited locations acr
   await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await expect(page.getByLabel(/^Country code/)).toHaveValue('CH');
+  await expect(page.getByLabel('Country', { exact: true })).toHaveValue('CH');
   await expect(page.getByLabel('City / region')).toHaveValue('Zurich');
   await expect(page.getByRole('combobox', { name: 'Currency', exact: true })).toHaveValue('CHF');
   await page.getByLabel('Budget ceiling').fill('800');
   await location.getByRole('button', { name: 'Change location' }).click();
-  await page.getByLabel('Shopping country code').fill('GB');
+  await page.getByLabel('Shopping country').selectOption('GB');
   await expect(page.getByLabel('Shopping city')).toHaveValue('');
   await expect(page.getByLabel('Shopping currency')).toHaveValue('GBP');
   await page.getByLabel('Shopping city').fill('London');
@@ -36,7 +36,7 @@ test('requests location on arrival, seeds Ask and preserves edited locations acr
   await page.reload();
   await expect(location).toContainText('Shopping in London, United Kingdom · USD');
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await expect(page.getByLabel(/^Country code/)).toHaveValue('GB');
+  await expect(page.getByLabel('Country', { exact: true })).toHaveValue('GB');
   await expect(page.getByRole('combobox', { name: 'Currency', exact: true })).toHaveValue('USD');
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
 });
@@ -49,7 +49,9 @@ test('denied permission leaves manual country, city and currency available befor
   const location = page.getByRole('region', { name: 'Shopping location' });
   await expect(location).toContainText('Location access was denied');
   await location.getByRole('button', { name: 'Set location' }).click();
-  await page.getByLabel('Shopping country code').fill('IT');
+  const countrySelect = page.getByLabel('Shopping country');
+  await expect(countrySelect.locator('option[value="IT"]')).toContainText('🇮🇹 Italy (IT)');
+  await countrySelect.selectOption('IT');
   await page.getByLabel('Shopping city').fill('Milan');
   await expect(page.getByLabel('Shopping currency')).toHaveValue('EUR');
   await location.getByRole('button', { name: 'Save location' }).click();
@@ -57,8 +59,28 @@ test('denied permission leaves manual country, city and currency available befor
   await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await expect(page.getByLabel(/^Country code/)).toHaveValue('IT');
+  await expect(page.getByLabel('Country', { exact: true })).toHaveValue('IT');
   await expect(page.getByLabel('City / region')).toHaveValue('Milan');
+});
+
+test('a currency changed in chat is reflected in the top location panel', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'geolocation', { value: {
+    getCurrentPosition: (_success: unknown, failure: (error: { code: number }) => void) => failure({ code: 1 }),
+  } }));
+  await page.goto('/');
+  const location = page.getByRole('region', { name: 'Shopping location' });
+  await location.getByRole('button', { name: 'Set location' }).click();
+  await page.getByLabel('Shopping country').selectOption('IT');
+  await page.getByLabel('Shopping city').fill('Milan');
+  await location.getByRole('button', { name: 'Save location' }).click();
+  await expect(location).toContainText('Shopping in Milan, Italy · EUR');
+  const input = page.getByRole('textbox', { name: 'Your message' });
+  await input.fill('A laptop for coding');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeEnabled();
+  await input.fill('Change the currency to JPY');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(location).toContainText('Shopping in Milan, Italy · JPY');
 });
 
 test('a late location result never replaces a manual selection', async ({ page, context }) => {
@@ -75,7 +97,7 @@ test('a late location result never replaces a manual selection', async ({ page, 
   await page.goto('/'); await requested;
   const location = page.getByRole('region', { name: 'Shopping location' });
   await location.getByRole('button', { name: 'Set location' }).click();
-  await page.getByLabel('Shopping country code').fill('GB');
+  await page.getByLabel('Shopping country').selectOption('GB');
   await page.getByLabel('Shopping city').fill('London');
   await location.getByRole('button', { name: 'Save location' }).click();
   release();
@@ -83,7 +105,7 @@ test('a late location result never replaces a manual selection', async ({ page, 
   await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await expect(page.getByLabel(/^Country code/)).toHaveValue('GB');
+  await expect(page.getByLabel('Country', { exact: true })).toHaveValue('GB');
   await expect(page.getByRole('combobox', { name: 'Currency', exact: true })).toHaveValue('GBP');
 });
 
@@ -122,10 +144,10 @@ test('geocoder failure does not block chatting or manual setup', async ({ page, 
 test('an unsupported local currency requires a manual choice instead of assuming EUR', async ({ page, context }) => {
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({ latitude: 51.18, longitude: -115.57 });
-  await page.route('**/api/location/reverse', route => route.fulfill({ json: { country: 'CA', city: 'Banff', currency: null } }));
+  await page.route('**/api/location/reverse', route => route.fulfill({ json: { country: 'AQ', city: 'Research Station', currency: null } }));
   await page.goto('/');
   const location = page.getByRole('region', { name: 'Shopping location' });
-  await expect(location).toContainText('Shopping in Banff, Canada · choose currency');
+  await expect(location).toContainText('Shopping in Research Station, Antarctica · choose currency');
   await expect(location).toContainText('local currency is not supported');
   await location.getByRole('button', { name: 'Change location' }).click();
   await page.getByLabel('Shopping currency').selectOption('USD');
@@ -133,7 +155,7 @@ test('an unsupported local currency requires a manual choice instead of assuming
   await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await expect(page.getByLabel(/^Country code/)).toHaveValue('CA');
+  await expect(page.getByLabel('Country', { exact: true })).toHaveValue('AQ');
   await expect(page.getByRole('combobox', { name: 'Currency', exact: true })).toHaveValue('USD');
 });
 
