@@ -93,6 +93,17 @@ export function effectiveConfig(context: DiscoveryContext): ShoppingConfig {
   return config;
 }
 export function isConfigReady(config: ShoppingConfig) { return !!(config.category?.trim() && config.purpose?.trim() && config.country); }
+/** The minimum brief fields a search still needs, in plain words. */
+export function missingForSearch(config: ShoppingConfig): string[] {
+  return [
+    ...(config.category?.trim() ? [] : ['product category']),
+    ...(config.purpose?.trim() ? [] : ['intended use']),
+    ...(config.country ? [] : ['country']),
+  ];
+}
+/** Ask replies after which Configure opens whenever the minimum brief exists, whatever the model says. */
+export const ASK_QUESTION_CAP = 3;
+export function askRounds(session: Pick<ShoppingSession, 'askMessages'>) { return session.askMessages.filter(m => m.role === 'assistant').length; }
 export function rankProducts(products: Product[], context: DiscoveryContext): ComparisonResult {
   const config = effectiveConfig(context);
   const result = rankOffers({

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MemoryStore } from '../src/store';
 import { ShoppingService } from '../src/shopping-service';
 import { DemoAIProvider } from '../src/ai/demo';
-import { roundOutcome } from '@fairbuy/core';
+import { EMPTY_CONFIG, roundOutcome, type ShoppingConfig } from '@fairbuy/core';
 import type { DiscoveryResult } from '../src/ai/provider';
 import { AppError } from '../src/errors';
 
@@ -173,5 +173,33 @@ describe('real backend shopping orchestration', () => {
     expect(round.status).toBe('complete');
     expect(round.dropped).toEqual([{ reason: 'quote_not_grounded', product: 'Aster', seller: 'Shop', host: 'shop.example.org' }]);
     expect(roundOutcome(round)).toBe('nothing_grounded');
+  });
+});
+
+describe('Ask question cap (issue #18)', () => {
+  const brief = (extra: Partial<ShoppingConfig> = {}): ShoppingConfig => ({ ...EMPTY_CONFIG, category: 'laptop', purpose: 'coding', country: 'IT', ...extra });
+  async function ask(rounds: number, config: ShoppingConfig, phaseReady = false) {
+    const store = new MemoryStore(); const ai = new DemoAIProvider(); const service = new ShoppingService(store, ai, 'demo');
+    // The model keeps asking and never declares the brief ready on its own.
+    vi.spyOn(ai, 'converse').mockResolvedValue({ reply: 'One more question?', config, ready: phaseReady, missing: ['screen size'] });
+    const { id } = await service.create('alice');
+    let session = await store.get(id);
+    for (let i = 0; i < rounds; i++) session = await service.message(id, 'alice', 'ask', `answer ${i + 1}`);
+    return session;
+  }
+  it('keeps Configure closed while the model is still asking, within the cap', async () => {
+    expect((await ask(1, brief())).ready).toBe(false);
+    expect((await ask(2, brief())).ready).toBe(false);
+  });
+  it('opens Configure after three rounds once the minimum brief exists, and keeps it open', async () => {
+    expect((await ask(3, brief())).ready).toBe(true);
+    expect((await ask(4, brief())).ready).toBe(true);
+  });
+  it('still requires category, intended use and country after the cap', async () => {
+    expect((await ask(4, brief({ country: null }))).ready).toBe(false);
+    expect((await ask(4, brief({ purpose: null }))).ready).toBe(false);
+  });
+  it('lets the model open Configure earlier when it is satisfied', async () => {
+    expect((await ask(1, brief(), true)).ready).toBe(true);
   });
 });
