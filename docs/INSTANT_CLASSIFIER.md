@@ -16,7 +16,8 @@ FairBuy uses Cloudflare Workers AI only for the optional, provisional draft prev
 
 | Supported `INSTANT_CLASSIFIER_MODEL` | Neurons / 1M input tokens | Neurons / 1M output tokens | Use |
 | --- | ---: | ---: | --- |
-| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | 4,119 | 34,868 | Default: smarter 8B classifier; fewer input neurons than 3B, more output neurons. |
+| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | 4,119 | 34,868 | Server default: faster 8B classifier; fewer input neurons than 3B, more output neurons. |
+| `@cf/meta/llama-3.1-8b-instruct-fp8` | 13,778 | 26,128 | Render Blueprint choice: more input neurons, fewer output neurons than the fast variant; supports the classifier's JSON Schema requests. |
 | `@cf/meta/llama-3.2-3b-instruct` | 4,625 | 30,475 | Fallback; supports the classifier's JSON Schema requests. |
 
 Rates are from [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) (October 2026); check the current rates before comparing costs. Actual usage depends on input and output length. Test classification quality with representative drafts before choosing another model.

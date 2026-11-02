@@ -48,7 +48,7 @@ describe('optional instant classifier settings', () => {
   it('only accepts the intended non-reasoning Meta models and a valid account ID', () => {
     expect(() => settings({ INSTANT_CLASSIFIER_MODEL: 'muse-spark-1.3' })).toThrow();
     expect(() => settings({ INSTANT_CLASSIFIER_MODEL: '@cf/meta/llama-3.2-1b-instruct' })).toThrow();
-    for (const model of ['@cf/meta/llama-3.2-3b-instruct', '@cf/meta/llama-3.1-8b-instruct-fp8-fast']) {
+    for (const model of ['@cf/meta/llama-3.2-3b-instruct', '@cf/meta/llama-3.1-8b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct-fp8']) {
       expect(settings({ INSTANT_CLASSIFIER_MODEL: model }).INSTANT_CLASSIFIER_MODEL).toBe(model);
     }
     expect(() => settings({ CLOUDFLARE_ACCOUNT_ID: 'invalid/account' })).toThrow();
