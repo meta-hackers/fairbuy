@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { SOURCE_CATALOG_SEED } from '../../../data/source-catalog';
 import {
-  EMPTY_CONFIG, SourceEntrySchema, classifyVertical, hostInDomains, isNonSellerHost,
-  isPlannedSellerHost, sourcePlan, validateSourceCatalog,
+  EMPTY_CONFIG, SourceCatalogValidationError, SourceEntrySchema, classifyVertical, hostInDomains,
+  isNonSellerHost, isPlannedSellerHost, sourcePlan, validateSourceCatalog,
 } from './index';
 
 const brief = (category: string | null, country: string | null, purpose: string | null = null) =>
@@ -17,6 +17,10 @@ describe('category-aware source hints', () => {
     expect(classifyVertical(brief('ristorante', 'IT'))).toBe('food_delivery');
     expect(classifyVertical(brief('Küche', 'DE'))).toBe('home');
     expect(classifyVertical(brief('scarpe', 'IT'))).toBe('fashion');
+    expect(classifyVertical(brief('watch', 'CH'))).toBe('watches');
+    expect(classifyVertical(brief('orologio', 'IT'))).toBe('watches');
+    expect(classifyVertical(brief('montre', 'FR'))).toBe('watches');
+    expect(classifyVertical(brief('smartwatch', 'IT'))).toBe('electronics');
     expect(classifyVertical(brief('bicicletta', 'IT'))).toBe('sports');
     expect(classifyVertical(brief('libro', 'IT'))).toBe('books');
     expect(classifyVertical(brief('pneumatici', 'IT'))).toBe('auto');
@@ -54,6 +58,19 @@ describe('category-aware source hints', () => {
     expect(plan.nonSellerDomains).toContain('thefork.com');
   });
 
+  it('plans watch sources for the watches vertical', () => {
+    const watchCatalog = [SourceEntrySchema.parse({
+      domain: 'rolex.com', name: 'Rolex', roles: ['spec'], verticals: ['watches'], countries: 'global', priority: 3,
+    }), SourceEntrySchema.parse({
+      domain: 'chrono24.com', name: 'Chrono24', roles: ['marketplace'], verticals: ['watches'], countries: 'global', priority: 3,
+    })];
+    const plan = sourcePlan(brief('watch', 'CH'), watchCatalog);
+    expect(plan.vertical).toBe('watches');
+    expect(plan.sellers.map(source => source.domain)).toContain('chrono24.com');
+    expect(plan.specs.map(source => source.domain)).toContain('rolex.com');
+    expect(plan.nonSellerDomains).toContain('rolex.com');
+  });
+
   it('applies persisted overrides and hides disabled entries without losing role safety', () => {
     const disabled = SOURCE_CATALOG_SEED.map(source => source.domain === 'openicecat.com' ? { ...source, enabled: false } : source);
     const disabledPlan = sourcePlan(brief('laptop', 'CH'), disabled);
@@ -72,15 +89,35 @@ describe('category-aware source hints', () => {
   it('keeps the seed catalog valid and unique', () => {
     expect(new Set(SOURCE_CATALOG_SEED.map(source => source.domain)).size).toBe(SOURCE_CATALOG_SEED.length);
     expect(validateSourceCatalog(SOURCE_CATALOG_SEED)).toHaveLength(SOURCE_CATALOG_SEED.length);
-    expect(() => validateSourceCatalog([SOURCE_CATALOG_SEED[0], SOURCE_CATALOG_SEED[0]])).toThrow(/Duplicate source domain/);
+    expect(() => validateSourceCatalog([SOURCE_CATALOG_SEED[0], SOURCE_CATALOG_SEED[0]])).toThrow(SourceCatalogValidationError);
+  });
+
+  it('reports entry-level validation issues with index and domain', () => {
+    let error: unknown;
+    try { validateSourceCatalog([{ ...SOURCE_CATALOG_SEED[0], verticals: ['not-a-vertical'] }]); }
+    catch (caught) { error = caught; }
+    expect(error).toBeInstanceOf(SourceCatalogValidationError);
+    const issues = (error as SourceCatalogValidationError).issues;
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ index: 0, domain: SOURCE_CATALOG_SEED[0].domain, path: 'verticals.0' }),
+    ]));
+
+    let duplicate: unknown;
+    try { validateSourceCatalog([SOURCE_CATALOG_SEED[0], SOURCE_CATALOG_SEED[0]]); }
+    catch (caught) { duplicate = caught; }
+    expect((duplicate as SourceCatalogValidationError).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ index: 1, code: 'duplicate_domain' }),
+    ]));
   });
 
   it('validates persisted catalog entries', () => {
     expect(() => SourceEntrySchema.parse({ domain: 'not a host', name: 'X', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3 })).toThrow();
     expect(() => SourceEntrySchema.parse({ domain: 'shop.example', name: 'X', roles: [], verticals: ['computers'], countries: ['CH'], priority: 3 })).toThrow();
-    expect(() => SourceEntrySchema.parse({ domain: 'shop.example', name: 'X', roles: ['seller'], verticals: ['nope'], countries: ['CH'], priority: 3 })).toThrow();
+    expect(() => SourceEntrySchema.parse({ domain: 'shop.example', name: 'X', roles: ['seller'], verticals: ['Not A Vertical'], countries: ['CH'], priority: 3 })).toThrow();
     expect(() => SourceEntrySchema.parse({ domain: 'shop.example', name: 'X', roles: ['seller'], verticals: ['computers'], countries: ['ch'], priority: 3 })).toThrow();
     expect(() => SourceEntrySchema.parse({ domain: 'shop.example', name: 'X', roles: ['seller'], verticals: ['computers'], countries: 'global', priority: 4 })).toThrow();
+    expect(SourceEntrySchema.parse({ domain: 'shop.example', name: 'X', roles: ['seller'], verticals: ['watches'], countries: ['CH'], priority: 3 }).verticals).toEqual(['watches']);
+    expect(SourceEntrySchema.parse({ domain: 'shop.example', name: 'X', roles: ['seller'], verticals: ['new_vertical'], countries: ['CH'], priority: 3 }).verticals).toEqual(['new_vertical']);
   });
 
   it('does not invent country coverage and matches subdomains only at dot boundaries', () => {

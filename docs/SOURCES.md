@@ -51,7 +51,7 @@ FairBuy keeps a bundled **fallback snapshot** in `data/source-catalog.ts`. It is
 
 ## How the plan is built
 
-1. `classifyVertical()` maps the free-form `category` and `purpose` to a vertical: `computers`, `electronics`, `food_delivery`, `fashion`, `home`, `sports`, `books`, `auto`, or `general`. It uses multilingual keywords and light plural folding; unknown briefs stay `general`.
+1. `classifyVertical()` maps the free-form `category` and `purpose` to a vertical: `computers`, `electronics`, `food_delivery`, `fashion`, `watches`, `home`, `sports`, `books`, `auto`, or `general`. It uses multilingual keywords and light plural folding; unknown briefs stay `general`.
 2. `sourcePlan()` filters the current in-memory catalog by vertical and country, sorts by priority, and returns at most:
    - 8 seller/marketplace hints,
    - 3 specification hints,
@@ -59,6 +59,7 @@ FairBuy keeps a bundled **fallback snapshot** in `data/source-catalog.ts`. It is
    - the non-seller domains for enforcement.
 3. Country coverage is explicit. `ricardo.ch`, `galaxus.ch` and `digitec.ch` do not appear for an Italian brief; `mediaworld.it` does not appear for a Swiss brief. `global` entries are country-independent.
 4. `enabled: false` hides an entry from hints but keeps its role for enforcement, so a disabled specification source is still never accepted as an offer URL.
+5. Catalog vertical keys are **open-ended**. The app accepts any lowercase key matching `^[a-z][a-z0-9_]*$`; a new key does not fail the sync. It only influences discovery once `classifyVertical()` can produce that key, so a new vertical may need a small classifier update even though the catalog itself is already valid.
 
 The catalog is intentionally curated rather than model-generated. A model asked to “list shops” can invent domains, and a separate seller-discovery round-trip delays the first result. The research model already has web search; it can choose additional sources freely beyond the hints.
 
