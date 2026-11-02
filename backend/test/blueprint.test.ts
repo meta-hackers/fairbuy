@@ -10,7 +10,11 @@ const project = blueprint.projects[0];
 const environment = project.environments[0];
 const service = environment.services[0];
 
-const stageModelKeys = ['ASK_MODEL', 'CONFIGURE_MODEL', 'DISCOVERY_MODEL'];
+const stageConfigs = [
+  ['ASK_MODEL', 'ASK_REASONING_EFFORT'],
+  ['CONFIGURE_MODEL', 'CONFIGURE_REASONING_EFFORT'],
+  ['DISCOVERY_MODEL', 'DISCOVERY_REASONING_EFFORT'],
+] as const;
 const supportedStageModels = ['muse-spark-1.3', 'muse-spark-1.3-contributor', 'muse-wonder-1.0'];
 
 describe('Render web deployment with Supabase PostgreSQL', () => {
@@ -56,6 +60,7 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
   });
 
   it('uses a supported Meta reasoning model for every stage', () => {
+    const stageModelKeys: string[] = stageConfigs.map(([modelKey]) => modelKey);
     const models = service.envVars.filter((env: { key: string }) => stageModelKeys.includes(env.key));
     expect(models.map((env: { key: string }) => env.key).sort()).toEqual([...stageModelKeys].sort());
     for (const env of models as { key: string; value: string }[]) {
@@ -63,13 +68,14 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
     }
   });
 
-  it('accepts a supported reasoning effort for every stage', () => {
-    const efforts = service.envVars.filter((env: { key: string }) => env.key.endsWith('REASONING_EFFORT'));
-    expect(efforts.map((env: { key: string }) => env.key).sort()).toEqual(
-      ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'],
-    );
-    for (const env of efforts as { key: string; value: string }[]) {
-      expect(() => settings({ [env.key]: env.value })).not.toThrow();
+  it('accepts the configured model and reasoning effort for every stage', () => {
+    const envVars = Object.fromEntries(
+      service.envVars.map((env: { key: string; value: string }) => [env.key, env.value]),
+    ) as Record<string, string>;
+    for (const [modelKey, effortKey] of stageConfigs) {
+      expect(envVars).toHaveProperty(modelKey);
+      expect(envVars).toHaveProperty(effortKey);
+      expect(() => settings({ [modelKey]: envVars[modelKey], [effortKey]: envVars[effortKey] })).not.toThrow();
     }
   });
 

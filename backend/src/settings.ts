@@ -13,6 +13,11 @@ const AdminSchema = z.union([
   return { username: admin.username, passwordHash: `scrypt:${salt}:${scryptSync(admin.password, salt, 64).toString('hex')}` };
 });
 const AdminsSchema = z.array(AdminSchema).max(100).refine(admins => new Set(admins.map(a => a.username.toLowerCase())).size === admins.length, 'Admin usernames must be unique');
+const StageModels = [
+  ['ASK_MODEL', 'ASK_REASONING_EFFORT'],
+  ['CONFIGURE_MODEL', 'CONFIGURE_REASONING_EFFORT'],
+  ['DISCOVERY_MODEL', 'DISCOVERY_REASONING_EFFORT'],
+] as const;
 const Schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   FAIRBUY_MODE: z.enum(['live', 'demo']).default('live'),
@@ -37,6 +42,16 @@ const Schema = z.object({
   AI_PRICE_TABLE: z.string().default('{"*":{"input":1,"output":3}}').transform(value => z.record(z.string(), z.object({ input: z.number().nonnegative().finite(), output: z.number().nonnegative().finite() })).parse(JSON.parse(value))),
   APP_ORIGIN: z.string().default(''),
   RENDER_EXTERNAL_URL: z.string().default(''),
+}).superRefine((value, ctx) => {
+  for (const [modelKey, effortKey] of StageModels) {
+    if (value[effortKey] === 'max' && value[modelKey].endsWith('-contributor')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [effortKey],
+        message: `"max" reasoning is not available with ${value[modelKey]}`,
+      });
+    }
+  }
 });
 export type Settings = z.infer<typeof Schema>;
 export function settings(env = process.env): Settings {
