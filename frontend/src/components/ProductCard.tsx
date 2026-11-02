@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Product, RankedOffer } from '@fairbuy/core';
+import { scorePoints, type Product, type RankedOffer } from '@fairbuy/core';
 export function money(cents: number, currency: string) { return new Intl.NumberFormat('en', { style: 'currency', currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100); }
 export function ProductGlyph({ category = '', small = false }: { category?: string; small?: boolean }) {
   const laptop = /laptop|computer|pc|notebook/i.test(category);
@@ -27,10 +27,16 @@ export default function ProductCard({ product, ranked, index, onLearn, onSelect,
   const price = prices.length ? `${money(Math.min(...prices), currency)}${Math.max(...prices) > Math.min(...prices) ? ` – ${money(Math.max(...prices), currency)}` : ''}` : 'Final price not listed';
   const unknownPrices = eligible.length - prices.length;
   const sources = [...new Map(eligible.filter(o => /^https:\/\//.test(o.provenanceUrl)).map(o => [o.provenanceUrl, o])).values()];
+  const points = scorePoints(best);
+  const pct = (weight: number) => Math.round(weight * 100);
+  const preferences = best.weights.suitability > 0;
+  const scoreTitle = preferences
+    ? `Deterministic score: ${pct(best.weights.cost)}% price, ${pct(best.weights.suitability)}% preferences, ${pct(best.weights.reliability)}% evidence reliability`
+    : `Deterministic score: ${pct(best.weights.cost)}% price, ${pct(best.weights.reliability)}% evidence reliability. No preference could be checked automatically`;
   return <article className={`product-card ${index === 0 ? 'product-card--first' : ''}`} data-testid="product-card">
     <div className="product-visual"><span className="rank-index">{String(index + 1).padStart(2, '0')}</span><ProductImage product={product} />{index === 0 && <span className="top-pick">Best scored option</span>}</div>
     <div className="product-content">
-      <div className="product-heading"><div><h2>{product.name}</h2><p className="micro">{[...new Set(eligible.map(o => o.seller))].join(' · ')}</p></div><span className="fit-score" title="Deterministic score: 30% price, 50% preferences, 20% evidence reliability">{Math.round(best.score * 100)}<small>/100 fit</small></span></div>
+      <div className="product-heading"><div><h2>{product.name}</h2><p className="micro">{[...new Set(eligible.map(o => o.seller))].join(' · ')}</p></div><span className="fit-score" title={scoreTitle}>{points.total}<small>/100 fit</small></span></div>
       <p className="product-summary">{product.summary}</p>
       <div className="why"><span aria-hidden="true">✳</span><p>{product.why}</p></div>
       <div className="product-tags"><span className="tag">{best.status === 'unverified' ? 'Checks still needed' : 'No known constraint failure'}</span>{!best.price.known && <span className="tag warning-tag">Price not listed</span>}</div>
@@ -38,7 +44,7 @@ export default function ProductCard({ product, ranked, index, onLearn, onSelect,
       {!!sources.length && <div className="inline-sources"><span>Sources:</span>{sources.map((o, i) => <a href={o.provenanceUrl} key={o.id} target="_blank" rel="noopener noreferrer">[{i + 1}] {o.seller} ↗</a>)}</div>}
       <details className="product-details"><summary>Trade-offs & evidence <span aria-hidden="true">+</span></summary>
         <ul>{product.tradeoffs.map((t, i) => <li key={i}>{t}</li>)}{best.constraints.map((r, i) => <li key={`c${i}`}><span className={`outcome outcome--${r.outcome}`}>{r.outcome === 'pass' ? '✓' : r.outcome === 'fail' ? '−' : '?'}</span>{r.reason}{r.constraint.hard && ' · must-have'}</li>)}</ul>
-        <p className="micro">Score breakdown: price {Math.round(best.breakdown.cost * 100)} + preferences {Math.round(best.breakdown.suitability * 100)} + evidence {Math.round(best.breakdown.reliability * 100)}. This is not a quality or safety guarantee. Shipping and delivery are not included.</p>
+        <p className="micro">Score breakdown: price {points.cost}{preferences ? ` + preferences ${points.suitability}` : ''} + evidence {points.reliability} = {points.total}.{preferences ? '' : ' No preference could be checked automatically, so price and evidence carry the score.'} This is not a quality or safety guarantee. Shipping and delivery are not included.</p>
         {eligible.map(offer => <div className="offer-evidence" key={offer.id}><strong>{offer.seller}</strong>
           {Object.entries(offer.attributes).map(([key, field]) => <p className="micro" key={key}>{key}: {field.status === 'unknown' ? 'unknown' : `${field.value.value}${field.value.kind === 'number' ? ` ${field.value.unit}` : ''}`} · {field.status.replace('_', ' ')}</p>)}
           {offer.evidence[0]?.snippet && <blockquote>{offer.evidence[0].snippet}</blockquote>}
