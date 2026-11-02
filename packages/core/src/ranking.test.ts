@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DemoAIProvider } from '../../../backend/src/ai/demo';
-import { EMPTY_CONFIG, constraintsFor, effectiveConfig, type DiscoveryContext, type Offer } from './index';
-import { finalPrice, rankOffers } from './ranking';
+import { EMPTY_CONFIG, constraintsFor, effectiveConfig, type Constraint, type DiscoveryContext, type Offer } from './index';
+import { finalPrice, rankOffers, scorePoints } from './ranking';
 
 const context: DiscoveryContext = {
   sessionId: 'test', discoverySessionId: 'round-1', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG,
@@ -85,5 +85,62 @@ describe('deterministic ranking inherited from Alessandro', () => {
     expect(result.requirements).toHaveLength(1); expect(result.requirements[0].value).toBe(8);
     expect(result.budgetMax).toBe(900); expect(result.budgetHard).toBe(true);
     expect(refined.config.requirements[0].value).toBe(16); expect(refined.config.budgetMax).toBe(700);
+  });
+});
+
+describe('score calibration (ranking 3.0.0)', () => {
+  const spec = { id: 'laptop', attributes: [{ key: 'ramGb', unit: 'GB' }] };
+  const offer = (id: string, cents: number | null) => {
+    const o = structuredClone(offers[0]); o.id = id; o.price.amountCents = cents; return o;
+  };
+  const score = (items: Offer[], constraints: Constraint[] = []) => rankOffers({ offers: items, constraints, spec, currency: 'EUR' });
+  const byId = (result: ReturnType<typeof score>, id: string) => result.ranked.find(r => r.offerId === id)!;
+  const ram16: Constraint = { attribute: 'ramGb', op: '>=', value: 16, hard: false };
+  const coding: Constraint = { attribute: 'uninterpreted_0', op: '=', value: 'Good for coding', hard: false };
+
+  it('keeps a small price gap small instead of zeroing the dearer offer', () => {
+    const result = score([offer('a', 50000), offer('b', 51000)]);
+    expect(byId(result, 'a').breakdown.cost).toBe(0.6);
+    expect(byId(result, 'b').breakdown.cost).toBeCloseTo(0.6 * 50000 / 51000, 4);
+  });
+
+  it('scores checkable preferences on their full share', () => {
+    const top = score([offer('a', 50000)], [ram16]).ranked[0];
+    expect(top.weights).toEqual({ cost: 0.3, suitability: 0.5, reliability: 0.2 });
+    expect(top.breakdown.suitability).toBe(0.5);
+    expect(top.score).toBeCloseTo(0.3 + 0.5 + 0.2 * 0.9, 4);
+  });
+
+  it('redistributes the preference share when no preference can be checked', () => {
+    const none = score([offer('a', 50000)]);
+    const unchecked = score([offer('a', 50000)], [coding]);
+    expect(none.ranked[0].weights).toEqual({ cost: 0.6, suitability: 0, reliability: 0.4 });
+    expect(none.ranked[0].score).toBeCloseTo(0.6 + 0.4 * 0.9, 4);
+    expect(unchecked.ranked[0].score).toBe(none.ranked[0].score);
+    expect(unchecked.ranked[0].constraints[0].outcome).toBe('unknown');
+    expect(unchecked.warnings).toContain('1 preference cannot be checked automatically and does not affect scores.');
+  });
+
+  it('still counts an unknown checkable preference as unmatched', () => {
+    const unknown = offer('a', 50000);
+    unknown.attributes = {};
+    expect(score([unknown], [ram16]).ranked[0].breakdown.suitability).toBe(0);
+  });
+
+  it('does not let optional unknown details lower evidence', () => {
+    const sparse = offer('a', 50000); sparse.missing = [];
+    const detailed = offer('b', 50000); detailed.missing = ['Battery health', 'Warranty', 'Weight', 'Ports'];
+    const result = score([sparse, detailed], [ram16]);
+    expect(byId(result, 'b').breakdown.reliability).toBe(byId(result, 'a').breakdown.reliability);
+  });
+
+  it('splits the displayed score into whole parts that add up', () => {
+    for (const ranked of rank(offers, false).ranked) {
+      const points = scorePoints(ranked);
+      expect(points.cost + points.suitability + points.reliability).toBe(points.total);
+      expect(points.total).toBe(Math.round(ranked.score * 100));
+    }
+    expect(scorePoints({ score: 0.6667, breakdown: { cost: 0.2222, suitability: 0.2222, reliability: 0.2223 } }))
+      .toEqual({ cost: 22, suitability: 22, reliability: 23, total: 67 });
   });
 });

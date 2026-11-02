@@ -1,6 +1,6 @@
 // Based on Alessandro's deterministic engine; no model-generated match scores.
-import { TOTAL_ATTRIBUTE, type CategorySpec, type Constraint, type FinalPrice, type Offer } from './contract';
-export const RANKING_VERSION = '2.0.0';
+import { TOTAL_ATTRIBUTE, UNINTERPRETED_PREFIX, type CategorySpec, type Constraint, type FinalPrice, type Offer } from './contract';
+export const RANKING_VERSION = '3.0.0';
 /** The seller's final listed price. Unknown is not zero and earns no cost credit. */
 export function finalPrice(price: FinalPrice) {
   return { cents: price.amountCents, known: price.amountCents !== null };
@@ -84,10 +84,32 @@ export function evaluateConstraint(offer: Offer, constraint: Constraint, spec: C
   }
   return result('unknown', `${constraint.attribute} cannot be compared reliably`);
 }
+type Components = { cost: number; suitability: number; reliability: number };
 export interface RankedOffer {
   offerId: string; rank: number; status: 'feasible' | 'unverified'; score: number;
   price: ReturnType<typeof finalPrice>; constraints: ConstraintResult[];
-  breakdown: { cost: number; suitability: number; reliability: number };
+  /** Weighted parts of `score`. `weights.suitability` is 0 when no preference can be checked. */
+  breakdown: Components; weights: Components;
+}
+const WEIGHTS: Components = { cost: 0.3, suitability: 0.5, reliability: 0.2 };
+// Without checkable preferences, their share is redistributed so the score keeps a 0–1 range.
+const NO_PREFERENCE_WEIGHTS: Components = { cost: 0.6, suitability: 0, reliability: 0.4 };
+// Live extraction yields seller claims, so a seller claim is the normal baseline, not a near-failure.
+const EVIDENCE_WEIGHTS: Record<string, number> = { verified: 1, seller_claim: 0.9, estimate: 0.5, unknown: 0 };
+const isUninterpreted = (constraint: Constraint) => constraint.attribute.startsWith(UNINTERPRETED_PREFIX);
+
+/** Whole-number score parts (0–100) that always add up to the displayed score. */
+export function scorePoints({ score, breakdown }: Pick<RankedOffer, 'score' | 'breakdown'>): Components & { total: number } {
+  const keys = ['cost', 'suitability', 'reliability'] as const;
+  const total = Math.round(score * 100);
+  const points = { cost: 0, suitability: 0, reliability: 0 };
+  for (const key of keys) points[key] = Math.floor(breakdown[key] * 100);
+  let rest = total - keys.reduce((n, key) => n + points[key], 0);
+  for (const key of [...keys].sort((a, b) => (breakdown[b] * 100 % 1) - (breakdown[a] * 100 % 1))) {
+    if (rest <= 0) break;
+    points[key]++; rest--;
+  }
+  return { ...points, total };
 }
 export interface ComparisonResult {
   rankingVersion: string; ranked: RankedOffer[];
@@ -105,27 +127,36 @@ export function rankOffers({ offers, constraints, spec, currency }: {
     if (reasons.length) { excluded.push({ offerId: offer.id, reasons }); return []; }
     return [{ offer, results, price: finalPrice(offer.price) }];
   });
-  // Unknown prices are never rewarded as the cheapest final price.
-  const known = candidates.filter(c => c.price.known).map(c => c.price.cents!);
-  const min = Math.min(...known), max = Math.max(...known);
+  // Unknown prices are never rewarded as the cheapest final price. Known prices
+  // score relative to the cheapest, so a small price gap stays a small gap.
+  const cheapest = Math.min(...candidates.filter(c => c.price.known).map(c => c.price.cents!));
   const round = (n: number) => Math.round(n * 10000) / 10000;
+  // Requirements code cannot check never count as matched or as missing evidence.
+  const checkable = constraints.filter(c => !isUninterpreted(c));
+  const uncheckedPreferences = constraints.filter(c => !c.hard && isUninterpreted(c)).length;
+  const weights = checkable.some(c => !c.hard) ? WEIGHTS : NO_PREFERENCE_WEIGHTS;
+  const evidenceAttributes = [...new Set(checkable
+    .filter(c => c.attribute !== TOTAL_ATTRIBUTE && c.attribute !== 'condition' && !isBrandExclusion(c))
+    .map(c => c.attribute))];
   const ranked = candidates.map(({ offer, results, price }): RankedOffer => {
-    const cost = !price.known ? 0 : max === min ? 1 : (max - price.cents!) / (max - min);
-    const soft = results.filter(r => !r.constraint.hard);
-    const suitability = soft.length ? soft.filter(r => r.outcome === 'pass').length / soft.length : 0.5;
-    const values = [offer.condition.status, price.known ? 'seller_claim' : 'unknown', ...constraints.filter(c => c.attribute !== 'total').map(c => offer.attributes[c.attribute]?.status ?? 'unknown')];
-    const reliabilityWeights: Record<string, number> = { verified: 1, seller_claim: 0.6, estimate: 0.3, unknown: 0 };
-    const reliability = values.reduce((n, status) => n + (reliabilityWeights[status] ?? 0), 0) / Math.max(1, values.length + offer.missing.length);
+    const cost = !price.known ? 0 : price.cents === 0 ? 1 : cheapest / price.cents!;
+    const soft = results.filter(r => !r.constraint.hard && !isUninterpreted(r.constraint));
+    const suitability = soft.length ? soft.filter(r => r.outcome === 'pass').length / soft.length : 0;
+    // Evidence covers the facts the ranking relies on; optional unknown details do not count against it.
+    const values = [offer.condition.status, price.known ? 'seller_claim' : 'unknown', ...evidenceAttributes.map(key => offer.attributes[key]?.status ?? 'unknown')];
+    const reliability = values.reduce((n, status) => n + (EVIDENCE_WEIGHTS[status] ?? 0), 0) / values.length;
+    const breakdown = { cost: cost * weights.cost, suitability: suitability * weights.suitability, reliability: reliability * weights.reliability };
     return {
       offerId: offer.id, rank: 0,
       status: !price.known || offer.availability !== 'available' || results.some(r => r.constraint.hard && r.outcome === 'unknown') ? 'unverified' : 'feasible',
-      score: round(cost * 0.3 + suitability * 0.5 + reliability * 0.2), price, constraints: results,
-      breakdown: { cost: round(cost * 0.3), suitability: round(suitability * 0.5), reliability: round(reliability * 0.2) },
+      score: round(breakdown.cost + breakdown.suitability + breakdown.reliability), price, constraints: results,
+      breakdown: { cost: round(breakdown.cost), suitability: round(breakdown.suitability), reliability: round(breakdown.reliability) }, weights,
     };
   }).sort((a, b) => b.score - a.score || a.offerId.localeCompare(b.offerId)).map((r, i) => ({ ...r, rank: i + 1 }));
   return { rankingVersion: RANKING_VERSION, ranked, excluded, warnings: [
     ...(offers.some(o => o.mode === 'fixture') ? ['Synthetic examples — not current offers.'] : []),
     ...(ranked.some(r => !r.price.known) ? ['Some final listed prices are not stated. Unknown prices earn no cost credit.'] : []),
+    ...(uncheckedPreferences ? [`${uncheckedPreferences === 1 ? '1 preference' : `${uncheckedPreferences} preferences`} cannot be checked automatically and ${uncheckedPreferences === 1 ? 'does' : 'do'} not affect scores.`] : []),
     ...(ranked.some((r, i) => ranked[i + 1] && Math.abs(r.score - ranked[i + 1].score) < 0.02) ? ['Close scores represent trade-offs, not a decisive winner.'] : []),
   ] };
 }

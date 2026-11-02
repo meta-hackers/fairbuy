@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CurrencySchema, TOTAL_ATTRIBUTE, type Constraint, type Offer } from './contract';
+import { CurrencySchema, TOTAL_ATTRIBUTE, UNINTERPRETED_PREFIX, type Constraint, type Offer } from './contract';
 import { rankOffers, type ComparisonResult } from './ranking';
 
 export const DISCOVERY_MIN_PRODUCTS = 4;
@@ -50,7 +50,7 @@ const PRICE_ATTRIBUTES = new Set(['price', 'budget', 'budgetmax']);
 
 export function constraintsFor(config: ShoppingConfig): Constraint[] {
   const constraints: Constraint[] = config.requirements.map((r, i) => {
-    const attribute = r.attribute ?? `uninterpreted_${i}`;
+    const attribute = r.attribute ?? `${UNINTERPRETED_PREFIX}${i}`;
     // The model may express a price floor as attribute="price" in major units.
     // Offers expose the seller's final listed price through the `total`
     // pseudo-attribute in minor units, so normalize it here. A `total`

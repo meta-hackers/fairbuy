@@ -75,3 +75,5 @@ export const ConstraintSchema = z.object({
 export type Constraint = z.infer<typeof ConstraintSchema>;
 export interface CategorySpec { id: string; attributes: { key: string; unit?: string }[] }
 export const TOTAL_ATTRIBUTE = 'total';
+/** Prefix for requirements Configure/Learn could not map to an attribute. Code cannot check them. */
+export const UNINTERPRETED_PREFIX = 'uninterpreted_';
