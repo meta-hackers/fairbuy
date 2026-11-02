@@ -25,3 +25,31 @@
 .buy-intro .product-photo--small{background:#f0f2eb;border-radius:8px;object-fit:contain;padding:6px}
 @media(max-width:760px){.product-photo{padding:12px 22px}.product-photo--small{width:90px;height:72px;padding:0}}
 .missing-check{margin-top:18px;padding:18px}.missing-check h3{margin:0 0 10px}.missing-check form{display:flex;gap:10px;flex-wrap:wrap}.missing-check input{flex:1 1 220px}.missing-answer{margin-top:14px;font-size:.875rem}.missing-answer ul{margin:6px 0 10px}.missing-answer .micro{color:var(--muted)}
+
+.ask-question{margin-top:12px;padding:14px 16px;border:1px solid #d9e1d1;border-radius:9px;background:#f8faf4}
+.ask-question fieldset{margin:0;padding:0;border:0;min-width:0}
+.ask-question legend{padding:0;font-size:.875rem;font-weight:600;line-height:1.5}
+.ask-question-options{display:flex;flex-wrap:wrap;gap:8px;margin:11px 0}
+.ask-question-option{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 11px;border:1px solid #cfd8cb;border-radius:7px;background:#fff;font-size:.8125rem;font-weight:400;line-height:1.45;cursor:pointer}
+.ask-question-option:hover{background:#f2f6ec}
+.ask-question-option:has(input:checked){border-color:#87a273;background:#eaf1e1}
+.ask-question-option input{margin:0;flex-shrink:0}
+.ask-question-other{font-size:.75rem;font-weight:550;color:#5d6d55}
+.ask-question-other .optional{font-weight:400}
+.ask-question-other input{margin-top:5px;font-size:.8125rem;font-weight:400;background:#fff}
+.ask-question-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.ask-question-actions .button{min-height:38px;padding:8px 14px;gap:14px;font-size:.75rem}
+.ask-question-actions .micro{max-width:240px}
+.ask-question--answered{background:#f4f6f0;border-color:#e1e7da}
+.ask-question--answered legend{color:#5f6d58}
+.ask-question--answered .ask-question-option{border-style:dashed;background:#f8faf4}
+.ask-question--answered .ask-question-option:has(input:checked){background:#e8eee0}
+
+@media(max-width:540px){
+  .ask-question{padding:13px 14px}
+  .ask-question-options{flex-direction:column;gap:6px}
+  .ask-question-option{width:100%}
+  .ask-question-actions{align-items:stretch;flex-direction:column;gap:8px}
+  .ask-question-actions .button{width:100%}
+  .ask-question-actions .micro{max-width:none;text-align:center}
+}

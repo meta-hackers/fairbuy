@@ -1,9 +1,12 @@
 import { z } from 'zod';
-import { ConfigSchema, CurrencySchema, RequirementSchema } from '@fairbuy/core';
+import { AskQuestionSchema, ConfigSchema, CurrencySchema, RequirementSchema } from '@fairbuy/core';
 
 export const ConversationResultSchema = z.object({
   reply: z.string().min(1).max(4000), config: ConfigSchema,
   ready: z.boolean(), missing: z.array(z.string().max(200)).max(8),
+  // Optional: the model decides whether a constrained question is useful. Null and
+  // omission both mean a normal text-only reply, so older providers stay compatible.
+  question: AskQuestionSchema.nullable().optional(),
 });
 export const LearnedResultSchema = z.object({
   requirements: z.array(RequirementSchema).max(5), summary: z.string().max(1000),

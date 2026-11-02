@@ -6,7 +6,7 @@ import { LiveAIProvider } from '../src/ai/provider';
 import { MemoryStore } from '../src/store';
 import { ShoppingService } from '../src/shopping-service';
 import { settings } from '../src/settings';
-import { RANKING_VERSION } from '@fairbuy/core';
+import { ConfigSchema, RANKING_VERSION, formatQuestionAnswer } from '@fairbuy/core';
 
 function setup(extra: Record<string, string> = {}) {
   const config = settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo', ...extra });
@@ -33,6 +33,67 @@ describe('missing product questions (issue #23)', () => {
     expect(asked).toHaveLength(1);
     expect(asked[0]).toMatchObject({ query: 'Omega Speedmaster', cause: 'not_retrieved', summary: 'It is not in the synthetic demo catalog.' });
     expect((await store.get(created.id)).rounds.at(-1)?.missingQuestions?.[0].at).toEqual(expect.any(String));
+  });
+});
+
+describe('Ask question cards (issue #17)', () => {
+  it('returns the optional structured question with the assistant message', async () => {
+    const { app, service } = setup(); const client = request.agent(app);
+    const send = (path: string, body?: object) => client.post(path).set('X-Fairbuy-Request', '1').send(body);
+    const { body: created } = await send('/api/sessions');
+    const question = {
+      prompt: 'What condition are you open to?',
+      options: [{ id: 'new', label: 'New only' }, { id: 'used', label: 'Used is fine' }],
+      multiSelect: false, allowFreeText: true,
+    };
+    vi.spyOn(service.ai, 'converse').mockResolvedValueOnce({ reply: 'Choose one.', config: created.config, ready: false, missing: [], question });
+    const { body } = await send(`/api/sessions/${created.id}/ask`, { message: 'A used one is fine' }).expect(200);
+    expect(body.askMessages.at(-1)).toMatchObject({ role: 'assistant', content: 'Choose one.', question });
+    expect(body.askMessages.at(-1).question.options).toHaveLength(2);
+  });
+
+  it('restores one persisted card through bootstrap and applies its answer like a typed message', async () => {
+    const { app, store, service } = setup(); const client = request.agent(app);
+    const send = (path: string, body?: object) => client.post(path).set('X-Fairbuy-Request', '1').send(body);
+    const creation = await send('/api/sessions').expect(201);
+    const created = creation.body;
+    const cookie = (creation.headers['set-cookie'] as unknown as string[]).find(value => value.startsWith('fairbuy_owner='))!.split(';')[0];
+    const question = {
+      prompt: 'What condition are you open to?',
+      options: [{ id: 'new', label: 'New only' }, { id: 'used', label: 'Used is fine' }],
+      multiSelect: false, allowFreeText: true,
+    };
+    const config = { ...created.config, category: 'laptop', purpose: 'coding', country: 'IT' };
+    const converse = vi.spyOn(service.ai, 'converse').mockResolvedValueOnce({
+      reply: 'Choose one.', config, ready: false, missing: [], question,
+    });
+    await send(`/api/sessions/${created.id}/ask`, { message: 'Laptop for coding in Italy' }).expect(200);
+    const restored = (await client.get('/api/bootstrap').expect(200)).body.session;
+    expect(restored.askMessages).toEqual([
+      { role: 'user', content: 'Laptop for coding in Italy' },
+      { role: 'assistant', content: 'Choose one.', question },
+    ]);
+
+    const updatedConfig = ConfigSchema.parse({ ...config, requirements: [
+      { label: 'New only with warranty', hard: true, attribute: 'condition', op: '=', value: 'new', unit: null },
+    ] });
+    const answer = formatQuestionAnswer(question.options, ['new'], 'with warranty');
+    converse.mockResolvedValueOnce({ reply: 'Noted.', config: updatedConfig, ready: true, missing: [] });
+    await send(`/api/sessions/${created.id}/ask`, { message: answer }).expect(200);
+    expect(converse).toHaveBeenLastCalledWith('ask', [
+      ...restored.askMessages, { role: 'user', content: 'New only — with warranty' },
+    ], config);
+
+    // A fresh app instance reads the store, rather than an intercepted bootstrap response.
+    const reloaded = await request(createApp(new ShoppingService(store, new DemoAIProvider(), 'demo'), settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo' })))
+      .get('/api/bootstrap').set('Cookie', cookie).expect(200);
+    const final = reloaded.body.session;
+    expect(final.config).toEqual(updatedConfig);
+    expect(final.askMessages).toEqual([
+      ...restored.askMessages,
+      { role: 'user', content: answer }, { role: 'assistant', content: 'Noted.' },
+    ]);
+    expect((await client.get(`/api/sessions/${created.id}`).expect(200)).body.askMessages).toEqual(final.askMessages);
   });
 });
 
