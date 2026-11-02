@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  EMPTY_CONFIG, activeProducts, allProducts, isConfigReady, latestRound, rankProducts,
+  ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, isConfigReady, latestRound, rankProducts,
   type DiscoveryContext, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
 import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
@@ -92,7 +92,9 @@ export class ShoppingService {
       const messages = phase === 'ask' ? session.askMessages : session.configureMessages;
       messages.push({ role: 'user', content: message }, { role: 'assistant', content: result.reply });
       session.config = result.config;
-      session.ready = isConfigReady(result.config) && (phase === 'configure' || result.ready);
+      // The model decides when the brief is well understood, but it cannot keep the
+      // user in Ask: after ASK_QUESTION_CAP replies a searchable brief is enough.
+      session.ready = isConfigReady(result.config) && (phase === 'configure' || result.ready || askRounds(session) >= ASK_QUESTION_CAP);
       session.missing = result.missing; session.selectedProductId = null;
       session.stage = phase;
     }, base.version);

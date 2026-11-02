@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DemoAIProvider } from '../../../backend/src/ai/demo';
 import { EMPTY_CONFIG, constraintsFor, effectiveConfig, type Constraint, type DiscoveryContext, type Offer } from './index';
 import { finalPrice, rankOffers, scorePoints } from './ranking';
-import { rankProducts, roundOutcome } from './shopping';
+import { askRounds, missingForSearch, rankProducts, roundOutcome } from './shopping';
 
 const context: DiscoveryContext = {
   sessionId: 'test', discoverySessionId: 'round-1', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG,
@@ -200,5 +200,13 @@ describe('round outcome (issue #19)', () => {
     expect(roundOutcome({ products: [], sources: [source], ranking: ranking(0) })).toBe('nothing_grounded');
     expect(roundOutcome({ products: [{} as never], sources: [source], ranking: ranking(0) })).toBe('all_excluded');
     expect(roundOutcome({ products: [{} as never], sources: [source], ranking: ranking(1) })).toBe('found');
+  });
+});
+
+describe('Ask readiness helpers (issue #18)', () => {
+  it('names the missing minimum fields and counts assistant replies', () => {
+    expect(missingForSearch({ ...EMPTY_CONFIG, category: 'laptop' })).toEqual(['intended use', 'country']);
+    expect(missingForSearch({ ...EMPTY_CONFIG, category: 'laptop', purpose: 'coding', country: 'IT' })).toEqual([]);
+    expect(askRounds({ askMessages: [{ role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }, { role: 'user', content: 'c' }] })).toBe(1);
   });
 });
