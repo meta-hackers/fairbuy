@@ -6,6 +6,44 @@ export function finalPrice(price: FinalPrice) {
   return { cents: price.amountCents, known: price.amountCents !== null };
 }
 export interface ConstraintResult { constraint: Constraint; outcome: 'pass' | 'fail' | 'unknown'; reason: string }
+
+function normalizeEnum(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+// Seller pages, manufacturer pages and model summaries rarely use the exact
+// wording stored in a brief. These groups cover the common watch/electronics
+// synonyms without turning a hard equality check into an open-ended guess.
+const ENUM_SYNONYMS: string[][] = [
+  ['swiss', 'switzerland', 'swiss made', 'made in switzerland'],
+  ['steel', 'stainless steel'],
+  ['moonphase', 'moon phase'],
+  ['manual', 'hand wound', 'manually wound', 'manual winding'],
+  ['automatic', 'self winding'],
+];
+
+function enumMatches(actual: string, expected: string): boolean {
+  const a = normalizeEnum(actual);
+  const e = normalizeEnum(expected);
+  if (!a || !e) return false;
+  if (a === e || `${a} `.includes(`${e} `) || `${e} `.includes(`${a} `)) return true;
+  const group = ENUM_SYNONYMS.find(values => values.some(value => `${a} `.includes(`${value} `)) && values.some(value => `${e} `.includes(`${value} `)));
+  return Boolean(group);
+}
+
+function isBrandExclusion(constraint: Constraint): boolean {
+  const attribute = constraint.attribute.toLowerCase();
+  const value = String(constraint.value).trim().toLowerCase();
+  return attribute === 'brandexcluded' || attribute === 'brandexclude' ||
+    (attribute === 'brand' && /^(?:not|no|exclude|avoid)\b/.test(value));
+}
+
 export function evaluateConstraint(offer: Offer, constraint: Constraint, spec: CategorySpec): ConstraintResult {
   const result = (outcome: ConstraintResult['outcome'], reason: string): ConstraintResult => ({ constraint, outcome, reason });
   const compare = (actual: number, expected: number) => constraint.op === '>=' ? actual >= expected : constraint.op === '<=' ? actual <= expected : actual === expected;
@@ -14,6 +52,18 @@ export function evaluateConstraint(offer: Offer, constraint: Constraint, spec: C
     const price = finalPrice(offer.price);
     if (!price.known) return result('unknown', 'Final listed price is not stated');
     return result(compare(price.cents!, constraint.value) ? 'pass' : 'fail', `Final listed price ${compare(price.cents!, constraint.value) ? 'meets' : 'does not meet'} your budget`);
+  }
+  if (isBrandExclusion(constraint)) {
+    const brandText = String(constraint.value).replace(/^(?:not|no|exclude|avoid)\b/i, '').trim().split(/\s[-–—]\s/)[0];
+    const brand = normalizeEnum(brandText);
+    if (!brand) return result('unknown', 'The excluded brand is not specified');
+    const brandField = offer.attributes.brand;
+    const statedBrand = brandField && brandField.status !== 'unknown' && brandField.value.kind === 'text' ? brandField.value.value : '';
+    const haystack = normalizeEnum(`${offer.title} ${offer.seller} ${offer.provenanceUrl} ${statedBrand}`);
+    const display = brand.charAt(0).toUpperCase() + brand.slice(1);
+    return `${haystack} `.includes(`${brand} `)
+      ? result('fail', `${display} is excluded by your requirements`)
+      : result('pass', `${display} was not found in the offer metadata`);
   }
   const field = constraint.attribute === 'condition' ? offer.condition : offer.attributes[constraint.attribute];
   if (!field || field.status === 'unknown') return result('unknown', `${constraint.attribute} is not stated`);
@@ -24,11 +74,12 @@ export function evaluateConstraint(offer: Offer, constraint: Constraint, spec: C
     return result(compare(attr.value, constraint.value) ? 'pass' : 'fail', `${constraint.attribute}: ${attr.value} ${attr.unit} (wanted ${constraint.op} ${constraint.value})`);
   }
   if (constraint.op === 'in' && Array.isArray(constraint.value) && typeof attr.value === 'string') {
-    return result(constraint.value.includes(attr.value) ? 'pass' : 'fail', `${constraint.attribute}: ${attr.value}`);
+    const matches = constraint.value.some(value => typeof value === 'string' && enumMatches(attr.value as string, value));
+    return result(matches ? 'pass' : 'fail', `${constraint.attribute}: ${attr.value}`);
   }
   if (constraint.op === '=' && typeof constraint.value === typeof attr.value) {
     const matches = typeof attr.value === 'string' && typeof constraint.value === 'string'
-      ? attr.value.toLowerCase() === constraint.value.toLowerCase() : attr.value === constraint.value;
+      ? enumMatches(attr.value, constraint.value) : attr.value === constraint.value;
     return result(matches ? 'pass' : 'fail', `${constraint.attribute}: ${attr.value}`);
   }
   return result('unknown', `${constraint.attribute} cannot be compared reliably`);

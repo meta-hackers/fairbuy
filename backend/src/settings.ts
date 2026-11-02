@@ -33,8 +33,14 @@ const Schema = z.object({
   ASK_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
   CONFIGURE_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
   DISCOVERY_REASONING_EFFORT: ReasoningEffortSchema.default('xhigh'),
-  SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('brave'),
+  SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('meta'),
   BRAVE_API_KEY: z.string().default(''),
+  // Brave's free plan allows one request per second. Keep a small safety margin
+  // and serialize calls across discovery jobs instead of firing them in parallel.
+  BRAVE_MIN_INTERVAL_MS: z.preprocess(
+    value => value === '' ? undefined : value,
+    z.coerce.number().int().min(0).max(10000).default(1100),
+  ),
   CATALOG_URL: z.union([z.literal(''), z.string().trim().url()]).default(DEFAULT_CATALOG_URL),
   CATALOG_SYNC_ON_START: BooleanStringSchema,
   INSTANT_CLASSIFIER_PROVIDER: z.enum(['disabled', 'cloudflare']).default('disabled'),

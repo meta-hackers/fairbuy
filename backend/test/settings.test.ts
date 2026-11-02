@@ -23,6 +23,16 @@ describe('HTTP port binding configuration', () => {
   });
 });
 
+describe('search provider configuration', () => {
+  it('defaults to Meta search and throttles optional Brave calls', () => {
+    expect(settings({}).SEARCH_PROVIDER).toBe('meta');
+    expect(settings({}).BRAVE_MIN_INTERVAL_MS).toBe(1100);
+    expect(settings({ BRAVE_MIN_INTERVAL_MS: '0' }).BRAVE_MIN_INTERVAL_MS).toBe(0);
+    expect(settings({ BRAVE_MIN_INTERVAL_MS: '' }).BRAVE_MIN_INTERVAL_MS).toBe(1100);
+    expect(() => settings({ BRAVE_MIN_INTERVAL_MS: '-1' })).toThrow();
+  });
+});
+
 describe('administrator password configuration', () => {
   it('accepts multiple plaintext passwords, hashes them internally, and remains stable across restarts', async () => {
     const env = { BACKOFFICE_ADMINS: JSON.stringify([{ username: 'FirstAdmin', password: 'first-test-password' }, { username: 'SecondAdmin', password: 'second-test-password' }]) };

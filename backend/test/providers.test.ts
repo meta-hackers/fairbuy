@@ -83,7 +83,7 @@ describe('Meta Model API REST integration', () => {
     fetcher.mockImplementation(async url => String(url).startsWith('https://api.search.brave.com/')
       ? new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }), { status: 200 })
       : stream(result(JSON.stringify(extracted))));
-    const provider = new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-not-a-real-key' }, fetcher);
+    const provider = new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-not-a-real-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher);
     const discovered = await provider.discover(context);
     expect(discovered.products).toHaveLength(1);
     expect(discovered.summary).toContain('Only 1 distinct eligible product');
@@ -267,12 +267,14 @@ describe('progressive multi-product discovery', () => {
       now = 45000;
       return stream(result(JSON.stringify(extracted)));
     });
-    await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key' }, fetcher).discover(brief);
+    await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher).discover(brief);
     const queries = fetcher.mock.calls.filter(([url]) => String(url).startsWith('https://api.search.brave.com/')).map(([url]) => new URL(String(url)).searchParams.get('q')!);
     const broad = queries.filter(query => !query.includes('site:'));
     const targeted = queries.filter(query => query.includes('site:'));
     expect(broad).toHaveLength(3);
-    expect(targeted).toHaveLength(3);
+    // Eight planned sellers are covered in rotating groups of at most three.
+    expect(targeted).toHaveLength(8);
+    expect(new Set(targeted).size).toBe(8);
     expect(broad[0]).toContain('Matte screen');
     for (const query of broad.slice(1)) {
       expect(query).not.toContain('Matte screen');
@@ -284,6 +286,35 @@ describe('progressive multi-product discovery', () => {
       expect(query).not.toContain('Matte screen');
     }
     expect(brief.config.requirements[0].hard).toBe(false);
+  });
+  it('rotates Brave seller queries so a long watch plan reaches iwc.com', async () => {
+    const brief = structuredClone(context);
+    brief.config = { ...EMPTY_CONFIG, category: 'watch', country: 'CH', purpose: 'Swiss made steel moonphase watch', requirements: [
+      { label: 'Swiss made', hard: true, attribute: 'origin', op: '=', value: 'Switzerland', unit: null },
+    ] };
+    const domains = ['beyer.ch', 'bucherer.com', 'cartier.com', 'chrono24.com', 'galaxus.ch', 'gubelin.com', 'iwc.com', 'longines.com'];
+    const watchCatalog: SourceEntry[] = domains.map(domain => ({ domain, name: domain, roles: ['seller'], verticals: ['watches'], countries: ['CH'], priority: 3 }));
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async url => String(url).startsWith('https://api.search.brave.com/')
+      ? new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }))
+      : stream(result(JSON.stringify(extracted))));
+    await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher, undefined, { effective: async () => watchCatalog }).discover(brief);
+    const queries = fetcher.mock.calls.filter(([url]) => String(url).startsWith('https://api.search.brave.com/')).map(([url]) => new URL(String(url)).searchParams.get('q')!);
+    expect(queries.some(query => query.includes('site:iwc.com'))).toBe(true);
+    expect(queries.filter(query => !query.includes('site:'))).toHaveLength(3);
+  });
+  it('retries a Brave rate limit once and keeps the query result', async () => {
+    let braveCalls = 0;
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async url => {
+      if (String(url).startsWith('https://api.search.brave.com/')) {
+        braveCalls++;
+        if (braveCalls === 1) return new Response('rate limited', { status: 429 });
+        return new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }));
+      }
+      return stream(result(JSON.stringify(extracted)));
+    });
+    const discovered = await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher).discover(context);
+    expect(braveCalls).toBeGreaterThanOrEqual(4);
+    expect(discovered.products).toHaveLength(1);
   });
 });
 describe('per-stage reasoning effort', () => {

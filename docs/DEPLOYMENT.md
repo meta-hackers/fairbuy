@@ -78,8 +78,9 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `ASK_REASONING_EFFORT` | `low`; Ask conversation and structured brief. |
 | `CONFIGURE_REASONING_EFFORT` | `low`; Configure and Learn interpretation calls. |
 | `DISCOVERY_REASONING_EFFORT` | `xhigh`; Meta discovery research. Mechanical evidence extraction stays at `low`, including with Brave search. |
-| `SEARCH_PROVIDER` | `brave` (default; requires `BRAVE_API_KEY`) or `meta` (alternative; no extra search key needed). |
-| `BRAVE_API_KEY` | Required secret for the default `SEARCH_PROVIDER=brave` (`sync: false` in Blueprint); the Meta key is still required for interpretation/extraction. |
+| `SEARCH_PROVIDER` | `meta` (default; Meta hosted web search, no extra search key) or `brave` (snippet-only; requires `BRAVE_API_KEY`). |
+| `BRAVE_API_KEY` | Required secret only for `SEARCH_PROVIDER=brave` (`sync: false` in Blueprint); the Meta key is still required for interpretation/extraction. |
+| `BRAVE_MIN_INTERVAL_MS` | `1100`; serializes Brave calls in-process. Brave Free permits one request/second, so parallel broad/seller queries would otherwise return `429`. Set `0` only on a plan that allows higher concurrency. |
 | `CATALOG_URL` | Published discovery catalog JSON. Defaults to `https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json`. Must be HTTPS. |
 | `CATALOG_SYNC_ON_START` | `false` (default) keeps the bundled fallback until an admin syncs; `true` also tries one background fetch after startup. |
 | `INSTANT_CLASSIFIER_PROVIDER` | `disabled` unless set; the Blueprint sets `cloudflare`. Preview still requires both Cloudflare credentials and live mode. |
@@ -109,7 +110,7 @@ The preview disclosure appears before typing. Only the draft is sent, not the co
 
 ## Optional Brave search
 
-Set `SEARCH_PROVIDER=brave` (default) with `BRAVE_API_KEY` set, and redeploy/restart. This implementation uses Brave Web Search snippets, not full page extraction or CAPTCHA bypassing. Results may be sparse, and unrelated comparison articles are not seller offers. `SEARCH_PROVIDER=meta` keeps Meta hosted web search as the alternative without code changes. Crawlora is not implemented or required.
+The default is `SEARCH_PROVIDER=meta`, which uses Meta hosted web search and returned priced seller offers in testing. Set `SEARCH_PROVIDER=brave` with `BRAVE_API_KEY` and redeploy/restart to use the optional Brave connector instead. Brave uses snippets, not full page extraction or CAPTCHA bypassing. Results may be sparse, and unrelated comparison articles are not seller offers. Brave calls are serialized with `BRAVE_MIN_INTERVAL_MS` (default `1100`) because the Free plan allows one request/second; discovery also rotates the curated seller plan across passes instead of querying only the first four domains. Crawlora is not implemented or required.
 
 ## Operations and recovery
 

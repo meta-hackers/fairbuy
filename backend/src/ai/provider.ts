@@ -18,6 +18,23 @@ export type LearnedResult = z.infer<typeof LearnedResultSchema>;
 export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string }
 export type DiscoveryProgress = (result: DiscoveryResult) => Promise<void>;
 interface BraveItem { title: string; url: string; description: string; extra_snippets?: string[] }
+
+// Brave plans are rate-limited per second (the free plan allows one request).
+// Serialize calls in-process so concurrent discovery jobs cannot trip the limit,
+// and leave a small margin for clock/network jitter.
+let braveQueue: Promise<void> = Promise.resolve();
+let braveNextRequestAt = 0;
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+function braveThrottle(minIntervalMs: number): Promise<void> {
+  if (minIntervalMs <= 0) return Promise.resolve();
+  const run = braveQueue.then(async () => {
+    const wait = braveNextRequestAt - Date.now();
+    if (wait > 0) await sleep(wait);
+    braveNextRequestAt = Date.now() + minIntervalMs;
+  });
+  braveQueue = run.catch(() => undefined);
+  return run;
+}
 export function discoveryPolicy(pass: number, elapsedMs: number) {
   const minimumSoftMatch = Math.max(0, 0.75 * (1 - Math.max(0, elapsedMs) / 90000));
   return {
@@ -158,7 +175,7 @@ export class LiveAIProvider implements AIProvider {
         roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded,
         vertical: plan.vertical, plannedSellers: plan.sellers.length, ...searchPolicy,
       });
-      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, searchPolicy, plan)
+      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, plan)
         : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
       logger.info('discovery.research.completed', {
         roundId, pass: pass + 1, durationMs: Date.now() - passStarted,
@@ -217,26 +234,27 @@ export class LiveAIProvider implements AIProvider {
     logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length });
     return result;
   }
-  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, policy: ReturnType<typeof discoveryPolicy>, plan: SourcePlan): Promise<Research> {
+  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, plan: SourcePlan): Promise<Research> {
     const configuredAt = Date.now();
     try { this.ensureConfigured(); }
     catch (error) { recordUsage('brave', 'web-search', 'search', 'failed', Date.now() - configuredAt); throw error; }
     const config = effectiveConfig(context);
-    const focused = policy.matchStrategy === 'quick_start' || policy.matchStrategy === 'focused';
-    const requirements = config.requirements.filter(r => r.hard || focused);
-    const broadQuery = [config.category, config.country, config.city, config.currency,
-      pass ? `alternative models ${alreadyFound.slice(0, 4).map(p => `-"${p.name}"`).join(' ')}` : '',
-      config.budgetMax && (config.budgetHard || focused) ? `under ${config.budgetMax} ${config.currency}` : '',
-      ...requirements.map(r => r.label), config.purpose, 'buy price'].filter(Boolean).join(' ').slice(0, 400);
-    const targetedQuery = this.braveTargetedQuery(config, plan);
-    const queries = targetedQuery ? [broadQuery, targetedQuery] : [broadQuery];
-    // Run the broad and the planned-seller queries together: a failed targeted
-    // query must not discard the broad result, and neither should add latency.
-    const settled = await Promise.allSettled(queries.map(query => this.braveSearchTracked(query)));
-    const pages = settled.flatMap((outcome, index) => outcome.status === 'fulfilled' ? [{ query: queries[index], items: outcome.value.items }] : []);
+    const queries = this.braveQueries(config, plan, pass, alreadyFound);
+    const pages: { query: string; items: BraveItem[] }[] = [];
+    const failures: unknown[] = [];
+    // Sequential calls respect the provider's per-second limit. A failed query
+    // must not discard results from the queries that did run.
+    for (const query of queries) {
+      try { pages.push({ query, items: (await this.braveSearchTracked(query)).items }); }
+      catch (error) { failures.push(error); }
+    }
+    logger.info('discovery.brave.queries', {
+      roundId: context.discoverySessionId, pass: pass + 1, queries: queries.length,
+      completed: pages.length, failed: failures.length,
+    });
     if (!pages.length) {
-      const failure = settled.find(outcome => outcome.status === 'rejected');
-      throw failure?.status === 'rejected' ? failure.reason : new AppError(502, 'Brave search failed. Please retry.', 'SEARCH_PROVIDER_ERROR');
+      const failure = failures[0];
+      throw failure instanceof Error ? failure : new AppError(502, 'Brave search failed. Please retry.', 'SEARCH_PROVIDER_ERROR');
     }
     const items = [...new Map(pages.flatMap(page => page.items).map(item => [item.url, item])).values()];
     return {
@@ -245,13 +263,42 @@ export class LiveAIProvider implements AIProvider {
       sources: items.map(r => ({ url: r.url, title: r.title })),
     };
   }
-  /** A second, narrower query for curated seller domains; the broad query keeps coverage. */
-  private braveTargetedQuery(config: ShoppingConfig, plan: SourcePlan): string {
-    if (plan.vertical === 'general' || !plan.sellers.length) return '';
-    const sites = plan.sellers.slice(0, 4).map(source => `site:${source.domain}`).join(' OR ');
-    const intent = plan.vertical === 'food_delivery' ? 'menu price' : 'buy price';
-    return [config.category, config.purpose, config.country, config.city, config.currency, `(${sites})`, intent]
-      .filter(Boolean).join(' ').slice(0, 400);
+  /**
+   * One concise broad query plus a rotating slice of curated seller domains.
+   * Each pass covers a different third of the seller plan, so a category with
+   * eight sellers still searches domains such as iwc.com instead of repeatedly
+   * querying only the first four. The first broad query includes soft
+   * preferences to anchor the search; later passes keep only hard constraints
+   * so they can broaden. All preferences still participate in ranking.
+   */
+  private braveQueries(config: ShoppingConfig, plan: SourcePlan, pass: number, alreadyFound: Product[]): string[] {
+    const hardLabels = config.requirements.filter(r => r.hard).map(r => r.label);
+    // The first broad query may include soft preferences to anchor the search.
+    // Later passes keep only must-haves so they can broaden usefully.
+    const broadLabels = config.requirements.filter(r => r.hard || pass === 0).map(r => r.label);
+    const priceHint = this.bravePriceHint(config, pass);
+    const base = [config.category, config.purpose, config.country, config.city, config.currency, ...broadLabels, priceHint]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .join(' ');
+    const alternatives = pass > 0 && alreadyFound.length
+      ? `alternative models ${alreadyFound.slice(0, 4).map(p => `-"${p.name}"`).join(' ')}`
+      : '';
+    const broad = [base, alternatives, 'buy price'].filter(Boolean).join(' ').slice(0, 300);
+    const sellers = plan.vertical !== 'general' && plan.sellers.length
+      ? plan.sellers.filter((_, index) => index % 3 === pass % 3).slice(0, 3)
+      : [];
+    const targeted = sellers.map(source => [config.category, config.purpose, config.country, config.city, config.currency,
+      `site:${source.domain}`, ...hardLabels, 'buy price']
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .join(' ').slice(0, 300));
+    return [broad, ...targeted];
+  }
+  private bravePriceHint(config: ShoppingConfig, pass: number): string {
+    // Hard budgets always constrain the search. A soft budget is useful on the
+    // first pass (to anchor the result) but should not filter later broadening.
+    if (config.budgetMax !== null && (config.budgetHard || pass === 0)) return `under ${config.budgetMax} ${config.currency}`;
+    const price = config.requirements.find(r => /^(price|total|budget|budgetmax)$/i.test(r.attribute ?? '') || /\b(price|budget)\b/i.test(r.label));
+    return price?.label ?? '';
   }
   private async braveSearchTracked(query: string) {
     const started = Date.now();
@@ -262,13 +309,22 @@ export class LiveAIProvider implements AIProvider {
       return result;
     } finally { recordUsage('brave', 'web-search', 'search', status, Date.now() - started); }
   }
-  private async braveSearch(query: string): Promise<{ items: BraveItem[] }> {
+  private async braveSearch(query: string, attempt = 0): Promise<{ items: BraveItem[] }> {
+    await braveThrottle(this.config.BRAVE_MIN_INTERVAL_MS);
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
     url.searchParams.set('q', query); url.searchParams.set('count', '15'); url.searchParams.set('extra_snippets', 'true');
     let response: Response;
     try {
       response = await this.fetcher(url, { headers: { 'X-Subscription-Token': this.config.BRAVE_API_KEY, Accept: 'application/json' }, signal: AbortSignal.timeout(20000), redirect: 'error' });
     } catch { throw new AppError(502, 'Brave search could not be reached. Please retry.', 'SEARCH_UNREACHABLE'); }
+    if (response.status === 429 && attempt === 0) {
+      await response.body?.cancel();
+      // Retry once after the documented one-request-per-second window. The
+      // throttle will also wait if another query is already queued.
+      logger.warn('discovery.brave.rate_limited', { retryInMs: Math.max(1100, this.config.BRAVE_MIN_INTERVAL_MS) });
+      await sleep(Math.max(1100, this.config.BRAVE_MIN_INTERVAL_MS));
+      return this.braveSearch(query, 1);
+    }
     if (!response.ok) { await response.body?.cancel(); throw new AppError(502, 'Brave search rejected the request. Check your search API key, credit and limits.', 'SEARCH_PROVIDER_ERROR'); }
     const schema = z.object({ web: z.object({ results: z.array(z.object({ title: z.string(), url: z.string(), description: z.string(), extra_snippets: z.array(z.string()).optional() })) }).optional() });
     let results: z.infer<typeof schema>;

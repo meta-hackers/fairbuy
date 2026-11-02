@@ -68,14 +68,14 @@ The first research call targets **one useful candidate**, not the entire ideal s
 | `broader` | From 45 seconds until 90 seconds | Stop using soft preferences and a soft budget as strict search filters; describe compromises. |
 | `best_available` | From 90 seconds onward | Seek relevant, eligible alternatives even when they miss most soft preferences. |
 
-The default Meta research prompt receives this policy explicitly. In optional Brave mode, broader queries omit soft requirement labels and a soft budget while retaining core purpose, location/currency, and hard requirement labels. All extracted offers still go through the same grounding and deterministic eligibility checks.
+The default (`SEARCH_PROVIDER=meta`) research prompt receives this policy explicitly. In optional Brave mode, the first broad query may include soft preferences to anchor the search; later passes omit soft requirement labels and a soft budget while retaining core purpose, location/currency, and hard requirement labels. All extracted offers still go through the same grounding and deterministic eligibility checks.
 
 ### Source hints
 
 Each round also computes a **source plan** from the brief's category and country. The plan suggests a small number of seller/marketplace domains plus specification, review and comparison references. It is guidance, not evidence and not an allowlist:
 
 - The broad query is unchanged, so an incomplete plan cannot narrow the search to nothing.
-- In Brave mode, a second targeted `site:` query runs in parallel when the vertical is known; a failed targeted query does not discard the broad result.
+- In Brave mode, one broad query and a rotating group of up to three `site:` seller queries run sequentially (Brave plans are rate-limited per second). Each pass covers a different third of the plan, so later domains such as an official brand site are not permanently skipped. A failed query does not discard the others.
 - Specification, review and comparison domains (for example Open Icecat) may support attributes, but they are rejected as offer URLs and price sources by extraction and normalization.
 - The plan does not change ranking, hard checks or source-grounding rules.
 - The in-memory catalog starts from a bundled fallback and is replaced by a validated admin or startup sync of the published [fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog); changes apply to the next round.

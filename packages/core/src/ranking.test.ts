@@ -39,6 +39,41 @@ describe('deterministic ranking inherited from Alessandro', () => {
     const result = rankOffers({ offers: [offers[0]], constraints: constraintsFor(config), spec: { id: 'laptop', attributes: [] }, currency: 'EUR' });
     expect(result.ranked[0].status).toBe('unverified');
   });
+  it('normalizes a major-unit price floor to the total pseudo-attribute', () => {
+    const config = { ...context.config, requirements: [
+      { label: 'Price above 10k CHF', hard: true, attribute: 'price', op: '>=' as const, value: 10000, unit: 'CHF' },
+    ] };
+    expect(constraintsFor(config)).toContainEqual({ attribute: 'total', op: '>=', value: 1000000, hard: true });
+    const result = rankOffers({ offers: [offers[0]], constraints: constraintsFor(config), spec: { id: 'laptop', attributes: [] }, currency: 'EUR' });
+    expect(result.excluded[0].reasons.join(' ')).toContain('Final listed price');
+  });
+  it('matches common seller wording for hard enum constraints', () => {
+    const watch = structuredClone(offers[0]);
+    watch.attributes.caseMaterial = { status: 'seller_claim', value: { kind: 'text', value: 'Stainless steel' }, evidence: watch.evidence };
+    watch.attributes.origin = { status: 'seller_claim', value: { kind: 'text', value: 'Made in Switzerland' }, evidence: watch.evidence };
+    watch.attributes.complication = { status: 'seller_claim', value: { kind: 'text', value: 'moon-phase indicator' }, evidence: watch.evidence };
+    const config = { ...context.config, requirements: [
+      { label: 'Steel case', hard: true, attribute: 'caseMaterial', op: '=' as const, value: 'steel', unit: null },
+      { label: 'Swiss made', hard: true, attribute: 'origin', op: '=' as const, value: 'Swiss made', unit: null },
+      { label: 'Moonphase', hard: true, attribute: 'complication', op: '=' as const, value: 'moonphase', unit: null },
+    ] };
+    const result = rankOffers({ offers: [watch], constraints: constraintsFor(config), spec: { id: 'watch', attributes: [] }, currency: 'EUR' });
+    expect(result.ranked).toHaveLength(1);
+    expect(result.ranked[0].constraints.every(c => c.outcome === 'pass')).toBe(true);
+  });
+  it('excludes an explicitly named brand while leaving other brands eligible', () => {
+    const config = { ...context.config, requirements: [
+      { label: 'Avoid Rolex', hard: true, attribute: 'brandExcluded', op: '=' as const, value: 'not Rolex', unit: null },
+    ] };
+    const excluded = structuredClone(offers[0]); excluded.title = 'Rolex Submariner'; excluded.seller = 'Rolex';
+    const allowed = structuredClone(offers[0]); allowed.title = 'IWC Portofino';
+    const spec = { id: 'laptop', attributes: [] };
+    expect(rankOffers({ offers: [excluded], constraints: constraintsFor(config), spec, currency: 'EUR' }).excluded[0].reasons.join(' ')).toContain('Rolex is excluded');
+    expect(rankOffers({ offers: [allowed], constraints: constraintsFor(config), spec, currency: 'EUR' }).ranked).toHaveLength(1);
+    // Ask has also emitted brand="Exclude Rolex" instead of brandExcluded.
+    const legacy = { ...config, requirements: [{ label: 'Avoid Rolex', hard: true, attribute: 'brand', op: '=' as const, value: 'Exclude Rolex', unit: null }] };
+    expect(rankOffers({ offers: [excluded], constraints: constraintsFor(legacy), spec, currency: 'EUR' }).excluded[0].reasons.join(' ')).toContain('Rolex is excluded');
+  });
   it('applies explicit Learn refinements without mutating the original configuration', () => {
     const refined = structuredClone(context);
     refined.config.requirements = [{ label: '16 GB', hard: true, attribute: 'ramGb', op: '>=', value: 16, unit: 'GB' }];

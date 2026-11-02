@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CurrencySchema, type Constraint, type Offer } from './contract';
+import { CurrencySchema, TOTAL_ATTRIBUTE, type Constraint, type Offer } from './contract';
 import { rankOffers, type ComparisonResult } from './ranking';
 
 export const DISCOVERY_MIN_PRODUCTS = 4;
@@ -46,11 +46,21 @@ export interface ShoppingSession {
   config: ShoppingConfig; initialConfig: ShoppingConfig | null; ready: boolean; missing: string[];
   feedback: Feedback[]; rounds: DiscoveryRound[]; selectedProductId: string | null;
 }
+const PRICE_ATTRIBUTES = new Set(['price', 'budget', 'budgetmax']);
+
 export function constraintsFor(config: ShoppingConfig): Constraint[] {
-  const constraints: Constraint[] = config.requirements.map((r, i) => ({
-    attribute: r.attribute ?? `uninterpreted_${i}`, op: r.op ?? '=', value: r.value ?? r.label, hard: r.hard,
-  }));
-  if (config.budgetMax !== null) constraints.unshift({ attribute: 'total', op: '<=', value: Math.round(config.budgetMax * 100), hard: config.budgetHard });
+  const constraints: Constraint[] = config.requirements.map((r, i) => {
+    const attribute = r.attribute ?? `uninterpreted_${i}`;
+    // The model may express a price floor as attribute="price" in major units.
+    // Offers expose the seller's final listed price through the `total`
+    // pseudo-attribute in minor units, so normalize it here. A `total`
+    // requirement from Learn is already in minor units and is left untouched.
+    if (PRICE_ATTRIBUTES.has(attribute.toLowerCase()) && typeof r.value === 'number') {
+      return { attribute: TOTAL_ATTRIBUTE, op: r.op ?? '=', value: Math.round(r.value * 100), hard: r.hard };
+    }
+    return { attribute, op: r.op ?? '=', value: r.value ?? r.label, hard: r.hard };
+  });
+  if (config.budgetMax !== null) constraints.unshift({ attribute: TOTAL_ATTRIBUTE, op: '<=', value: Math.round(config.budgetMax * 100), hard: config.budgetHard });
   return constraints;
 }
 // Latest explicit feedback about the same attribute refines, rather than contradicts,

@@ -94,7 +94,7 @@ GitHub Pages can serve a cached copy for a short time after a deploy. If a sync 
 ## How discovery uses it
 
 - **Meta hosted search:** `sourcePlan` is part of the research input. `DISCOVERY_PROMPT` explains how to use it but never hardcodes site names.
-- **Brave:** the broad query is unchanged, preserving coverage and `best_available` behavior. When the vertical is known and the plan has sellers, a second targeted query adds up to four `site:` domains. Both queries run in parallel, and a failed targeted query does not discard the broad result. This uses one extra search request per pass in Brave mode and is recorded as a separate usage event; the broad query remains the coverage guarantee.
+- **Brave:** the broad query remains the coverage guarantee. When the vertical is known and the plan has sellers, up to three rotating `site:` domains are added per pass, so all eight planned sellers are eventually searched instead of only the first four. Calls are serialized with `BRAVE_MIN_INTERVAL_MS` because Brave plans are rate-limited per second, and a failed seller query does not discard the broad result. Each query is recorded as a separate usage event.
 - **Extraction:** `EXTRACT_PROMPT` forbids using a non-seller domain as an offer URL or price source. `normalizeExtraction()` enforces the same rule mechanically.
 - **Logs:** discovery start/pass logs include `vertical`, `plannedSellers` and `plannedSpecs`. Use them to check whether the plan is actually helping.
 

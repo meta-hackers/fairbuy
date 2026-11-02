@@ -61,9 +61,11 @@ projects:
               - key: DISCOVERY_REASONING_EFFORT
                 value: high
               - key: SEARCH_PROVIDER
-                value: brave
+                value: meta
               - key: BRAVE_API_KEY
                 sync: false
+              - key: BRAVE_MIN_INTERVAL_MS
+                value: "1100"
               - key: CATALOG_URL
                 value: https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json
               - key: CATALOG_SYNC_ON_START
