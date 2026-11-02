@@ -231,7 +231,7 @@ describe('progressive multi-product discovery', () => {
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(researchStream(data.research))
       .mockResolvedValueOnce(stream(result(JSON.stringify(data.extracted))));
-    await new LiveAIProvider(config, fetcher).discover(brief);
+    await new LiveAIProvider(config, fetcher, undefined, { effective: async () => SOURCE_CATALOG_SEED }).discover(brief);
     const input = JSON.parse(JSON.parse(fetcher.mock.calls[0][1]!.body as string).input);
     expect(input.sourcePlan.vertical).toBe('computers');
     expect(input.sourcePlan.sellers.map((source: { domain: string }) => source.domain)).toContain('mediaworld.it');
@@ -293,7 +293,7 @@ describe('progressive multi-product discovery', () => {
       now = 45000;
       return stream(result(JSON.stringify(extracted)));
     });
-    await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher).discover(brief);
+    await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher, undefined, { effective: async () => SOURCE_CATALOG_SEED }).discover(brief);
     const queries = fetcher.mock.calls.filter(([url]) => String(url).startsWith('https://api.search.brave.com/')).map(([url]) => new URL(String(url)).searchParams.get('q')!);
     const broad = queries.filter(query => !query.includes('site:'));
     const targeted = queries.filter(query => query.includes('site:'));

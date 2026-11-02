@@ -60,22 +60,26 @@ The **Sources** tab is a read-only view of the catalog published by the separate
 repository. Canonical data lives in that repository's `sources.json`; the public
 page is https://meta-hackers.github.io/fairbuy-sources-catalog/.
 
-The app starts with a bundled fallback snapshot (`data/source-catalog.ts`).
-Clicking **Sync from GitHub** calls `POST /api/admin/sources/sync`, which:
+The catalog is stored only in PostgreSQL. After migrations, the app loads the
+last complete sync from the database, so a restart keeps the latest catalog
+without a bundled snapshot or an immediate GitHub request. Clicking
+**Sync from GitHub** calls `POST /api/admin/sources/sync`, which:
 
 - fetches `CATALOG_URL` over HTTPS with a 10 s timeout, no redirects and a 512 KB cap;
 - requires a `schemaVersion: 1` envelope with an `entries` array;
 - validates every entry with `SourceEntrySchema` and rejects duplicate domains;
-- swaps the in-memory catalog atomically only when the whole payload is valid.
+- deletes and rewrites every catalog row in one transaction only when the whole payload is valid.
 
-On failure it keeps the last-known-good catalog and shows the error. Discovery
-never fetches GitHub directly; an in-flight round keeps the plan it started with.
+On failure it keeps the last-known-good catalog in both the database and memory,
+and shows the error. Discovery never fetches GitHub directly; an in-flight round
+keeps the plan it started with.
 
-The Sources view shows entries, source (`GitHub` or `Bundled fallback`), last
-sync time, version, count and the configured URL. It has filters but no editor:
-edit `sources.json` in the catalog repository and open a PR. CI validates it and
-GitHub Pages publishes it. When `CATALOG_SYNC_ON_START=true`, the app also attempts
-a background sync at startup; it never blocks readiness.
+The Sources view shows entries, source (`GitHub` after a sync, `Database` after a
+load), last sync time, version, count and the configured URL. It has filters but
+no editor: edit `sources.json` in the catalog repository and open a PR. CI
+validates it and GitHub Pages publishes it. A fresh database is empty until the
+first sync. When `CATALOG_SYNC_ON_START=true`, the app also attempts a background
+sync at startup; it never blocks readiness.
 
 The admin API is:
 

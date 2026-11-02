@@ -1,10 +1,10 @@
 import request from 'supertest';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { type SourceEntry } from '@fairbuy/core';
 import { createApp } from '../src/app';
 import { passwordHash, verifyPassword } from '../src/admin';
 import { MemoryStore } from '../src/store';
 import { SourceCatalogService } from '../src/source-catalog';
-import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
 import { DemoAIProvider } from '../src/ai/demo';
 import { ShoppingService } from '../src/shopping-service';
 import { settings } from '../src/settings';
@@ -12,11 +12,11 @@ import { recordUsage } from '../src/usage';
 
 let hash: string;
 beforeAll(async () => { hash = await passwordHash('test-password-not-for-production'); });
-function setup(enabled = true, appPassword = '', catalog?: SourceCatalogService) {
+function setup(enabled = true, appPassword = '', catalog?: SourceCatalogService, store = new MemoryStore()) {
   const config = settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo', APP_ACCESS_TOKEN: appPassword, BACKOFFICE_ADMINS: JSON.stringify(enabled ? [{ username: 'Alberto', passwordHash: hash }, { username: 'OtherAdmin', passwordHash: hash }] : []) });
-  const store = new MemoryStore(); const service = new ShoppingService(store, new DemoAIProvider(), 'demo');
+  const service = new ShoppingService(store, new DemoAIProvider(), 'demo');
   const app = createApp(service, config, undefined, undefined, undefined, catalog);
-  return { app, service, config };
+  return { app, service, config, store };
 }
 const write = { 'X-Fairbuy-Request': '1' };
 const catalogEnvelope = (entries: unknown[]) => ({ schemaVersion: 1, updatedAt: new Date().toISOString(), entries });
@@ -132,21 +132,30 @@ describe('backoffice session data', () => {
     await client.get(`/api/admin/sessions/${s.id}`).expect(404);
     expect(await service.usage.get(s.id)).toEqual([]);
   });
-  it('serves the bundled catalog and syncs the published JSON on admin request', async () => {
-    const remote = [
+  it('loads the persisted catalog and syncs the published JSON on admin request', async () => {
+    const remote: SourceEntry[] = [
       { domain: 'remote.ch', name: 'Remote', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3 },
       { domain: 'spec.ch', name: 'Spec', roles: ['spec'], verticals: ['watches'], countries: 'global', priority: 2 },
     ];
+    const stored: SourceEntry[] = [
+      { domain: 'stored.ch', name: 'Stored', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3 },
+      { domain: 'stored-spec.ch', name: 'Stored Spec', roles: ['spec'], verticals: ['watches'], countries: 'global', priority: 2 },
+    ];
+    const store = new MemoryStore();
+    await store.replaceSourceCatalog({
+      entries: stored, url: 'https://example.test/sources.json',
+      fetchedAt: '2026-01-02T03:04:05.000Z', version: 'stored-version',
+    });
     const catalog = new SourceCatalogService(
       { CATALOG_URL: 'https://example.test/sources.json' },
+      store,
       vi.fn<typeof fetch>().mockResolvedValue(catalogResponse(remote)),
     );
-    const { app } = setup(true, '', catalog);
+    const { app } = setup(true, '', catalog, store);
     const client = request.agent(app); await login(client);
     const initial = await client.get('/api/admin/sources').expect(200);
-    expect(initial.body).toMatchObject({ source: 'fallback', error: null });
-    expect(initial.body.entries).toHaveLength(SOURCE_CATALOG_SEED.length);
-    expect(initial.body.entries.find((entry: any) => entry.domain === 'ricardo.ch')).toMatchObject({ name: 'Ricardo' });
+    expect(initial.body).toMatchObject({ source: 'database', count: 2, error: null });
+    expect(initial.body.entries.find((entry: any) => entry.domain === 'stored.ch')).toMatchObject({ name: 'Stored' });
     expect(initial.body.roles).toContain('seller');
     expect(initial.body.verticals).toContain('food_delivery');
 
@@ -156,18 +165,29 @@ describe('backoffice session data', () => {
     expect(synced.body.verticals).toContain('watches');
     const status = await client.get('/api/admin/sources').expect(200);
     expect(status.body).toMatchObject({ source: 'github', count: 2 });
+    expect((await store.loadSourceCatalog())?.entries).toEqual(remote);
   });
-  it('keeps the bundled catalog when the published JSON cannot be loaded', async () => {
+  it('keeps the persisted catalog when the published JSON cannot be loaded', async () => {
+    const stored: SourceEntry[] = [
+      { domain: 'stored.ch', name: 'Stored', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3 },
+    ];
+    const store = new MemoryStore();
+    await store.replaceSourceCatalog({
+      entries: stored, url: 'https://example.test/sources.json',
+      fetchedAt: '2026-01-02T03:04:05.000Z', version: 'stored-version',
+    });
     const catalog = new SourceCatalogService(
       { CATALOG_URL: 'https://example.test/sources.json' },
+      store,
       vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 503 })),
     );
-    const { app } = setup(true, '', catalog);
+    const { app } = setup(true, '', catalog, store);
     const client = request.agent(app); await login(client);
     const synced = await client.post('/api/admin/sources/sync').set(write).send({}).expect(200);
-    expect(synced.body).toMatchObject({ source: 'fallback', count: SOURCE_CATALOG_SEED.length });
+    expect(synced.body).toMatchObject({ source: 'database', count: 1 });
     expect(synced.body.error).toContain('request failed');
-    expect(synced.body.entries).toHaveLength(SOURCE_CATALOG_SEED.length);
+    expect(synced.body.entries).toHaveLength(1);
+    expect((await store.loadSourceCatalog())?.entries).toEqual(stored);
   });
   it('requires admin authentication and request verification for catalog sync', async () => {
     const { app } = setup();

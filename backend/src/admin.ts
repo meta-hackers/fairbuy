@@ -24,7 +24,7 @@ export async function verifyPassword(password: string, encoded: string) {
   return timingSafeEqual(actual, Buffer.from(expected, 'hex'));
 }
 interface LoginSession { username: string; credential_hash: string; expires_at: Date }
-export function adminRouter(service: ShoppingService, config: Settings, catalog = new SourceCatalogService(config)) {
+export function adminRouter(service: ShoppingService, config: Settings, catalog = new SourceCatalogService(config, service.store)) {
   const router = Router();
   const pool = service.store instanceof PostgresStore ? service.store.pool : null;
   const sessions = new Map<string, LoginSession>();
@@ -102,11 +102,13 @@ export function adminRouter(service: ShoppingService, config: Settings, catalog 
     };
   };
   router.get('/sources', async (_req, res) => {
-    res.json({ ...catalog.status(), ...(await sourceMetadata()) });
+    const metadata = await sourceMetadata();
+    res.json({ ...catalog.status(), ...metadata });
   });
   router.post('/sources/sync', async (_req, res) => {
-    const status = await catalog.sync();
-    res.json({ ...status, ...(await sourceMetadata()) });
+    await catalog.sync();
+    const metadata = await sourceMetadata();
+    res.json({ ...catalog.status(), ...metadata });
   });
   router.use((_req, _res, next) => next(new AppError(404, 'Admin endpoint not found.')));
   return router;

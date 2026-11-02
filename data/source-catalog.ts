@@ -1,13 +1,13 @@
 import type { SourceEntry, SourceRole, Vertical } from '@fairbuy/core';
 
-// Bundled fallback snapshot for the discovery source catalog.
+// Test fixture for the discovery source catalog.
 //
 // Canonical data: https://github.com/meta-hackers/fairbuy-sources-catalog
 // Published JSON:  https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json
 //
-// FairBuy starts with this snapshot, then replaces it in memory when an admin
-// syncs the published JSON. Keep this file as a safe offline fallback; edit the
-// canonical catalog repository for normal changes.
+// The application never loads this file: it reads the last complete catalog from
+// PostgreSQL and replaces every row on a validated GitHub sync. This snapshot is
+// kept only so unit tests can exercise source planning against a realistic list.
 const PRODUCT_VERTICALS: Vertical[] = ['computers', 'electronics', 'home', 'fashion', 'sports', 'books', 'auto', 'general'];
 
 function entry(

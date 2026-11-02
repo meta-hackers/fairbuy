@@ -2,11 +2,10 @@ import { createHash } from 'node:crypto';
 import {
   SourceCatalogValidationError, validateSourceCatalog, type SourceCatalogIssue, type SourceEntry,
 } from '@fairbuy/core';
-import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
 import type { Settings } from './settings';
 import { logger } from './logger';
 
-export type CatalogSource = 'fallback' | 'github';
+export type CatalogSource = 'database' | 'github';
 
 export interface CatalogStatus {
   source: CatalogSource;
@@ -22,9 +21,23 @@ export interface SourceCatalogLoader {
   effective(): Promise<SourceEntry[]>;
 }
 
-/** Test/demo fallback when no remote catalog is configured. */
-export const DEFAULT_CATALOG_LOADER: SourceCatalogLoader = {
-  effective: async () => SOURCE_CATALOG_SEED,
+/** The durable catalog payload. A sync replaces this as a whole. */
+export interface PersistedSourceCatalog {
+  entries: SourceEntry[];
+  url: string | null;
+  fetchedAt: string | null;
+  version: string;
+}
+
+/** Database operations the catalog service needs. */
+export interface SourceCatalogRepository {
+  loadSourceCatalog(): Promise<PersistedSourceCatalog | null>;
+  replaceSourceCatalog(catalog: PersistedSourceCatalog): Promise<void>;
+}
+
+/** Test/demo loader for callers that do not need source hints at all. */
+export const EMPTY_CATALOG_LOADER: SourceCatalogLoader = {
+  effective: async () => [],
 };
 
 export function sourceCatalogVersion(entries: SourceEntry[]): string {
@@ -38,27 +51,29 @@ function formatCatalogIssue(issue: SourceCatalogIssue): string {
 }
 
 /**
- * In-memory catalog cache. The bundled seed is available immediately; an admin
- * (or startup) sync fetches the published JSON, validates it, and swaps the
- * whole catalog atomically. A failed sync never clears the last-known-good one.
+ * Database-backed catalog cache. There is no bundled application snapshot: the
+ * service loads the last complete sync from the database on startup. An admin
+ * (or startup) sync fetches the published JSON, validates it, and replaces every
+ * persisted row in one transaction. A failed sync never clears the last-known-good
+ * catalog.
  */
 export class SourceCatalogService implements SourceCatalogLoader {
-  private entries: SourceEntry[];
-  private source: CatalogSource = 'fallback';
+  private entries: SourceEntry[] = [];
+  private source: CatalogSource = 'database';
   private fetchedAt: string | null = null;
-  private version: string;
+  private version = sourceCatalogVersion([]);
   private error: string | null = null;
+  private loaded = false;
+  private loading: Promise<void> | null = null;
 
   constructor(
     private config: Pick<Settings, 'CATALOG_URL'>,
+    private repository: SourceCatalogRepository,
     private fetcher: typeof fetch = fetch,
-    fallback: SourceEntry[] = SOURCE_CATALOG_SEED,
-  ) {
-    this.entries = validateSourceCatalog(fallback);
-    this.version = sourceCatalogVersion(this.entries);
-  }
+  ) {}
 
   async effective(): Promise<SourceEntry[]> {
+    await this.ensureLoaded();
     return this.entries;
   }
 
@@ -73,7 +88,17 @@ export class SourceCatalogService implements SourceCatalogLoader {
     };
   }
 
+  /** Load the last complete persisted catalog. Safe to call more than once. */
+  async load(): Promise<CatalogStatus> {
+    await this.ensureLoaded();
+    return this.status();
+  }
+
   async sync(): Promise<CatalogStatus> {
+    // Start from the last persisted catalog so a failed fetch still reports (and
+    // keeps) the last-known-good data even when nothing has been read yet.
+    await this.ensureLoaded();
+
     const value = this.config.CATALOG_URL;
     if (!value) return this.fail('No catalog URL is configured.');
     let url: URL;
@@ -150,16 +175,66 @@ export class SourceCatalogService implements SourceCatalogLoader {
     }
     if (!entries.length) return this.fail('The catalog has no entries.', { url: url.toString() });
 
-    // Swap only after the whole payload is valid.
+    const version = sourceCatalogVersion(entries);
+    const fetchedAt = new Date().toISOString();
+    try {
+      await this.repository.replaceSourceCatalog({ entries, url: url.toString(), fetchedAt, version });
+    } catch (error) {
+      return this.fail('The catalog could not be saved to the database.', {
+        url: url.toString(), entries: entries.length,
+        cause: error instanceof Error ? error.name : 'unknown',
+      });
+    }
+
+    // Swap memory only after the whole payload is validated and persisted.
     this.entries = entries;
     this.source = 'github';
-    this.fetchedAt = new Date().toISOString();
-    this.version = sourceCatalogVersion(entries);
+    this.fetchedAt = fetchedAt;
+    this.version = version;
     this.error = null;
+    this.loaded = true;
     logger.info('source_catalog.synced', {
-      entries: entries.length, version: this.version, durationMs: Date.now() - started,
+      entries: entries.length, version, durationMs: Date.now() - started,
     });
     return this.status();
+  }
+
+  private async ensureLoaded() {
+    if (this.loaded) return;
+    if (!this.loading) {
+      this.loading = this.read().finally(() => { this.loading = null; });
+    }
+    await this.loading;
+  }
+
+  private async read() {
+    try {
+      const stored = await this.repository.loadSourceCatalog();
+      if (!stored) {
+        this.entries = [];
+        this.source = 'database';
+        this.fetchedAt = null;
+        this.version = sourceCatalogVersion([]);
+        this.error = null;
+        this.loaded = true;
+        logger.info('source_catalog.empty', {});
+        return;
+      }
+      const entries = validateSourceCatalog(stored.entries);
+      this.entries = entries;
+      this.source = 'database';
+      this.fetchedAt = stored.fetchedAt;
+      this.version = stored.version || sourceCatalogVersion(entries);
+      this.error = null;
+      this.loaded = true;
+      logger.info('source_catalog.loaded', { entries: entries.length, version: this.version });
+    } catch (error) {
+      // Keep the previous in-memory data (if any) and retry on the next call.
+      this.error = 'The persisted source catalog could not be read.';
+      logger.error('source_catalog.load.failed', {
+        cause: error instanceof Error ? error.name : 'unknown',
+      });
+    }
   }
 
   private fail(message: string, details: Record<string, unknown> = {}): CatalogStatus {

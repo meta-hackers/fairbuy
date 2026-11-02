@@ -2,12 +2,13 @@ import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import {
-  EMPTY_CONFIG, rankProducts,
+  EMPTY_CONFIG, rankProducts, validateSourceCatalog,
   type AttrValue, type ChatMessage, type DiscoveryContext, type DiscoveryRound, type Feedback,
   type Field, type FinalPrice, type Offer, type Product, type Requirement, type ShoppingConfig, type ShoppingSession, type Source,
 } from '@fairbuy/core';
 import { AppError } from './errors';
 import { logger } from './logger';
+import type { PersistedSourceCatalog, SourceCatalogRepository } from './source-catalog';
 import type { SessionStartup } from './session-startup';
 
 export interface Job { id: string; sessionId: string; attempts: number }
@@ -16,7 +17,7 @@ export interface SessionRevision {
   archived: boolean; revokedFeedbackIds: string[]; createdAt: string; session: ShoppingSession;
 }
 type Change = (session: ShoppingSession) => undefined;
-export interface Store {
+export interface Store extends SourceCatalogRepository {
   listSessions(query: { search: string; stage: string; mode: string; page: number }): Promise<{ sessions: SessionSummary[]; total: number }>;
   create(owner: string, session: ShoppingSession, startup: SessionStartup): Promise<void>;
   latest(owner: string): Promise<ShoppingSession | null>;
@@ -111,6 +112,11 @@ interface AttributeEvidenceRow extends QueryResultRow {
 }
 interface MissingRow extends QueryResultRow { round_id: string; product_id: string; offer_id: string; position: number; label: string }
 interface SourceRow extends QueryResultRow { round_id: string; position: number; url: string; title: string }
+interface SourceCatalogRow extends QueryResultRow {
+  domain: string; name: string; roles: unknown; verticals: unknown; countries: unknown;
+  priority: number; note: string | null; enabled: boolean | null;
+}
+interface SourceCatalogMetaRow extends QueryResultRow { url: string | null; fetched_at: string | Date | null; version: string }
 interface ChildrenRow extends QueryResultRow {
   configs: ConfigRow[]; config_requirements: RequirementRow[]; missing: { label: string }[];
   messages: MessageRow[]; feedback: FeedbackRow[]; feedback_requirements: RequirementRow[];
@@ -253,6 +259,7 @@ export class PostgresStore implements Store {
         await client.query('ALTER TABLE shopping_sessions DROP COLUMN IF EXISTS data');
       }
       await client.query(await readFile(new URL('../migrations/004_session_versions.sql', import.meta.url), 'utf8'));
+      await client.query(await readFile(new URL('../migrations/005_source_catalog.sql', import.meta.url), 'utf8'));
       // A single baseline preserves the state available at upgrade time. Earlier
       // revisions cannot be reconstructed from the old mutable tables.
       const baselines = await client.query<{ id: string }>('SELECT id FROM shopping_sessions s WHERE NOT EXISTS (SELECT 1 FROM session_versions v WHERE v.session_id = s.id)');
@@ -391,6 +398,54 @@ export class PostgresStore implements Store {
   async finish(job: Job) { await this.pool.query("UPDATE discovery_jobs SET state = 'done', lease_until = NULL WHERE id = $1 AND attempts = $2", [job.id, job.attempts]); }
   async health() { await this.pool.query('SELECT 1'); }
   async close() { await this.pool.end(); }
+
+  async loadSourceCatalog(): Promise<PersistedSourceCatalog | null> {
+    const client = await this.pool.connect();
+    try {
+      // Read metadata and entries from one snapshot so a concurrent full
+      // replacement cannot mix the old and new catalog.
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      const meta = await client.query<SourceCatalogMetaRow>('SELECT url, fetched_at, version FROM source_catalog_meta WHERE id = 1');
+      const row = meta.rows[0];
+      if (!row) { await client.query('COMMIT'); return null; }
+      const result = await client.query<SourceCatalogRow>(`SELECT domain, name, roles, verticals, countries, priority, note, enabled
+        FROM source_catalog_entries ORDER BY position, domain`);
+      const entries = validateSourceCatalog(result.rows.map(entry => ({
+        domain: entry.domain, name: entry.name, roles: entry.roles, verticals: entry.verticals,
+        countries: entry.countries, priority: entry.priority,
+        ...(entry.note === null ? {} : { note: entry.note }),
+        ...(entry.enabled === null ? {} : { enabled: entry.enabled }),
+      })));
+      await client.query('COMMIT');
+      return { entries, url: row.url, fetchedAt: iso(row.fetched_at), version: row.version };
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+    finally { client.release(); }
+  }
+
+  async replaceSourceCatalog(catalog: PersistedSourceCatalog) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      // One writer at a time. A sync replaces the complete catalog, never merges.
+      await client.query('SELECT pg_advisory_xact_lock(731692402)');
+      await client.query('DELETE FROM source_catalog_entries');
+      await this.insertRows(client, 'source_catalog_entries',
+        ['domain', 'name', 'roles', 'verticals', 'countries', 'priority', 'note', 'enabled', 'position'],
+        catalog.entries.map((entry, position) => ({
+          domain: entry.domain, name: entry.name,
+          roles: JSON.stringify(entry.roles), verticals: JSON.stringify(entry.verticals),
+          countries: JSON.stringify(entry.countries), priority: entry.priority,
+          note: entry.note ?? null, enabled: entry.enabled ?? null, position,
+        })));
+      await client.query(`INSERT INTO source_catalog_meta (id, url, fetched_at, version)
+        VALUES (1, $1, $2, $3)
+        ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, fetched_at = EXCLUDED.fetched_at, version = EXCLUDED.version`,
+      [catalog.url, catalog.fetchedAt, catalog.version]);
+      await client.query('COMMIT');
+      logger.info('database.source_catalog.replaced', { entries: catalog.entries.length, version: catalog.version });
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+    finally { client.release(); }
+  }
 
   private async insertRevision(client: PoolClient, entry: SessionRevision) {
     await client.query(`INSERT INTO session_versions (session_id, version, parent_version, kind, archived, revoked_feedback_ids, state, created_at)
@@ -707,6 +762,7 @@ function buildAttrValue(attr: AttributeRow): AttrValue | null {
 export class MemoryStore implements Store {
   private sessions = new Map<string, { owner: string; revisions: SessionRevision[]; startup: SessionStartup }>();
   private jobs = new Map<string, Job & { state: 'queued' | 'running' | 'done' }>();
+  private sourceCatalog: PersistedSourceCatalog | null = null;
   async listSessions(query: { search: string; stage: string; mode: string; page: number }) {
     const all = [...this.sessions.values()].map(({ owner, revisions }) => {
       const s = revisions.at(-1)!.session;
@@ -764,6 +820,8 @@ export class MemoryStore implements Store {
     return { id: job.id, sessionId: job.sessionId, attempts: job.attempts };
   }
   async finish(job: Job) { const entry = this.jobs.get(job.id); if (entry && entry.attempts === job.attempts) entry.state = 'done'; }
+  async loadSourceCatalog() { return this.sourceCatalog ? structuredClone(this.sourceCatalog) : null; }
+  async replaceSourceCatalog(catalog: PersistedSourceCatalog) { this.sourceCatalog = structuredClone(catalog); }
   async health() {}
   async close() {}
 }

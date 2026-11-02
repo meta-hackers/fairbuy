@@ -57,23 +57,14 @@ test('admin can view, filter and inspect the read-only source catalog', async ({
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Sources', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Source catalog' })).toBeVisible();
-  await expect(page.locator('#source-status')).toContainText('Bundled fallback');
-  await expect(page.locator('#source-status')).toContainText('147');
+  await expect(page.locator('#source-status')).toContainText('Database');
+  await expect(page.locator('#source-status')).toContainText('0');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   const rows = page.locator('#source-rows');
-  await expect(rows).toContainText('ricardo.ch');
-  await expect(rows).toContainText('openicecat.com');
+  await expect(rows).toContainText('No catalog entries loaded.');
   await expect(page.getByRole('button', { name: 'Sync from GitHub', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add source', exact: true })).toHaveCount(0);
-
-  await page.locator('#source-filters').getByLabel('Find source', { exact: true }).fill('openicecat');
-  await page.locator('#source-filters').getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(page.locator('#source-rows tr')).toHaveCount(1);
-  await expect(rows).toContainText('spec');
-  await page.locator('#source-filters').getByLabel('Find source', { exact: true }).fill('');
-  await page.locator('#source-filters').getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(page.locator('#source-rows tr')).toHaveCount(147);
 
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   expect(errors).toEqual([]);

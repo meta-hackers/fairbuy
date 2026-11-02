@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { SourceEntrySchema, type SourceEntry } from '@fairbuy/core';
 import { PostgresStore } from '../src/store';
 import { DemoAIProvider } from '../src/ai/demo';
 import { ShoppingService } from '../src/shopping-service';
@@ -25,6 +26,22 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownersh
     await service.message(created.id, owner, 'ask', 'Laptop for coding in Italy, budget €700');
     await second.migrate();
     expect(await read()).toEqual(sessionStartup(config));
+  });
+  it('persists the source catalog as a full replacement across connections', async () => {
+    const first: SourceEntry[] = [
+      SourceEntrySchema.parse({ domain: 'persisted-shop.ch', name: 'Persisted Shop', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3 }),
+      SourceEntrySchema.parse({ domain: 'persisted-spec.ch', name: 'Persisted Spec', roles: ['spec'], verticals: ['watches'], countries: 'global', priority: 2, enabled: false }),
+    ];
+    await store.replaceSourceCatalog({ entries: first, url: 'https://example.test/sources.json', fetchedAt: '2026-01-02T03:04:05.000Z', version: 'first-version' });
+    expect(await second.loadSourceCatalog()).toEqual({
+      entries: first, url: 'https://example.test/sources.json', fetchedAt: '2026-01-02T03:04:05.000Z', version: 'first-version',
+    });
+
+    const secondVersion: SourceEntry[] = [
+      SourceEntrySchema.parse({ domain: 'only-shop.ch', name: 'Only Shop', roles: ['marketplace'], verticals: ['home'], countries: ['CH'], priority: 1 }),
+    ];
+    await second.replaceSourceCatalog({ entries: secondVersion, url: 'https://example.test/sources.json', fetchedAt: '2026-02-03T04:05:06.000Z', version: 'second-version' });
+    expect((await store.loadSourceCatalog())?.entries).toEqual(secondVersion);
   });
   it('persists through a new repository connection and isolates owner queries', async () => {
     const service = new ShoppingService(store, new DemoAIProvider(), 'demo');

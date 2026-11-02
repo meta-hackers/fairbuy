@@ -91,7 +91,7 @@ function fillSelect(id, values, allLabel, label = value => value) {
 function sourceStatus(data) {
   $('source-status').replaceChildren(
     metric('Entries', data.count),
-    metric('Source', data.source === 'github' ? 'GitHub' : 'Bundled fallback'),
+    metric('Source', data.source === 'github' ? 'GitHub' : 'Database'),
     metric('Last sync', data.fetchedAt ? date(data.fetchedAt) : 'Never'),
     metric('Version', data.version || '—'),
   );

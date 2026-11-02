@@ -82,7 +82,7 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `BRAVE_API_KEY` | Required secret only for `SEARCH_PROVIDER=brave` (`sync: false` in Blueprint); the Meta key is still required for interpretation/extraction. |
 | `BRAVE_MIN_INTERVAL_MS` | `1100`; serializes Brave calls in-process. Brave Free permits one request/second, so parallel broad/seller queries would otherwise return `429`. Set `0` only on a plan that allows higher concurrency. |
 | `CATALOG_URL` | Published discovery catalog JSON. Defaults to `https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json`. Must be HTTPS. |
-| `CATALOG_SYNC_ON_START` | `false` (default) keeps the bundled fallback until an admin syncs; `true` also tries one background fetch after startup. |
+| `CATALOG_SYNC_ON_START` | `false` (default) loads the persisted database catalog and waits for an admin sync; `true` also tries one background fetch after startup. A fresh database is empty until the first successful sync. |
 | `INSTANT_CLASSIFIER_PROVIDER` | `disabled` unless set; the Blueprint sets `cloudflare`. Preview still requires both Cloudflare credentials and live mode. |
 | `INSTANT_CLASSIFIER_MODEL` | Server default `@cf/meta/llama-3.1-8b-instruct-fp8-fast`; the Blueprint selects `@cf/meta/llama-3.1-8b-instruct-fp8`, and the fallback is `@cf/meta/llama-3.2-3b-instruct`. The 1B model rejects the required JSON Schema requests. Ordinary Instruct models, no separate thinking phase. See [model choices](INSTANT_CLASSIFIER.md#model-choices). |
 | `CLOUDFLARE_ACCOUNT_ID` | Optional server-only account identifier (`sync: false`), 32 hexadecimal characters. Not a Zone ID. |

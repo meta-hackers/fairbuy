@@ -47,12 +47,12 @@ The canonical catalog is a separate public repository:
 
 See the [catalog repository README](https://github.com/meta-hackers/fairbuy-sources-catalog) for the full schema, role guide and examples.
 
-FairBuy keeps a bundled **fallback snapshot** in `data/source-catalog.ts`. It is used immediately on startup and whenever the remote catalog has not been synced. It is not the canonical data; update the catalog repository for normal changes.
+FairBuy stores the catalog in PostgreSQL. The canonical data still lives in the catalog repository; the application has no bundled snapshot to preload. On startup it reads the last complete sync from the database, so a restart keeps the latest catalog even before any new sync. A successful sync rewrites every stored entry in one transaction. `data/source-catalog.ts` is a test fixture only and is never loaded by the application.
 
 ## How the plan is built
 
 1. `classifyVertical()` maps the free-form `category` and `purpose` to a vertical: `computers`, `electronics`, `food_delivery`, `fashion`, `watches`, `home`, `sports`, `books`, `auto`, or `general`. It uses multilingual keywords and light plural folding; unknown briefs stay `general`.
-2. `sourcePlan()` filters the current in-memory catalog by vertical and country, sorts by priority, and returns at most:
+2. `sourcePlan()` filters the current catalog by vertical and country, sorts by priority, and returns at most:
    - 8 seller/marketplace hints,
    - 3 specification hints,
    - 4 review/comparison hints,
@@ -65,16 +65,17 @@ The catalog is intentionally curated rather than model-generated. A model asked 
 
 ## How the app updates
 
-The app caches the catalog in memory; discovery never fetches GitHub directly.
+The app reads the catalog from the database and caches it in memory for discovery; discovery never fetches GitHub directly.
 
+- **Startup load:** after migrations, the app reads the last complete catalog from PostgreSQL. This is what preserves the latest sync across restarts.
 - **Admin sync:** Backoffice → **Sources** → **Sync from GitHub** calls `POST /api/admin/sources/sync`.
-- **Startup sync:** with `CATALOG_SYNC_ON_START=true` (disabled by default), the app also attempts one background sync after startup. It never blocks readiness; the bundled fallback is available immediately.
+- **Startup sync:** with `CATALOG_SYNC_ON_START=true` (disabled by default), the app also attempts one background sync after startup. It never blocks readiness; the database catalog is already loaded.
 - **Fetch rules:** HTTPS only, 10-second timeout, no redirects, 512 KB cap, `Cache-Control: no-store`.
 - **Validation:** the payload must have `schemaVersion: 1` and an `entries` array; every entry must pass `SourceEntrySchema`, and duplicate domains are rejected.
-- **Atomic swap:** the catalog is replaced only after the whole payload is valid.
-- **Failure:** the last-known-good catalog stays in place and the admin UI shows the error. A failed sync never clears the catalog or falls back to an empty plan silently.
+- **Full replacement:** after validation, every catalog row is deleted and reinserted inside one database transaction. A sync never merges old and new entries.
+- **Failure:** the last-known-good catalog stays in both the database and memory, and the admin UI shows the error. A failed sync never clears the catalog or falls back to an empty plan silently.
 
-The Sources view shows the current entries, whether the source is `GitHub` or `Bundled fallback`, the last sync time, the version hash, the entry count and the configured URL.
+The Sources view shows the current entries, whether the in-memory source is `GitHub` (just synced) or `Database` (loaded from PostgreSQL), the last sync time, the version hash, the entry count and the configured URL.
 
 ## Editing the catalog
 
@@ -87,7 +88,7 @@ The Sources view shows the current entries, whether the source is `GitHub` or `B
 The app is configured with:
 
 - `CATALOG_URL`: the published JSON URL. Defaults to the catalog repository's Pages URL and must be HTTPS.
-- `CATALOG_SYNC_ON_START`: `false` by default; set `true` to also try one background sync at startup. Admins can always trigger a sync from the backoffice.
+- `CATALOG_SYNC_ON_START`: `false` by default; set `true` to also try one background sync at startup. Admins can always trigger a sync from the backoffice. A fresh database has an empty catalog until the first successful sync.
 
 GitHub Pages can serve a cached copy for a short time after a deploy. If a sync shows the previous version, wait for the Pages deployment and retry.
 
@@ -113,8 +114,8 @@ The current offer contract compares the seller’s final listed item price and i
 - The catalog page is public but read-only. The app validates every payload and never executes its content.
 - The sync URL must use HTTPS, rejects redirects, has a timeout and a response-size cap, and validates every entry before swapping.
 - Anyone with write access to the catalog repository can change the catalog. Pull-request review and CI validation are the safeguards; for stricter production use, sign the JSON or pin a commit.
-- The bundled fallback can be stale. It exists for availability, not as a second source of truth.
+- The database catalog can be stale until the next sync, but it is the only source of truth at runtime. There is no bundled fallback.
 - Curated coverage is finite. The broad query remains the fallback when the plan is empty or wrong.
 - A listed seller is not a trusted or verified seller. Source hints do not change the deterministic ranking, which remains preference- and evidence-based.
 - Country filtering is approximate: cross-border shopping, shipping availability and local-language pages can still surface a source that the filter excluded.
-- The in-memory cache is per process. A restart returns to the bundled fallback until the startup or admin sync completes.
+- The in-memory cache is per process. A restart reloads the persisted catalog from PostgreSQL; it does not need a new GitHub sync.

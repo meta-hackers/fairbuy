@@ -5,7 +5,7 @@ import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeImageUrl, safeUrl } from '../links';
 import { logger } from '../logger';
-import { DEFAULT_CATALOG_LOADER, type SourceCatalogLoader } from '../source-catalog';
+import { EMPTY_CATALOG_LOADER, type SourceCatalogLoader } from '../source-catalog';
 import { MetaClient, type Research } from './meta';
 import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, type Extraction } from './schemas';
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT } from './prompts';
@@ -134,7 +134,7 @@ export class LiveAIProvider implements AIProvider {
   private client: MetaClient;
   constructor(private config: Settings, private fetcher: typeof fetch = fetch,
     private imageFinder: (product: Product, preferredImage: string | null, signal?: AbortSignal) => Promise<string | null> = findSellerImage,
-    private catalog: SourceCatalogLoader = DEFAULT_CATALOG_LOADER) { this.client = new MetaClient(config, fetcher); }
+    private catalog: SourceCatalogLoader = EMPTY_CATALOG_LOADER) { this.client = new MetaClient(config, fetcher); }
   ensureConfigured() { this.client.ensureConfigured(); }
   async converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig) {
     return this.client.structured(

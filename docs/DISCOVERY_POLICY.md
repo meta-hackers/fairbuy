@@ -78,7 +78,7 @@ Each round also computes a **source plan** from the brief's category and country
 - In Brave mode, one broad query and a rotating group of up to three `site:` seller queries run sequentially (Brave plans are rate-limited per second). Each pass covers a different third of the plan, so later domains such as an official brand site are not permanently skipped. A failed query does not discard the others.
 - Specification, review and comparison domains (for example Open Icecat) may support attributes, but they are rejected as offer URLs and price sources by extraction and normalization.
 - The plan does not change ranking, hard checks or source-grounding rules.
-- The in-memory catalog starts from a bundled fallback and is replaced by a validated admin or startup sync of the published [fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog); changes apply to the next round.
+- The catalog is loaded from PostgreSQL and fully replaced by a validated admin or startup sync of the published [fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog); changes apply to the next round and survive restarts.
 
 See [category-aware source hints](SOURCES.md).
 
@@ -107,8 +107,9 @@ An unknown hard check is not a verified pass. Under the existing ranking policy,
 - [`backend/src/ai/provider.ts`](../backend/src/ai/provider.ts): `discoveryPolicy`, `acceptableProductCount`, the bounded discovery loop, Brave query construction, and non-seller source rejection.
 - [`backend/src/ai/prompts.ts`](../backend/src/ai/prompts.ts): research strategies, compact first-result instructions, source-plan usage, and explicit trade-off disclosure.
 - [`packages/core/src/sources.ts`](../packages/core/src/sources.ts): vertical classification, entry validation, source plan, and host-role checks.
-- [`backend/src/source-catalog.ts`](../backend/src/source-catalog.ts): in-memory cache, validated remote sync and fallback handling.
-- [`data/source-catalog.ts`](../data/source-catalog.ts): bundled fallback snapshot. Canonical data lives in [fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog).
+- [`backend/src/source-catalog.ts`](../backend/src/source-catalog.ts): database-backed cache, validated remote sync and last-known-good handling.
+- [`backend/migrations/005_source_catalog.sql`](../backend/migrations/005_source_catalog.sql): persisted catalog entries and sync metadata.
+- [`data/source-catalog.ts`](../data/source-catalog.ts): test fixture only, never loaded by the application. Canonical data lives in [fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog).
 - [`backend/src/ai/meta.ts`](../backend/src/ai/meta.ts): configured research reasoning effort.
 - [`packages/core/src/ranking.ts`](../packages/core/src/ranking.ts): deterministic constraint evaluation, exclusions, and displayed ranking scores.
 - [`backend/src/shopping-service.ts`](../backend/src/shopping-service.ts): incremental persistence and ranking of streamed results.

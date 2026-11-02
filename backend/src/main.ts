@@ -12,12 +12,12 @@ import { logger } from './logger';
 const config = settings();
 if (!config.DATABASE_URL && config.FAIRBUY_MODE !== 'demo') throw new Error('Live mode requires DATABASE_URL. Use FAIRBUY_MODE=demo for an explicitly synthetic, ephemeral preview.');
 const store = config.DATABASE_URL ? new PostgresStore(config.DATABASE_URL) : new MemoryStore();
-// The bundled seed is available immediately; the published catalog can replace
-// it on startup and on an admin-triggered sync without touching discovery latency.
-const sourceCatalog = new SourceCatalogService(config);
+// The catalog lives only in the database. A restart reads the last complete sync;
+// there is no bundled application snapshot to preload.
+const sourceCatalog = new SourceCatalogService(config, store);
 // Readiness gate: /healthz (liveness) passes as soon as we listen; /health
-// (readiness) passes only after migrations succeed.
-let ready = !(store instanceof PostgresStore);
+// (readiness) passes only after migrations and the persisted catalog load.
+let ready = false;
 const ai = config.FAIRBUY_MODE === 'demo' ? new DemoAIProvider()
   : new LiveAIProvider(config, fetch, undefined, sourceCatalog);
 const service = new ShoppingService(store, ai, config.FAIRBUY_MODE, new UsageStore(store instanceof PostgresStore ? store.pool : undefined), config);
@@ -25,17 +25,11 @@ const app = createApp(service, config, undefined, undefined, () => ready, source
 // config.PORT is the validated numeric equivalent of process.env.PORT || 4000.
 // Render requires binding the public HTTP server to all interfaces.
 const server = app.listen(config.PORT, '0.0.0.0', () => { console.info(`FairBuy listening on port ${config.PORT} (${config.FAIRBUY_MODE}).`); });
-if (config.CATALOG_SYNC_ON_START) {
-  void sourceCatalog.sync().then(status => {
-    if (status.error) logger.warn('source_catalog.startup.failed', { error: status.error });
-    else logger.info('source_catalog.startup.synced', { entries: status.count, version: status.version });
-  });
-}
 
 async function migrateWithRetry(attempts = 12) {
   if (!(store instanceof PostgresStore)) return;
   for (let attempt = 1; ; attempt++) {
-    try { await store.migrate(); ready = true; logger.info('database.ready', {}); return; }
+    try { await store.migrate(); logger.info('database.ready', {}); return; }
     catch (error) {
       logger.error('database.migration.retrying', { attempt, error: error instanceof Error ? error.name : 'unknown' });
       if (attempt >= attempts) { logger.error('database.migration.failed', { attempts }); throw error; }
@@ -43,7 +37,19 @@ async function migrateWithRetry(attempts = 12) {
     }
   }
 }
-const migrated = void migrateWithRetry();
+async function initialize() {
+  await migrateWithRetry();
+  const status = await sourceCatalog.load();
+  if (status.error) logger.warn('source_catalog.startup.load_failed', { error: status.error });
+  ready = true;
+  if (config.CATALOG_SYNC_ON_START) {
+    void sourceCatalog.sync().then(synced => {
+      if (synced.error) logger.warn('source_catalog.startup.failed', { error: synced.error });
+      else logger.info('source_catalog.startup.synced', { entries: synced.count, version: synced.version });
+    });
+  }
+}
+const initialized = void initialize();
 const stopWorker = startWorker(service, () => ready);
 // Render allows ~30s for graceful shutdown; force-exit well inside that budget.
 let closing = false;
@@ -66,4 +72,4 @@ process.on('unhandledRejection', reason => {
   logger.error('process.unhandled_rejection', { error: reason instanceof Error ? reason.name : 'unknown' });
   void shutdown('unhandledRejection');
 });
-await migrated;
+await initialized;
