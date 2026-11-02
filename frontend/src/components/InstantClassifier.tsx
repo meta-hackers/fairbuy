@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { instantHints } from '@fairbuy/core';
 import { useInstantClassifier } from '../useInstantClassifier';
 
 const FRAMES = ['.', '..', '...'];
@@ -19,20 +20,24 @@ function Dots() {
 export default function InstantClassifier({ text, enabled }: { text: string; enabled: boolean }) {
   const preview = useInstantClassifier(text, enabled);
   if (!enabled || text.trim().length < 3) return null;
-  const requirements = preview.result?.requirements ?? [];
-  if (!preview.pending && !requirements.length) return null;
+  const hints = preview.result ? instantHints(preview.result) : [];
+  const question = preview.result?.clarification ?? null;
+  if (!preview.pending && !hints.length && !question) return null;
   return (
     <div className="instant-classifier" aria-label="Instant classifier">
       {preview.pending ? (
         <Dots />
       ) : (
-        <ul className="instant-classifier-chips">
-          {requirements.map((requirement, index) => (
-            <li key={index} title={`From your text: “${requirement.evidence}”`}>
-              {requirement.label}
-            </li>
-          ))}
-        </ul>
+        <>
+          {!!hints.length && <ul className="instant-classifier-chips">
+            {hints.map((hint, index) => (
+              <li key={index} title={`From your text: “${hint.evidence}”`}>
+                <span className="instant-classifier-kind">{hint.kind}</span> {hint.text}
+              </li>
+            ))}
+          </ul>}
+          {question && <p className="instant-classifier-question">{question}</p>}
+        </>
       )}
     </div>
   );

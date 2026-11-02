@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { InstantClassifierInputSchema, groundInstantClassification } from './instant-classifier';
+import { InstantClassifierInputSchema, groundInstantClassification, instantHints } from './instant-classifier';
 
 const empty = { category: null, budget: null, condition: null, requirements: [], clarification: null };
 describe('provisional instant-classifier contracts', () => {
@@ -16,7 +16,7 @@ describe('provisional instant-classifier contracts', () => {
     expect(result).not.toHaveProperty('ready');
     expect(result).not.toHaveProperty('country');
   });
-  it('drops hints without exact case-sensitive evidence and permits abstention', () => {
+  it('drops hints whose evidence is not a whole-word quote and permits abstention', () => {
     const result = groundInstantClassification({
       category: { value: 'Computer', evidence: 'Mac' }, budget: null,
       condition: { value: 'new', evidence: 'new' },
@@ -52,5 +52,34 @@ describe('provisional instant-classifier contracts', () => {
     expect(() => groundInstantClassification({ ...empty, expectedPrice: 500 }, 'laptop')).toThrow();
     // A bare currency symbol stays ambiguous; an explicit code or unmistakable symbol is required.
     expect(groundInstantClassification({ ...empty, budget: { amount: 700, currency: 'JPY', hard: true, evidence: '¥700' } }, '¥700').budget?.currency).toBeNull();
+  });
+  it('grounds quotes that differ only in case, accents or spacing, but never part of a word', () => {
+    const draft = 'Cerco un Portatile usato,  almeno 16 GB  di RAM';
+    const result = groundInstantClassification({
+      category: { value: 'Portatile', evidence: 'portatile' }, budget: null,
+      condition: { value: 'used', evidence: 'Usato' },
+      requirements: [{ label: '16 GB RAM', hard: true, evidence: 'almeno 16 GB di RAM' }, { label: 'Port', hard: false, evidence: 'Port' }],
+      clarification: null,
+    }, draft);
+    expect(result.category?.value).toBe('Portatile');
+    expect(result.condition?.value).toBe('used');
+    expect(result.requirements.map(r => r.label)).toEqual(['16 GB RAM']);
+  });
+  it('lists every validated hint for display, not only requirements', () => {
+    expect(instantHints({
+      category: { value: 'Laptop', evidence: 'laptop' },
+      budget: { amount: 1200, currency: 'EUR', hard: false, evidence: 'around EUR 1200' },
+      condition: { value: 'used', evidence: 'used' },
+      requirements: [{ label: 'at least 16 GB RAM', hard: true, evidence: 'at least 16 GB RAM' }, { label: 'coding', hard: false, evidence: 'for coding' }],
+      clarification: null,
+    })).toEqual([
+      { kind: 'Category', text: 'Laptop', evidence: 'laptop' },
+      { kind: 'Budget', text: 'EUR 1,200 · flexible', evidence: 'around EUR 1200' },
+      { kind: 'Condition', text: 'used', evidence: 'used' },
+      { kind: 'Requirement', text: 'at least 16 GB RAM · must-have', evidence: 'at least 16 GB RAM' },
+      { kind: 'Requirement', text: 'coding', evidence: 'for coding' },
+    ]);
+    expect(instantHints({ ...empty, budget: { amount: 700, currency: null, hard: true, evidence: 'max 700' } })).toEqual([{ kind: 'Budget', text: '700 · firm', evidence: 'max 700' }]);
+    expect(instantHints({ ...empty, clarification: 'Which baby product?' })).toEqual([]);
   });
 });

@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('debounces typing, shows requirement tags, and never makes the brief ready', async ({ page }, testInfo) => {
+test('debounces typing, shows every validated hint, and never makes the brief ready', async ({ page }, testInfo) => {
   let calls = 0;
   await page.route('**/api/instant-classifier', async route => { calls++; await route.fulfill({ json: washingMachine }); });
   await page.goto('/');
@@ -39,9 +39,11 @@ test('debounces typing, shows requirement tags, and never makes the brief ready'
   await page.clock.fastForward(1);
   await expect(preview.getByRole('listitem').filter({ hasText: 'Quiet' })).toBeVisible();
   expect(calls).toBe(1);
-  await expect(preview.getByText('Quiet', { exact: true })).toHaveAttribute('title', 'From your text: “quiet”');
-  await expect(preview).not.toContainText('Washing machine');
-  await expect(preview).not.toContainText('Budget');
+  await expect(preview.getByRole('listitem').filter({ hasText: 'Quiet' })).toHaveAttribute('title', 'From your text: “quiet”');
+  await expect(preview.getByRole('listitem').filter({ hasText: 'Category' })).toHaveText('Category Washing machine');
+  await expect(preview.getByRole('listitem').filter({ hasText: 'Budget' })).toHaveText('Budget CHF 700 · firm');
+  await expect(preview.getByRole('listitem').filter({ hasText: 'Budget' })).toHaveAttribute('title', 'From your text: “under CHF 700”');
+  await expect(preview.locator('.instant-classifier-question')).toHaveText('What maximum width and depth can you accommodate?');
   await page.screenshot({ path: `test-results/${testInfo.project.name}-instant-classifier.png`, fullPage: true });
   await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeDisabled();
   expect((await (await page.request.get('/api/bootstrap')).json()).session).toBeNull();
@@ -54,7 +56,7 @@ test('debounces typing, shows requirement tags, and never makes the brief ready'
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
 });
 
-test('ignores stale responses and only shows requirement tags', async ({ page }) => {
+test('ignores stale responses and shows a clarification on its own', async ({ page }) => {
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
   let firstStarted = false;
@@ -71,15 +73,15 @@ test('ignores stale responses and only shows requirement tags', async ({ page })
   await expect(page.locator('.instant-classifier-dots')).toBeVisible();
   await input.fill('baby');
   const dots = page.locator('.instant-classifier-dots');
-  // A clarification-only result carries no requirements, so no tags appear.
+  // A clarification-only result shows the question without any tags.
   await expect(dots).toBeVisible();
   await expect(dots).toHaveCount(0);
   await expect(page.locator('.instant-classifier-chips')).toHaveCount(0);
-  await expect(page.locator('.instant-classifier')).toHaveCount(0);
+  await expect(page.locator('.instant-classifier-question')).toHaveText('Which baby product are you looking for?');
   release();
   await page.waitForTimeout(300);
   await expect(page.locator('.instant-classifier-chips')).toHaveCount(0);
-  await expect(page.locator('.instant-classifier')).toHaveCount(0);
+  await expect(page.locator('.instant-classifier-question')).toHaveText('Which baby product are you looking for?');
 });
 
 test('quota failures show nothing and do not block Send', async ({ page }) => {
