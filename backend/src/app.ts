@@ -5,7 +5,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { ConfigSchema, CoordinatesSchema, InstantClassifierInputSchema, LearnInputSchema, MessageInputSchema, ShoppingLocationSchema } from '@fairbuy/core';
+import { ConfigSchema, CoordinatesSchema, InstantClassifierInputSchema, LearnInputSchema, MessageInputSchema, ShoppingLocationSchema, withCurrentRankings } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { AppError, publicError } from './errors';
@@ -76,7 +76,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
       aiConfigured: config.FAIRBUY_MODE === 'demo' || !!config.MODEL_API_KEY,
       instantClassifierConfigured: res.locals.access && classifier.configured(),
       searchProvider: config.SEARCH_PROVIDER, persistent: !!config.DATABASE_URL,
-      session: latest?.mode === config.FAIRBUY_MODE ? latest : null,
+      session: latest?.mode === config.FAIRBUY_MODE ? withCurrentRankings(latest) : null,
     });
   });
   app.post('/api/access', rateLimit({ windowMs: 15 * 60000, limit: 10, message: { error: 'Too many access attempts. Try again later.' } }), (req, res) => {
@@ -108,48 +108,48 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   const dailyLimit = rateLimit({ windowMs: 86400000, limit: 150, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Daily AI limit reached for this network.' } });
   app.post('/api/sessions', aiLimit, async (req, res) => {
     const { location } = z.object({ location: ShoppingLocationSchema.optional() }).strict().parse(req.body ?? {});
-    res.status(201).json(await service.create(res.locals.owner, location));
+    res.status(201).json(withCurrentRankings(await service.create(res.locals.owner, location)));
   });
   app.param('id', (_req, _res, next, value) => { try { z.uuid().parse(value); next(); } catch { next(new AppError(400, 'Invalid search ID.')); } });
-  app.get('/api/sessions/:id', async (req, res) => { res.json(await service.store.get(String(req.params.id), res.locals.owner)); });
+  app.get('/api/sessions/:id', async (req, res) => { res.json(withCurrentRankings(await service.store.get(String(req.params.id), res.locals.owner))); });
   // Backward-compatible route: closing a search appends an archive revision. Only
   // authenticated backoffice maintenance can physically purge its history.
   app.delete('/api/sessions/:id', async (req, res) => { await service.store.archive(String(req.params.id), res.locals.owner); res.status(204).end(); });
   app.patch('/api/sessions/:id/location', async (req, res) => {
     const { onlyIfMissing, ...location } = ShoppingLocationSchema.extend({ onlyIfMissing: z.boolean().default(false) }).parse(req.body);
-    res.json(await service.locate(String(req.params.id), res.locals.owner, location, onlyIfMissing));
+    res.json(withCurrentRankings(await service.locate(String(req.params.id), res.locals.owner, location, onlyIfMissing)));
   });
   app.post('/api/sessions/:id/ask', dailyLimit, aiLimit, async (req, res) => {
     const { message } = MessageInputSchema.parse(req.body);
-    res.json(await service.message(String(req.params.id), res.locals.owner, 'ask', message));
+    res.json(withCurrentRankings(await service.message(String(req.params.id), res.locals.owner, 'ask', message)));
   });
   app.post('/api/sessions/:id/configure/chat', dailyLimit, aiLimit, async (req, res) => {
     const { message } = MessageInputSchema.parse(req.body);
-    res.json(await service.message(String(req.params.id), res.locals.owner, 'configure', message));
+    res.json(withCurrentRankings(await service.message(String(req.params.id), res.locals.owner, 'configure', message)));
   });
   app.put('/api/sessions/:id/configure', async (req, res) => {
-    res.json(await service.configure(String(req.params.id), res.locals.owner, ConfigSchema.parse(req.body)));
+    res.json(withCurrentRankings(await service.configure(String(req.params.id), res.locals.owner, ConfigSchema.parse(req.body))));
   });
   app.post('/api/sessions/:id/discovery', dailyLimit, aiLimit, async (req, res) => {
-    res.status(202).json(await service.discover(String(req.params.id), res.locals.owner));
+    res.status(202).json(withCurrentRankings(await service.discover(String(req.params.id), res.locals.owner)));
   });
   app.post('/api/sessions/:id/learn', dailyLimit, aiLimit, async (req, res) => {
-    res.status(202).json(await service.learn(String(req.params.id), res.locals.owner, LearnInputSchema.parse(req.body)));
+    res.status(202).json(withCurrentRankings(await service.learn(String(req.params.id), res.locals.owner, LearnInputSchema.parse(req.body))));
   });
   app.delete('/api/sessions/:id/learn/:feedbackId', dailyLimit, aiLimit, async (req, res) => {
-    res.status(202).json(await service.undo(String(req.params.id), res.locals.owner, z.uuid().parse(req.params.feedbackId)));
+    res.status(202).json(withCurrentRankings(await service.undo(String(req.params.id), res.locals.owner, z.uuid().parse(req.params.feedbackId))));
   });
   app.post('/api/sessions/:id/select', async (req, res) => {
     const { productId } = z.object({ productId: z.string().min(1).max(100) }).parse(req.body);
-    res.json(await service.select(String(req.params.id), res.locals.owner, productId));
+    res.json(withCurrentRankings(await service.select(String(req.params.id), res.locals.owner, productId)));
   });
   app.post('/api/sessions/:id/missing', async (req, res) => {
     const { query } = z.object({ query: z.string().trim().min(2).max(120) }).strict().parse(req.body);
-    res.json(await service.explainMissing(String(req.params.id), res.locals.owner, query));
+    res.json(withCurrentRankings(await service.explainMissing(String(req.params.id), res.locals.owner, query)));
   });
   app.patch('/api/sessions/:id/stage', async (req, res) => {
     const { stage } = z.object({ stage: z.enum(['ask', 'configure', 'discovery', 'buy']) }).strict().parse(req.body);
-    res.json(await service.navigate(String(req.params.id), res.locals.owner, stage));
+    res.json(withCurrentRankings(await service.navigate(String(req.params.id), res.locals.owner, stage)));
   });
   // Same-origin image proxy: seller CDNs often reject direct embedding or
   // request-dependent referrers. The backend validates public HTTPS targets,

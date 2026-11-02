@@ -6,6 +6,7 @@ import { LiveAIProvider } from '../src/ai/provider';
 import { MemoryStore } from '../src/store';
 import { ShoppingService } from '../src/shopping-service';
 import { settings } from '../src/settings';
+import { RANKING_VERSION } from '@fairbuy/core';
 
 function setup(extra: Record<string, string> = {}) {
   const config = settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo', ...extra });
@@ -32,6 +33,33 @@ describe('missing product questions (issue #23)', () => {
     expect(asked).toHaveLength(1);
     expect(asked[0]).toMatchObject({ query: 'Omega Speedmaster', cause: 'not_retrieved', summary: 'It is not in the synthetic demo catalog.' });
     expect((await store.get(created.id)).rounds.at(-1)?.missingQuestions?.[0].at).toEqual(expect.any(String));
+  });
+});
+
+describe('stored rankings', () => {
+  it('serves sessions with rankings recomputed by the current version, not the stored snapshot', async () => {
+    const { app, store, service } = setup(); const client = request.agent(app);
+    const send = (method: 'post' | 'get', path: string, body?: object) => client[method](path).set('X-Fairbuy-Request', '1').send(body);
+    const { body: created } = await send('post', '/api/sessions');
+    await send('post', `/api/sessions/${created.id}/ask`, { message: 'A laptop for coding' });
+    await send('post', `/api/sessions/${created.id}/ask`, { message: 'Italy, budget €700' });
+    await send('post', `/api/sessions/${created.id}/discovery`).expect(202);
+    await service.runJob((await store.claim())!);
+    expect((await store.get(created.id)).rounds.at(-1)?.status).toBe('complete');
+    // A snapshot written before ranking 3.0.0 has no weights and an old version.
+    const original = store.get.bind(store);
+    vi.spyOn(store, 'get').mockImplementation(async (...args) => {
+      const session = await original(...args);
+      for (const round of session.rounds) {
+        if (round.ranking) round.ranking = { ...round.ranking, rankingVersion: '2.0.0', ranked: round.ranking.ranked.map(({ weights: _, ...rest }) => rest as typeof rest & { weights: never }) };
+      }
+      return session;
+    });
+    const { body } = await send('get', `/api/sessions/${created.id}`).expect(200);
+    const ranking = body.rounds.at(-1).ranking;
+    expect(ranking.rankingVersion).toBe(RANKING_VERSION);
+    expect(ranking.ranked.length).toBeGreaterThan(0);
+    expect(ranking.ranked.every((r: { weights?: object }) => r.weights)).toBe(true);
   });
 });
 describe('health endpoints', () => {

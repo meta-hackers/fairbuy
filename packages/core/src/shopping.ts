@@ -130,6 +130,13 @@ export function roundOutcome(round: Pick<DiscoveryRound, 'products' | 'sources' 
   if (round.products.length) return 'all_excluded';
   return round.sources.length ? 'nothing_grounded' : 'nothing_retrieved';
 }
+/**
+ * Rankings are derived data, but session snapshots store them. Recompute them so a
+ * stored session always follows the current ranking version and response shape.
+ */
+export function withCurrentRankings(session: ShoppingSession): ShoppingSession {
+  return { ...session, rounds: session.rounds.map(round => round.ranking ? { ...round, ranking: rankProducts(round.products, round.context) } : round) };
+}
 export function allProducts(session: ShoppingSession): Product[] {
   return [...new Map(session.rounds.flatMap(r => r.products).map(p => [p.id, p])).values()];
 }
