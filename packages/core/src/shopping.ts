@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CurrencySchema, TOTAL_ATTRIBUTE, UNINTERPRETED_PREFIX, type Constraint, type Offer } from './contract';
 import { currencyForCountry } from './location';
+import type { MissingQuestion } from './missing';
 import { rankOffers, type ComparisonResult } from './ranking';
 
 export const DISCOVERY_MIN_PRODUCTS = 4;
@@ -52,6 +53,8 @@ export interface DiscoveryRound {
   context: DiscoveryContext; ranking: ComparisonResult | null;
   /** Absent on rounds stored before diagnostics existed. */
   dropped?: DroppedOffer[];
+  /** "Why isn't it here?" questions asked about this round, newest last. */
+  missingQuestions?: MissingQuestion[];
 }
 export interface ShoppingSession {
   id: string; version: number; mode: 'live' | 'demo'; createdAt: string; updatedAt: string;

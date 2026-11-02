@@ -143,6 +143,10 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     const { productId } = z.object({ productId: z.string().min(1).max(100) }).parse(req.body);
     res.json(await service.select(String(req.params.id), res.locals.owner, productId));
   });
+  app.post('/api/sessions/:id/missing', async (req, res) => {
+    const { query } = z.object({ query: z.string().trim().min(2).max(120) }).strict().parse(req.body);
+    res.json(await service.explainMissing(String(req.params.id), res.locals.owner, query));
+  });
   app.patch('/api/sessions/:id/stage', async (req, res) => {
     const { stage } = z.object({ stage: z.enum(['ask', 'configure', 'discovery', 'buy']) }).strict().parse(req.body);
     res.json(await service.navigate(String(req.params.id), res.locals.owner, stage));

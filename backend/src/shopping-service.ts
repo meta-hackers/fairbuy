@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, isConfigReady, latestRound, rankProducts,
+  ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, explainMissing, isConfigReady, MAX_MISSING_QUESTIONS, latestRound, rankProducts,
   type DiscoveryContext, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
 import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
@@ -165,6 +165,17 @@ export class ShoppingService {
       session.selectedProductId = productId; session.stage = 'buy';
     });
     logger.info('session.product.selected', { sessionId: id, productId });
+    return session;
+  }
+  /** Answers "why isn't this product here?" from the latest round and keeps the answer for support. */
+  async explainMissing(id: string, owner: string, query: string) {
+    const session = await this.store.append(id, owner, session => {
+      this.idle(session);
+      const round = latestRound(session);
+      if (!round) throw new AppError(409, 'Start a discovery search first.');
+      round.missingQuestions = [...round.missingQuestions ?? [], { ...explainMissing(session, query), at: new Date().toISOString() }].slice(-MAX_MISSING_QUESTIONS);
+    });
+    logger.info('session.missing.explained', { sessionId: id, cause: latestRound(session)?.missingQuestions?.at(-1)?.cause });
     return session;
   }
   async navigate(id: string, owner: string, stage: ShoppingSession['stage']) {

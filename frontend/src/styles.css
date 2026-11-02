@@ -24,3 +24,4 @@
 .search-completed span{opacity:.65}
 .buy-intro .product-photo--small{background:#f0f2eb;border-radius:8px;object-fit:contain;padding:6px}
 @media(max-width:760px){.product-photo{padding:12px 22px}.product-photo--small{width:90px;height:72px;padding:0}}
+.missing-check{margin-top:18px;padding:18px}.missing-check h3{margin:0 0 10px}.missing-check form{display:flex;gap:10px;flex-wrap:wrap}.missing-check input{flex:1 1 220px}.missing-answer{margin-top:14px;font-size:.875rem}.missing-answer ul{margin:6px 0 10px}.missing-answer .micro{color:var(--muted)}

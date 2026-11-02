@@ -11,9 +11,29 @@ function setup(extra: Record<string, string> = {}) {
   const config = settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo', ...extra });
   const store = new MemoryStore();
   const ai = config.FAIRBUY_MODE === 'demo' ? new DemoAIProvider() : new LiveAIProvider(config);
-  const app = createApp(new ShoppingService(store, ai, config.FAIRBUY_MODE), config);
-  return { app, store };
+  const service = new ShoppingService(store, ai, config.FAIRBUY_MODE);
+  const app = createApp(service, config);
+  return { app, store, service };
 }
+describe('missing product questions (issue #23)', () => {
+  it('answers from the latest round, keeps the answer and validates the question', async () => {
+    const { app, store, service } = setup(); const client = request.agent(app);
+    const send = (path: string, body?: object) => client.post(path).set('X-Fairbuy-Request', '1').send(body);
+    const { body: created } = await send('/api/sessions');
+    await send(`/api/sessions/${created.id}/missing`, { query: 'Moss Book 14' }).expect(409);
+    await send(`/api/sessions/${created.id}/ask`, { message: 'A laptop for coding' });
+    await send(`/api/sessions/${created.id}/ask`, { message: 'Italy, budget €700' });
+    await send(`/api/sessions/${created.id}/discovery`).expect(202);
+    await service.runJob((await store.claim())!);
+    await send(`/api/sessions/${created.id}/missing`, { query: 'x' }).expect(400);
+    await send(`/api/sessions/${created.id}/missing`, { query: 'Moss Book 14', extra: true }).expect(400);
+    const { body } = await send(`/api/sessions/${created.id}/missing`, { query: 'Omega Speedmaster' }).expect(200);
+    const asked = body.rounds.at(-1).missingQuestions;
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatchObject({ query: 'Omega Speedmaster', cause: 'not_retrieved', summary: 'It is not in the synthetic demo catalog.' });
+    expect((await store.get(created.id)).rounds.at(-1)?.missingQuestions?.[0].at).toEqual(expect.any(String));
+  });
+});
 describe('health endpoints', () => {
   it.each(['/health'])('%s reports readiness without a password or AI key', async path => {
     const { app, store } = setup({ FAIRBUY_MODE: 'live', MODEL_API_KEY: '', APP_ACCESS_TOKEN: 'test-only-access' });

@@ -45,7 +45,7 @@ export default function App() {
   const [stage, setStage] = useState<Stage>('ask'); const [draft, setDraft] = useState<ShoppingConfig | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [learning, setLearning] = useState<{ product: Product | null } | null>(null); const [accessToken, setAccessToken] = useState('');
-  const [refinement, setRefinement] = useState('');
+  const [refinement, setRefinement] = useState(''); const [missingQuery, setMissingQuery] = useState('');
   const geolocation = useGeolocation();
   const [manualLocation, setManualLocation] = useState<ShoppingLocation | null>(null);
   const suggestedLocation = manualLocation ?? geolocation.location;
@@ -200,6 +200,21 @@ export default function App() {
               {!!round.dropped?.length && <><h3>Found but not usable ({round.dropped.length})</h3><ul>{round.dropped.map((d, i) => <li key={i}><strong>{d.product}{d.seller ? ` · ${d.seller}` : ''}</strong>{d.host ? ` (${d.host})` : ''}: {DROP_REASONS[d.reason]}</li>)}</ul></>}
               {!!round.sources.length && <p className="micro">Searched {round.sources.length} {round.sources.length === 1 ? 'page' : 'pages'}. A product that never appeared on them is not listed here: it was not found, not rejected.</p>}
             </details>}
+            {round.status === 'complete' && <section className="panel missing-check" aria-labelledby="missing-check-title">
+              <h3 id="missing-check-title">Looking for a specific product?</h3>
+              <form onSubmit={event => { event.preventDefault(); const query = missingQuery.trim(); if (query.length < 2) return; void perform(async () => { accept(await api<ShoppingSession>(`/sessions/${session.id}/missing`, 'POST', { query })); setMissingQuery(''); }); }}>
+                <label className="sr-only" htmlFor="missing-query">Product name or reference</label>
+                <input id="missing-query" value={missingQuery} maxLength={120} placeholder="e.g. Omega Speedmaster 310.30" onChange={event => setMissingQuery(event.target.value)} />
+                <button className="button secondary" disabled={unavailable || missingQuery.trim().length < 2}>Why isn’t it here?</button>
+              </form>
+              {(() => { const answer = round.missingQuestions?.at(-1); return answer && <div className="missing-answer" role="status">
+                <p><span className="micro">“{answer.query}”</span><br /><strong>{answer.summary}</strong></p>
+                {!!answer.reasons.length && <ul>{answer.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+                {!!answer.nextSteps.length && <><p className="micro">What you can do</p><ul>{answer.nextSteps.map((n, i) => <li key={i}>{n}</li>)}</ul></>}
+                {answer.searched && <p className="micro">{answer.searched}</p>}
+                {answer.nextSteps.some(n => n.includes('Configure')) && <button className="text-button" onClick={() => { void navigate('configure'); }}>Review my brief →</button>}
+              </div>; })()}
+            </section>}
             {!!round.sources.length && <details className="panel sources"><summary>All research sources ({round.sources.length})</summary><ul>{round.sources.map(s => <li key={s.url}><a href={s.url} rel="noopener noreferrer" target="_blank">{s.title} ↗</a></li>)}</ul></details>}
             {!searching && <div className="learn-callout"><div><span className="eyebrow">A LITTLE CLOSER, EVERY TIME</span><h2>Something not quite right?</h2><p>Tell us what you’ve learned. We’ll start a fresh search, not forget the last one.</p></div><button className="button secondary" disabled={unavailable} onClick={() => setLearning({ product: null })}>Refine with feedback ↻</button></div>}
           </>}

@@ -23,6 +23,7 @@ Same-origin JSON API; no CORS. All writes require `X-Fairbuy-Request: 1`. Browse
 | POST | `/api/sessions/:id/learn` | `{productId: string \| null, reason}`: 1–2000 characters; interpret feedback, discard only the selected product if present, carry the remaining shortlist into a re-ranked new round, queue new round; `202`. |
 | DELETE | `/api/sessions/:id/learn/:feedbackId` | Append a feedback revocation and queue fresh discovery; `202`. Previous versions retain the feedback. |
 | POST | `/api/sessions/:id/select` | `{productId}`: select a currently eligible product for read-only Buy. |
+| POST | `/api/sessions/:id/missing` | `{query}`: 2–120 characters naming a product or reference. Explains from the latest round's stored data why it is not in the results (shown, removed, excluded, dropped, mentioned, not retrieved or unknown), with next steps, and appends the answer to `round.missingQuestions` (last 20). No model call. Rejected while a search is running or before the first search. |
 | PATCH | `/api/sessions/:id/stage` | `{stage}`: persist validated navigation (`ask`, `configure`, `discovery`, `buy`). |
 
 Ask/configure/learn mutations commit only after a valid AI response. Do not automatically retry these POSTs: a network loss after a successful commit could append the same message twice. Refresh owned state first. Discovery POST is idempotent only while a round is pending/running. Configuration/feedback edits during an active search return `409`.
