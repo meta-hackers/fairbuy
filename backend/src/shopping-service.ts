@@ -211,7 +211,7 @@ export class ShoppingService {
           const discarded = new Set(round.context.discardedProducts.map(p => p.id));
           const merged = mergeDiscoveryResults(round, result);
           round.products = merged.products.filter(p => !discarded.has(p.id));
-          round.sources = merged.sources; round.summary = merged.summary;
+          round.sources = merged.sources; round.summary = merged.summary; round.dropped = merged.dropped;
           round.ranking = rankProducts(round.products, round.context);
           if (complete) this.finishRound(round, 'complete');
         });

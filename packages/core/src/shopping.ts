@@ -32,12 +32,26 @@ export interface DiscoveryContext {
   sessionId: string; discoverySessionId: string; initialRequest: string; initialConfig: ShoppingConfig; config: ShoppingConfig;
   previousProducts: Product[]; discardedProducts: Product[]; feedback: Feedback[];
 }
+/** Why an extracted offer never reached ranking. Ranking exclusions live in `ranking.excluded`. */
+export const DROP_REASONS = {
+  url_not_in_sources: 'Its link was not among the pages this search returned',
+  quote_not_grounded: 'Its quoted evidence was not found on the returned pages',
+  not_a_seller: 'The page is a specification, review or comparison site, not a seller',
+  previously_discarded: 'You removed this product earlier',
+  duplicate: 'Same model listed twice; its offers were merged',
+} as const;
+export type DropReason = keyof typeof DROP_REASONS;
+export interface DroppedOffer { reason: DropReason; product: string; seller: string | null; host: string | null }
+/** Keeps stored diagnostics bounded; the summary still counts every drop. */
+export const MAX_DROPPED = 50;
 export interface DiscoveryRound {
   id: string; number: number; attempt: number; trigger: 'configure' | 'learn' | 'refresh';
   status: 'queued' | 'running' | 'complete' | 'failed';
   createdAt: string; startedAt: string | null; finishedAt: string | null; durationMs: number | null;
   products: Product[]; sources: Source[]; summary: string; error: string | null;
   context: DiscoveryContext; ranking: ComparisonResult | null;
+  /** Absent on rounds stored before diagnostics existed. */
+  dropped?: DroppedOffer[];
 }
 export interface ShoppingSession {
   id: string; version: number; mode: 'live' | 'demo'; createdAt: string; updatedAt: string;
@@ -91,6 +105,16 @@ export function rankProducts(products: Product[], context: DiscoveryContext): Co
     result.warnings.unshift(`Prices must be in ${config.currency}, but sellers in ${config.country} usually list in ${local}. Switch the currency to ${local} to compare local offers.`);
   }
   return result;
+}
+export type RoundOutcome = 'found' | 'nothing_retrieved' | 'nothing_grounded' | 'all_excluded';
+/**
+ * Separates "not found" from "found but rejected" for a finished round:
+ * no pages at all, pages without a verifiable offer, or offers that all failed a check.
+ */
+export function roundOutcome(round: Pick<DiscoveryRound, 'products' | 'sources' | 'ranking'>): RoundOutcome {
+  if (round.ranking?.ranked.length) return 'found';
+  if (round.products.length) return 'all_excluded';
+  return round.sources.length ? 'nothing_grounded' : 'nothing_retrieved';
 }
 export function allProducts(session: ShoppingSession): Product[] {
   return [...new Map(session.rounds.flatMap(r => r.products).map(p => [p.id, p])).values()];

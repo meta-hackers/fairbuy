@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DISCOVERY_MIN_PRODUCTS, activeProducts, latestRound, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession } from '@fairbuy/core';
+import { DISCOVERY_MIN_PRODUCTS, DROP_REASONS, activeProducts, latestRound, roundOutcome, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession } from '@fairbuy/core';
 import { api, type Bootstrap } from './api';
 import Chat from './components/Chat';
 import Brief from './components/Brief';
@@ -34,6 +34,12 @@ function useClock(active: boolean) {
   }, [active]);
   return now;
 }
+const emptyTitle = {
+  found: 'No grounded matches this time.',
+  nothing_retrieved: 'The search returned no pages.',
+  nothing_grounded: 'No offer could be verified.',
+  all_excluded: 'Every offer found was ruled out.',
+} as const;
 export default function App() {
   const [boot, setBoot] = useState<Bootstrap | null>(null); const [session, setSession] = useState<ShoppingSession | null>(null);
   const [stage, setStage] = useState<Stage>('ask'); const [draft, setDraft] = useState<ShoppingConfig | null>(null);
@@ -188,8 +194,12 @@ export default function App() {
             <div className="product-grid">{visibleProducts.map(({ product, ranked }, i) => <ProductCard key={product.id} product={product} ranked={ranked} index={i} busy={unavailable || stale}
               onLearn={() => setLearning({ product })} onSelect={() => { void perform(async () => accept(await api<ShoppingSession>(`/sessions/${session.id}/select`, 'POST', { productId: product.id }))); }} />)}</div>
             {round.status === 'complete' && visibleProducts.length > 0 && visibleProducts.length < DISCOVERY_MIN_PRODUCTS && <div className="notice"><p>Fewer than {DISCOVERY_MIN_PRODUCTS} grounded options met your brief. Try broadening your budget or requirements to see more; we won’t invent offers to fill the page.</p></div>}
-            {round.status === 'complete' && !visibleProducts.length && <div className="empty-state panel"><span aria-hidden="true">◌</span><h2>No grounded matches this time.</h2><p>Try relaxing a must-have, adding context, or broadening your budget. We won’t invent an offer just to fill the page.</p><button className="button secondary" onClick={() => { void navigate('configure'); }}>Review my brief →</button></div>}
-            {!!round.ranking?.excluded.length && <details className="panel exclusions"><summary>Why {round.ranking.excluded.length} offers were excluded</summary><ul>{round.ranking.excluded.map(ex => { const offer = round.products.flatMap(p => p.offers).find(o => o.id === ex.offerId); return <li key={ex.offerId}><strong>{offer?.title} · {offer?.seller}</strong>: {ex.reasons.join('; ')}</li>; })}</ul></details>}
+            {round.status === 'complete' && !visibleProducts.length && <div className="empty-state panel"><span aria-hidden="true">◌</span><h2>{emptyTitle[roundOutcome(round)]}</h2><p>{roundOutcome(round) === 'nothing_grounded' ? `The search returned ${round.sources.length} ${round.sources.length === 1 ? 'page' : 'pages'}, but none had a seller offer we could check against your brief. ` : roundOutcome(round) === 'nothing_retrieved' ? 'Nothing could be checked. ' : 'Every offer that was found is listed below with the reason it was ruled out. '}Try relaxing a must-have, adding context, or broadening your budget. We won’t invent an offer just to fill the page.</p><button className="button secondary" onClick={() => { void navigate('configure'); }}>Review my brief →</button></div>}
+            {!!(round.ranking?.excluded.length || round.dropped?.length) && <details className="panel exclusions" open={!visibleProducts.length}><summary>Why these results</summary>
+              {!!round.ranking?.excluded.length && <><h3>Excluded by your brief ({round.ranking.excluded.length})</h3><ul>{round.ranking.excluded.map(ex => { const offer = round.products.flatMap(p => p.offers).find(o => o.id === ex.offerId); return <li key={ex.offerId}><strong>{offer?.title} · {offer?.seller}</strong>: {ex.reasons.join('; ')}</li>; })}</ul></>}
+              {!!round.dropped?.length && <><h3>Found but not usable ({round.dropped.length})</h3><ul>{round.dropped.map((d, i) => <li key={i}><strong>{d.product}{d.seller ? ` · ${d.seller}` : ''}</strong>{d.host ? ` (${d.host})` : ''}: {DROP_REASONS[d.reason]}</li>)}</ul></>}
+              {!!round.sources.length && <p className="micro">Searched {round.sources.length} {round.sources.length === 1 ? 'page' : 'pages'}. A product that never appeared on them is not listed here: it was not found, not rejected.</p>}
+            </details>}
             {!!round.sources.length && <details className="panel sources"><summary>All research sources ({round.sources.length})</summary><ul>{round.sources.map(s => <li key={s.url}><a href={s.url} rel="noopener noreferrer" target="_blank">{s.title} ↗</a></li>)}</ul></details>}
             {!searching && <div className="learn-callout"><div><span className="eyebrow">A LITTLE CLOSER, EVERY TIME</span><h2>Something not quite right?</h2><p>Tell us what you’ve learned. We’ll start a fresh search, not forget the last one.</p></div><button className="button secondary" disabled={unavailable} onClick={() => setLearning({ product: null })}>Refine with feedback ↻</button></div>}
           </>}
