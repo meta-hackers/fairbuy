@@ -57,7 +57,7 @@ test.beforeEach(async ({ page }) => {
   } }));
 });
 
-test('Ask renders single- and multi-select question cards and submits one concise answer', async ({ page }, testInfo) => {
+test('Ask renders single- and multi-select question cards and submits one concise answer', { tag: '@mobile-smoke' }, async ({ page }) => {
   const session = await createSession(page.request);
   const messages: ChatMessage[] = [{ role: 'assistant', content: 'One quick choice, then I have what I need.', question: condition }];
   const submitted: string[] = [];
@@ -109,7 +109,6 @@ test('Ask renders single- and multi-select question cards and submits one concis
   await expect(page.getByRole('log')).toContainText('Two-year warranty, Delivery by Friday');
   await expect(page.getByRole('button', { name: 'Send answer' })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
-  await page.screenshot({ path: `test-results/${testInfo.project.name}-ask-question.png`, fullPage: true });
 });
 
 test('Ask radio choices, Other and submit work with the keyboard', async ({ page }) => {

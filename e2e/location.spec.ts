@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('requests location on arrival, seeds Ask and preserves edited locations across reload', async ({ page, context }) => {
+test('requests location on arrival, seeds Ask and preserves edited locations across reload', { tag: '@mobile-smoke' }, async ({ page, context }) => {
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({ latitude: 47.3769, longitude: 8.5417 });
   let lookups = 0;

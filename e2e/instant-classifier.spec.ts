@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('debounces typing, shows every validated hint, and never makes the brief ready', async ({ page }, testInfo) => {
+test('debounces typing, shows every validated hint, and never makes the brief ready', { tag: '@mobile-smoke' }, async ({ page }) => {
   let calls = 0;
   await page.route('**/api/instant-classifier', async route => { calls++; await route.fulfill({ json: washingMachine }); });
   await page.goto('/');
@@ -44,7 +44,6 @@ test('debounces typing, shows every validated hint, and never makes the brief re
   await expect(preview.getByRole('listitem').filter({ hasText: 'Budget' })).toHaveText('Budget CHF 700 · firm');
   await expect(preview.getByRole('listitem').filter({ hasText: 'Budget' })).toHaveAttribute('title', 'From your text: “under CHF 700”');
   await expect(preview.locator('.instant-classifier-question')).toHaveText('What maximum width and depth can you accommodate?');
-  await page.screenshot({ path: `test-results/${testInfo.project.name}-instant-classifier.png`, fullPage: true });
   await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeDisabled();
   expect((await (await page.request.get('/api/bootstrap')).json()).session).toBeNull();
   await input.fill('baby');
@@ -59,11 +58,14 @@ test('debounces typing, shows every validated hint, and never makes the brief re
 test('ignores stale responses and shows a clarification on its own', async ({ page }) => {
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
+  let finished!: () => void;
+  const staleHandled = new Promise<void>(resolve => { finished = resolve; });
   let firstStarted = false;
   await page.route('**/api/instant-classifier', async route => {
     if (route.request().postDataJSON().text === 'washing machine') {
       firstStarted = true; await gate;
       await route.fulfill({ json: washingMachine }).catch(() => {});
+      finished();
     } else await route.fulfill({ json: { ...empty, clarification: 'Which baby product are you looking for?' } });
   });
   await page.goto('/');
@@ -71,6 +73,8 @@ test('ignores stale responses and shows a clarification on its own', async ({ pa
   await input.fill('washing machine');
   await expect.poll(() => firstStarted).toBe(true);
   await expect(page.locator('.instant-classifier-dots')).toBeVisible();
+  const staleCancelled = page.waitForEvent('requestfailed', request =>
+    request.url().endsWith('/api/instant-classifier') && request.postDataJSON().text === 'washing machine');
   await input.fill('baby');
   const dots = page.locator('.instant-classifier-dots');
   // A clarification-only result shows the question without any tags.
@@ -79,7 +83,7 @@ test('ignores stale responses and shows a clarification on its own', async ({ pa
   await expect(page.locator('.instant-classifier-chips')).toHaveCount(0);
   await expect(page.locator('.instant-classifier-question')).toHaveText('Which baby product are you looking for?');
   release();
-  await page.waitForTimeout(300);
+  await Promise.all([staleCancelled, staleHandled]);
   await expect(page.locator('.instant-classifier-chips')).toHaveCount(0);
   await expect(page.locator('.instant-classifier-question')).toHaveText('Which baby product are you looking for?');
 });

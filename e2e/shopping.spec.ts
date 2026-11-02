@@ -1,4 +1,29 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext } from '@playwright/test';
+
+// State-rendering tests need a completed session, not another UI shopping journey.
+async function discoveryBootstrap(request: APIRequestContext) {
+  const headers = { 'X-Fairbuy-Request': '1' };
+  const created = await request.post('/api/sessions', { headers });
+  expect(created.status()).toBe(201);
+  const session = await created.json();
+  const answer = await request.post(`/api/sessions/${session.id}/ask`, {
+    headers, data: { message: 'Laptop for coding in Italy, budget €700' },
+  });
+  expect(answer.status()).toBe(200);
+  const discovery = await request.post(`/api/sessions/${session.id}/discovery`, { headers });
+  expect(discovery.status()).toBe(202);
+  await expect.poll(async () => {
+    const response = await request.get(`/api/sessions/${session.id}`);
+    expect(response.status()).toBe(200);
+    return (await response.json()).rounds.at(-1)?.status;
+  }).toBe('complete');
+  const bootstrap = await request.get('/api/bootstrap');
+  expect(bootstrap.status()).toBe(200);
+  const boot = await bootstrap.json();
+  expect(boot.session.id).toBe(session.id);
+  expect(boot.session.rounds.at(-1).products).toHaveLength(6);
+  return boot;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(navigator, 'geolocation', { value: {
@@ -6,7 +31,7 @@ test.beforeEach(async ({ page }) => {
   } }));
 });
 
-test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload', async ({ page }, testInfo) => {
+test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload', { tag: '@mobile-smoke' }, async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
@@ -58,20 +83,13 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   await expect(page.getByTestId('product-card')).toHaveCount(5);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
-  await page.screenshot({ path: `test-results/${testInfo.project.name}-discovery.png`, fullPage: true });
   expect(errors).toEqual([]);
   await page.getByRole('button', { name: 'New search' }).click();
   await expect(page.getByRole('log')).toContainText('What are you looking for?');
 });
 
 test('discovery shows the first product while searching and preserves partial results across reloads', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
-  await page.getByRole('button', { name: 'Send message' }).click();
-  await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await page.getByRole('button', { name: 'Find products' }).click();
-  await expect(page.getByTestId('product-card')).toHaveCount(6);
-  const boot = await (await page.request.get('/api/bootstrap')).json();
+  const boot = await discoveryBootstrap(page.request);
   const complete = structuredClone(boot.session);
   let current = structuredClone(complete);
   const round = current.rounds.at(-1);
@@ -80,7 +98,7 @@ test('discovery shows the first product while searching and preserves partial re
   round.ranking.ranked = round.ranking.ranked.filter((ranked: { offerId: string }) => round.products[0].offers.some((offer: { id: string }) => offer.id === ranked.offerId));
   await page.route('**/api/bootstrap', route => route.fulfill({ json: { ...boot, session: current } }));
   await page.route(`**/api/sessions/${complete.id}`, route => route.fulfill({ json: current }));
-  await page.reload();
+  await page.goto('/');
   await expect(page.getByTestId('product-card')).toHaveCount(1);
   await expect(page.getByText('1 option ready to explore. More on the way.')).toBeVisible();
   await expect(page.getByText('Searching for at least 4 distinct products', { exact: false })).toBeVisible();
@@ -110,13 +128,7 @@ test('discovery shows the first product while searching and preserves partial re
 });
 
 test('earlier products stay accessible during a fresh search and after failure', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
-  await page.getByRole('button', { name: 'Send message' }).click();
-  await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await page.getByRole('button', { name: 'Find products' }).click();
-  await expect(page.getByTestId('product-card')).toHaveCount(6);
-  const boot = await (await page.request.get('/api/bootstrap')).json();
+  const boot = await discoveryBootstrap(page.request);
   const session = structuredClone(boot.session);
   const next = structuredClone(session.rounds.at(-1));
   next.id = 'next-round'; next.number++; next.status = 'queued';
@@ -124,7 +136,7 @@ test('earlier products stay accessible during a fresh search and after failure',
   session.rounds.push(next);
   await page.route('**/api/bootstrap', route => route.fulfill({ json: { ...boot, session } }));
   await page.route(`**/api/sessions/${session.id}`, route => route.fulfill({ json: session }));
-  await page.reload();
+  await page.goto('/');
   await expect(page.getByTestId('product-card')).toHaveCount(0);
   await page.getByText('Other discovered results (6)', { exact: true }).click();
   await expect(page.getByTestId('archived-product')).toHaveCount(6);
