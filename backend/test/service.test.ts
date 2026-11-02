@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { MemoryStore } from '../src/store';
 import { ShoppingService } from '../src/shopping-service';
 import { DemoAIProvider } from '../src/ai/demo';
+import { roundOutcome } from '@fairbuy/core';
+import type { DiscoveryResult } from '../src/ai/provider';
 import { AppError } from '../src/errors';
 
 async function setup() {
@@ -159,5 +161,17 @@ describe('real backend shopping orchestration', () => {
     await expect(service.navigate(session.id, 'alice', 'buy')).rejects.toMatchObject({ status: 409 });
     const otherMode = new ShoppingService(store, ai, 'live');
     await expect(otherMode.discover(session.id, 'alice')).rejects.toMatchObject({ status: 409 });
+  });
+  it('stores why a zero-result round has nothing to show', async () => {
+    const { service, store, session, ai } = await setup();
+    vi.spyOn(ai, 'discover').mockResolvedValue({
+      products: [], sources: [{ url: 'https://shop.example.org/p', title: 'Shop' }], summary: 'Nothing grounded.',
+      dropped: [{ reason: 'quote_not_grounded', product: 'Aster', seller: 'Shop', host: 'shop.example.org' }],
+    } satisfies DiscoveryResult as never);
+    await service.discover(session.id, 'alice'); await run(service);
+    const round = (await store.get(session.id)).rounds.at(-1)!;
+    expect(round.status).toBe('complete');
+    expect(round.dropped).toEqual([{ reason: 'quote_not_grounded', product: 'Aster', seller: 'Shop', host: 'shop.example.org' }]);
+    expect(roundOutcome(round)).toBe('nothing_grounded');
   });
 });

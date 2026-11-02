@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { EMPTY_CONFIG, rankProducts, sellerMarkets, sourcePlan, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
 import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
-import { acceptableProductCount, discoveryPolicy, DISCOVERY_TIMEOUT_MS, normalizeExtraction, quotedCurrency, LiveAIProvider } from '../src/ai/provider';
+import { acceptableProductCount, discoveryPolicy, DISCOVERY_TIMEOUT_MS, mergeDiscoveryResults, normalizeExtraction, quotedCurrency, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
@@ -464,6 +464,33 @@ describe('untrusted search evidence', () => {
     expect(quotedCurrency('ALL 3 colours from 499 USD')).toBe('USD');
     expect(quotedCurrency('EUR 590 or CHF 560')).toBeNull();
     expect(quotedCurrency('Price: 590 €')).toBeNull();
+  });
+  it('records why each extracted offer was dropped instead of only counting it', () => {
+    const offer = (name: string, url: string, quote: string) => ({ ...extracted.products[0], name, offers: [{ ...extracted.products[0].offers[0], url, quote }] });
+    const spec = 'https://www.openicecat.com/en/product/aster';
+    const data = { text: `${research.text} Spec sheet: Aster costs EUR 590.`, sources: [...research.sources, { url: spec, title: 'Icecat' }] };
+    const brief = structuredClone(context);
+    brief.config = { ...EMPTY_CONFIG, category: 'laptop', country: 'IT' };
+    const discardedName = 'Old Model';
+    brief.discardedProducts = [{ ...normalizeExtraction({ summary: '', products: [offer(discardedName, research.sources[0].url, research.text)] }, data, context).products[0] }];
+    const result = normalizeExtraction(ExtractionSchema.parse({ summary: 'Found.', products: [
+      offer('Aster', research.sources[0].url, research.text),
+      offer('Aster', research.sources[0].url, research.text),
+      offer('Birch', 'https://another-shop.org/birch', research.text),
+      offer('Cedar', research.sources[0].url, 'A quote nobody wrote'),
+      offer('Dune', spec, 'Spec sheet: Aster costs EUR 590.'),
+      offer(discardedName, research.sources[0].url, research.text),
+    ] }), data, brief, sourcePlan(brief.config, SOURCE_CATALOG_SEED));
+    expect(result.products.map(p => p.name)).toEqual(['Aster']);
+    expect(result.dropped).toEqual([
+      { reason: 'url_not_in_sources', product: 'Birch', seller: 'Test-only seller', host: 'another-shop.org' },
+      { reason: 'quote_not_grounded', product: 'Cedar', seller: 'Test-only seller', host: 'shop.fairbuy-fixture.org' },
+      { reason: 'not_a_seller', product: 'Dune', seller: 'Test-only seller', host: 'www.openicecat.com' },
+      { reason: 'previously_discarded', product: discardedName, seller: null, host: null },
+      { reason: 'duplicate', product: 'Aster', seller: null, host: null },
+    ]);
+    // A later pass meeting the same pages does not repeat a drop.
+    expect(mergeDiscoveryResults(result, result).dropped).toEqual(result.dropped);
   });
   it('rejects unsafe links and never fetches arbitrary seller URLs', () => {
     for (const value of ['http://shop.org/p', 'https://127.0.0.1/x', 'https://2130706433/x', 'https://[::1]/x', 'https://user:pass@shop.org/p', 'javascript:alert(1)', 'https://localhost/x', 'https://localhost./x', 'https://router.home/x', 'https://service.internal/x', 'https://example.com/fake', 'https://shop.org:8443/x']) expect(safeUrl(value)).toBeNull();
