@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { EMPTY_CONFIG, rankProducts, sourcePlan, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
+import { EMPTY_CONFIG, rankProducts, sellerMarkets, sourcePlan, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
 import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
-import { acceptableProductCount, discoveryPolicy, DISCOVERY_TIMEOUT_MS, normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
+import { acceptableProductCount, discoveryPolicy, DISCOVERY_TIMEOUT_MS, normalizeExtraction, quotedCurrency, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
@@ -401,6 +401,26 @@ describe('untrusted search evidence', () => {
     expect(offer.missing).toContain('Final listed price');
     expect(offer.attributes.ramGb.status).toBe('seller_claim');
     expect(offer.availability).toBe('unknown');
+  });
+  it('records the seller market from the catalog or the country-code domain, never from the model', () => {
+    const at = (url: string) => {
+      const data = { text: `Aster costs EUR 590 at ${url}. 16 GB RAM.`, sources: [{ url, title: 'Aster' }] };
+      const offer = structuredClone(extracted); offer.products[0].offers[0].url = url; offer.products[0].offers[0].quote = data.text;
+      return normalizeExtraction(offer, data, context, undefined, sellerMarkets(SOURCE_CATALOG_SEED)).products[0].offers[0];
+    };
+    expect(at('https://www.amazon.de/dp/aster').sellerMarket).toEqual({ countries: ['DE', 'AT'], basis: 'source_catalog' });
+    expect(at('https://www.galaxus.de/p/aster').sellerMarket).toEqual({ countries: ['DE'], basis: 'domain' });
+    expect(at('https://shop.fairbuy-fixture.org/aster').sellerMarket).toBeUndefined();
+  });
+  it('takes the price currency from the quote, as in "CLP 767458" mislabelled EUR', () => {
+    const data = { text: 'MSI MAG 271QPX: CLP 767458 at Ubuy Chile.', sources: [{ url: 'https://www.ubuy.cl/p/msi', title: 'Ubuy' }] };
+    const clp = structuredClone(extracted);
+    Object.assign(clp.products[0].offers[0], { url: data.sources[0].url, quote: data.text, price: 767458, currency: 'EUR', attributes: [] });
+    expect(normalizeExtraction(clp, data, context).products[0].offers[0].price).toEqual({ currency: 'CLP', amountCents: 76745800 });
+    expect(quotedCurrency('AMD Ryzen 7 7840HS, 1 TB SSD, EUR 899')).toBe('EUR');
+    expect(quotedCurrency('ALL 3 colours from 499 USD')).toBe('USD');
+    expect(quotedCurrency('EUR 590 or CHF 560')).toBeNull();
+    expect(quotedCurrency('Price: 590 €')).toBeNull();
   });
   it('rejects unsafe links and never fetches arbitrary seller URLs', () => {
     for (const value of ['http://shop.org/p', 'https://127.0.0.1/x', 'https://2130706433/x', 'https://[::1]/x', 'https://user:pass@shop.org/p', 'javascript:alert(1)', 'https://localhost/x', 'https://localhost./x', 'https://router.home/x', 'https://service.internal/x', 'https://example.com/fake', 'https://shop.org:8443/x']) expect(safeUrl(value)).toBeNull();

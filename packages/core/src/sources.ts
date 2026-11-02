@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { SellerMarket } from './contract';
+import { currencyForCountry } from './location';
 import type { ShoppingConfig } from './shopping';
 
 /**
@@ -255,4 +257,36 @@ export function isNonSellerHost(url: string, plan: SourcePlan): boolean {
 export function isPlannedSellerHost(url: string, plan: SourcePlan): boolean {
   const host = hostOf(url);
   return host !== null && hostInDomains(host, plan.sellers.map(source => source.domain));
+}
+
+/** Countries served by each catalog seller or marketplace domain, across all verticals. */
+export type SellerMarkets = Record<string, SellerMarket['countries']>;
+
+export function sellerMarkets(catalog: SourceEntry[]): SellerMarkets {
+  const markets: SellerMarkets = {};
+  // Like roles, a market is intrinsic to the domain, so disabled entries still count.
+  for (const source of catalog.filter(s => s.roles.includes('seller') || s.roles.includes('marketplace'))) {
+    const known = markets[source.domain];
+    markets[source.domain] = known === 'global' || source.countries === 'global'
+      ? 'global' : [...new Set([...(known ?? []), ...source.countries])];
+  }
+  return markets;
+}
+
+// Country-code domains widely used as generic brand names rather than a market.
+const GENERIC_COUNTRY_DOMAINS = new Set(['AI', 'CC', 'CO', 'FM', 'GG', 'IO', 'LY', 'ME', 'TO', 'TV', 'WS']);
+
+/**
+ * The seller's market from the catalog, else from its country-code domain
+ * (`.de` → DE, `.co.uk` → GB). Generic domains such as `.com` or `.eu` say nothing.
+ */
+export function sellerMarketFor(url: string, markets: SellerMarkets): SellerMarket | null {
+  const host = hostOf(url);
+  if (!host) return null;
+  const domain = Object.keys(markets).filter(d => hostInDomains(host, [d])).sort((a, b) => b.length - a.length)[0];
+  if (domain) return { countries: markets[domain], basis: 'source_catalog' };
+  const label = host.split('.').at(-1)!.toUpperCase();
+  const country = label === 'UK' ? 'GB' : label;
+  if (country.length !== 2 || GENERIC_COUNTRY_DOMAINS.has(country) || !currencyForCountry(country)) return null;
+  return { countries: [country], basis: 'domain' };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SOURCE_CATALOG_SEED } from '../../../data/source-catalog';
 import {
   EMPTY_CONFIG, SourceCatalogValidationError, SourceEntrySchema, classifyVertical, hostInDomains,
-  isNonSellerHost, isPlannedSellerHost, sourcePlan, validateSourceCatalog,
+  isNonSellerHost, isPlannedSellerHost, sellerMarketFor, sellerMarkets, sourcePlan, validateSourceCatalog,
 } from './index';
 
 const brief = (category: string | null, country: string | null, purpose: string | null = null) =>
@@ -132,5 +132,24 @@ describe('category-aware source hints', () => {
     expect(isNonSellerHost('https://fakeopenicecat.com/en/product/1', plan)).toBe(false);
     expect(isPlannedSellerHost('https://www.digitec.ch/en/s1/product/1', plan)).toBe(true);
     expect(isPlannedSellerHost('https://example.com/product/1', plan)).toBe(false);
+  });
+});
+
+describe('seller markets', () => {
+  const markets = sellerMarkets(SOURCE_CATALOG_SEED);
+  it('takes the countries a catalog seller serves, including other verticals', () => {
+    expect(sellerMarketFor('https://www.amazon.de/dp/1', markets)).toEqual({ countries: ['DE', 'AT'], basis: 'source_catalog' });
+    expect(sellerMarketFor('https://www.digitec.ch/en/s1/product/1', markets)).toEqual({ countries: ['CH'], basis: 'source_catalog' });
+    expect(sellerMarketFor('https://www.etsy.com/listing/1', markets)).toEqual({ countries: 'global', basis: 'source_catalog' });
+  });
+  it('falls back to the country-code domain', () => {
+    expect(sellerMarketFor('https://www.galaxus.de/p/1', {})).toEqual({ countries: ['DE'], basis: 'domain' });
+    expect(sellerMarketFor('https://smartech.ee/p/1', {})).toEqual({ countries: ['EE'], basis: 'domain' });
+    expect(sellerMarketFor('https://shop.example.co.uk/p/1', {})).toEqual({ countries: ['GB'], basis: 'domain' });
+  });
+  it('says nothing for generic domains', () => {
+    for (const url of ['https://www.ldlc.com/p', 'https://standesk.eu/p', 'https://computeruniverse.net/p', 'https://shop.io/p', 'https://brand.co/p', 'https://www.openicecat.com/p', 'not a url']) {
+      expect(sellerMarketFor(url, {})).toBeNull();
+    }
   });
 });

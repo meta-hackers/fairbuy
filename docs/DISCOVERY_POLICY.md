@@ -86,7 +86,7 @@ See [category-aware source hints](SOURCES.md).
 
 - **Research reasoning effort:** `DISCOVERY_REASONING_EFFORT` remains configured throughout the round. Mechanical extraction remains at its separate, fixed `low` effort.
 - **Known hard failures:** offers that fail an explicit must-have or hard budget remain excluded.
-- **Other exclusions:** sold-out offers, wrong-currency offers, and discarded models do not become acceptable just because the search is slow.
+- **Other exclusions:** sold-out offers, wrong-currency offers, sellers known to serve only another country, and discarded models do not become acceptable just because the search is slow.
 - **Evidence requirements:** offer URLs must be returned research sources, and accepted quotes must occur literally in the research. Unknown information must not be invented.
 - **The person's brief:** broadening the search does not rewrite saved configuration or change a must-have into a preference.
 - **Displayed ranking:** elapsed time is not an input to the ranking score. Rankings can still change when new products or evidence arrive.

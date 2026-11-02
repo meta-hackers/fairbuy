@@ -18,6 +18,8 @@ FairBuy therefore computes a small **source plan** for each discovery round and 
 
 `sourcePlan.nonSellerDomains` lists the hosts with no `seller`/`marketplace` role. `normalizeExtraction()` rejects an offer whose URL belongs to one of those hosts, even if the URL appears in the research sources. This is what prevents an Icecat datasheet from becoming an offer.
 
+The catalog's `countries` also tell the ranking where a seller sells. `sellerMarkets()` merges them per seller/marketplace domain across all verticals, and every live offer records that market, falling back to its country-code domain. An offer from a seller known to serve only other countries is excluded, even when the plan suggested searching broadly. See [Architecture](Architecture.md#deterministic-decision-layer).
+
 ## Where the catalog lives
 
 The canonical catalog is a separate public repository:

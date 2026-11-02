@@ -1,6 +1,7 @@
 // Based on Alessandro's deterministic engine; no model-generated match scores.
 import { TOTAL_ATTRIBUTE, UNINTERPRETED_PREFIX, type CategorySpec, type Constraint, type FinalPrice, type Offer } from './contract';
-export const RANKING_VERSION = '3.0.0';
+import { hostOf } from './sources';
+export const RANKING_VERSION = '3.1.0';
 /** The seller's final listed price. Unknown is not zero and earns no cost credit. */
 export function finalPrice(price: FinalPrice) {
   return { cents: price.amountCents, known: price.amountCents !== null };
@@ -42,6 +43,19 @@ function isBrandExclusion(constraint: Constraint): boolean {
   const value = String(constraint.value).trim().toLowerCase();
   return attribute === 'brandexcluded' || attribute === 'brandexclude' ||
     (attribute === 'brand' && /^(?:not|no|exclude|avoid)\b/.test(value));
+}
+
+/**
+ * The shopping country is a hard, code-enforced check: a seller known to sell
+ * only elsewhere fails, and an unidentified market stays an open check.
+ */
+export function evaluateMarket(offer: Offer, country: string): ConstraintResult {
+  const constraint: Constraint = { attribute: 'sellerMarket', op: '=', value: country, hard: true };
+  const market = offer.sellerMarket;
+  if (!market) return { constraint, outcome: 'unknown', reason: `Delivery to ${country} is not verified` };
+  const basis = market.basis === 'source_catalog' ? 'per the source catalog' : `from its .${hostOf(offer.provenanceUrl)?.split('.').at(-1)} domain`;
+  if (market.countries === 'global' || market.countries.includes(country)) return { constraint, outcome: 'pass', reason: `Seller serves ${country} (${basis})` };
+  return { constraint, outcome: 'fail', reason: `Seller serves ${market.countries.join(', ')}, not ${country} (${basis})` };
 }
 
 export function evaluateConstraint(offer: Offer, constraint: Constraint, spec: CategorySpec): ConstraintResult {
@@ -115,12 +129,14 @@ export interface ComparisonResult {
   rankingVersion: string; ranked: RankedOffer[];
   excluded: { offerId: string; reasons: string[] }[]; warnings: string[];
 }
-export function rankOffers({ offers, constraints, spec, currency }: {
-  offers: Offer[]; constraints: Constraint[]; spec: CategorySpec; currency: string;
+export function rankOffers({ offers, constraints, spec, currency, country = null }: {
+  offers: Offer[]; constraints: Constraint[]; spec: CategorySpec; currency: string; country?: string | null;
 }): ComparisonResult {
   const excluded: ComparisonResult['excluded'] = [];
   const candidates = offers.flatMap(offer => {
     const results = constraints.map(c => evaluateConstraint(offer, c, spec));
+    // Synthetic fixtures have no real seller, so there is no market to check.
+    if (country && offer.mode === 'live') results.push(evaluateMarket(offer, country));
     const reasons = results.filter(r => r.constraint.hard && r.outcome === 'fail').map(r => r.reason);
     if (offer.availability === 'sold_out') reasons.push('Sold out');
     if (offer.price.currency !== currency) reasons.push(`Different currency (${offer.price.currency}); no exchange rate assumed`);

@@ -63,14 +63,16 @@ See [Discovery: time-aware acceptance](DISCOVERY_POLICY.md) for the stopping for
 
 Amounts are integer minor units. Only the final listed product price is compared; shipping/delivery and extra fees are neither estimated nor added. The compatibility pseudo-attribute `total` refers to this listed price, not a delivered total. Unknown prices do not earn a low-price advantage. Different currencies are excluded instead of silently converted. Known hard failures and sold-out offers are excluded before scoring; unknown hard checks remain visibly unverified.
 
-Ranking version `3.0.0`: **30% final listed price + 50% matched soft constraints + 20% evidence reliability**, on a 0–100 scale.
+The shopping country is enforced in code, not only in the prompt. Each live offer records its seller's market from the source catalog (the countries an entry serves, or `global`) or else from its country-code domain (`.de` → DE, `.co.uk` → GB); generic domains such as `.com`, `.eu` or `.io` identify nothing. A seller known to serve only other countries is excluded with that reason, whatever its currency. An unidentified market stays a visible "Delivery to … is not verified" check, so the offer is unverified. The price currency is taken from the quoted evidence when it names exactly one ISO code. A currency that is not the country's local one produces a ranking warning, because it excludes every locally priced offer.
+
+Ranking version `3.1.0`: **30% final listed price + 50% matched soft constraints + 20% evidence reliability**, on a 0–100 scale.
 
 - **Price:** cheapest known price ÷ this offer's price, so a small price gap stays a small gap. Unknown prices earn no price credit.
 - **Preferences:** the share of checkable soft constraints that pass. Unknown preferences do not count as matched. Requirements that could not be mapped to an attribute cannot be checked by code: they are listed, never counted as matched or missing, and disclosed in a ranking warning. With no checkable preference, the 50% is redistributed to 60% price and 40% evidence.
 - **Evidence:** the average status of the condition, the price and the constrained attributes (verified 1, seller claim 0.9, estimate 0.5, unknown 0). Live extraction yields seller claims, so a seller claim is the normal baseline. Optional details listed as unknown do not lower it.
 - The card shows whole-number parts that always add up to the displayed score.
 
-Hard-constraint, sold-out and currency exclusions happen before scoring, as before. Stable offer IDs resolve ties; near ties are disclosed. The score is a reproducible preference/evidence measure, not a quality, fraud or safety guarantee. No LLM writes a numerical match score.
+Hard-constraint, sold-out, currency and seller-country exclusions happen before scoring. Stable offer IDs resolve ties; near ties are disclosed. The score is a reproducible preference/evidence measure, not a quality, fraud or safety guarantee. No LLM writes a numerical match score.
 
 ## Persistence, queue and security
 

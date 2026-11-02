@@ -57,6 +57,13 @@ export const FinalPriceSchema = z.object({
   amountCents: z.number().int().nonnegative().nullable(),
 });
 export type FinalPrice = z.infer<typeof FinalPriceSchema>;
+// Where a seller sells, from deterministic signals only: the curated source
+// catalog or the seller's country-code domain. Never a model judgement.
+export const SellerMarketSchema = z.object({
+  countries: z.union([z.literal('global'), z.array(z.string().regex(/^[A-Z]{2}$/)).min(1)]),
+  basis: z.enum(['source_catalog', 'domain']),
+});
+export type SellerMarket = z.infer<typeof SellerMarketSchema>;
 export const OfferSchema = z.object({
   schemaVersion: z.literal(1), id: z.string().min(1), category: z.string().min(1),
   mode: z.enum(['live', 'fixture']), provenanceUrl: z.string(), fetchedAt: z.iso.datetime(),
@@ -66,6 +73,8 @@ export const OfferSchema = z.object({
   price: FinalPriceSchema,
   attributes: z.record(z.string(), fieldSchema(AttrValueSchema)), missing: z.array(z.string()),
   evidence: z.array(EvidenceSchema).min(1),
+  /** Absent when neither the catalog nor the domain identifies the seller's market. */
+  sellerMarket: SellerMarketSchema.optional(),
 });
 export type Offer = z.infer<typeof OfferSchema>;
 export const ConstraintSchema = z.object({

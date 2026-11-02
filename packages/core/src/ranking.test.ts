@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DemoAIProvider } from '../../../backend/src/ai/demo';
 import { EMPTY_CONFIG, constraintsFor, effectiveConfig, type Constraint, type DiscoveryContext, type Offer } from './index';
 import { finalPrice, rankOffers, scorePoints } from './ranking';
+import { rankProducts } from './shopping';
 
 const context: DiscoveryContext = {
   sessionId: 'test', discoverySessionId: 'round-1', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG,
@@ -142,5 +143,51 @@ describe('score calibration (ranking 3.0.0)', () => {
     }
     expect(scorePoints({ score: 0.6667, breakdown: { cost: 0.2222, suitability: 0.2222, reliability: 0.2223 } }))
       .toEqual({ cost: 22, suitability: 22, reliability: 23, total: 67 });
+  });
+});
+
+describe('shopping country (issue #27)', () => {
+  // A Chilean brief priced in EUR, as in the OLED session: currency alone does not stop EU sellers.
+  const chile = { ...context, config: { ...context.config, country: 'CL', city: 'Santiago', currency: 'EUR' as const } };
+  const live = (id: string, url: string, sellerMarket?: Offer['sellerMarket']) => {
+    const o = structuredClone(offers[0]); o.id = id; o.mode = 'live'; o.provenanceUrl = url;
+    if (sellerMarket) o.sellerMarket = sellerMarket; else delete o.sellerMarket;
+    return o;
+  };
+  const products = (items: Offer[]) => items.map(o => ({ id: o.id, name: o.id, summary: '', why: '', tradeoffs: [], imageUrl: null, offers: [o] }));
+
+  it('excludes a seller known to sell elsewhere even when the currency matches', () => {
+    const result = rankProducts(products([
+      live('galaxus', 'https://www.galaxus.de/p/1', { countries: ['DE'], basis: 'domain' }),
+      live('amazon', 'https://www.amazon.de/dp/1', { countries: ['DE', 'AT'], basis: 'source_catalog' }),
+    ]), chile);
+    expect(result.ranked).toEqual([]);
+    expect(result.excluded.find(e => e.offerId === 'galaxus')?.reasons).toContain('Seller serves DE, not CL (from its .de domain)');
+    expect(result.excluded.find(e => e.offerId === 'amazon')?.reasons).toContain('Seller serves DE, AT, not CL (per the source catalog)');
+  });
+
+  it('keeps local and global sellers, and an unidentified market as an open check', () => {
+    const result = rankProducts(products([
+      live('local', 'https://www.falabella.com/p/1', { countries: ['CL'], basis: 'source_catalog' }),
+      live('global', 'https://www.etsy.com/listing/1', { countries: 'global', basis: 'source_catalog' }),
+      live('unknown', 'https://www.ldlc.com/p/1'),
+    ]), chile);
+    const byId = (id: string) => result.ranked.find(r => r.offerId === id)!;
+    expect(result.ranked).toHaveLength(3);
+    expect(byId('local').constraints.at(-1)).toMatchObject({ outcome: 'pass', reason: 'Seller serves CL (per the source catalog)' });
+    expect(byId('global').constraints.at(-1)?.outcome).toBe('pass');
+    expect(byId('unknown').constraints.at(-1)).toMatchObject({ outcome: 'unknown', reason: 'Delivery to CL is not verified' });
+    expect(byId('unknown').status).toBe('unverified');
+  });
+
+  it('flags a currency that is not the local one', () => {
+    expect(rankProducts([], chile).warnings[0]).toBe('Prices must be in EUR, but sellers in CL usually list in CLP. Switch the currency to CLP to compare local offers.');
+    expect(rankProducts([], context).warnings.join(' ')).not.toContain('Switch the currency');
+  });
+
+  it('does not check synthetic fixtures or briefs without a country', () => {
+    expect(rankProducts(products([offers[0]]), chile).ranked[0].constraints.some(c => c.constraint.attribute === 'sellerMarket')).toBe(false);
+    const noCountry = { ...context, config: { ...context.config, country: null } };
+    expect(rankProducts(products([live('x', 'https://www.galaxus.de/p/1', { countries: ['DE'], basis: 'domain' })]), noCountry).ranked).toHaveLength(1);
   });
 });
