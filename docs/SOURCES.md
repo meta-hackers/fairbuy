@@ -67,7 +67,7 @@ The catalog is intentionally curated rather than model-generated. A model asked 
 The app caches the catalog in memory; discovery never fetches GitHub directly.
 
 - **Admin sync:** Backoffice → **Sources** → **Sync from GitHub** calls `POST /api/admin/sources/sync`.
-- **Startup sync:** with `CATALOG_SYNC_ON_START=true` (the default), the app also attempts one background sync after startup. It never blocks readiness; the bundled fallback is available immediately.
+- **Startup sync:** with `CATALOG_SYNC_ON_START=true` (disabled by default), the app also attempts one background sync after startup. It never blocks readiness; the bundled fallback is available immediately.
 - **Fetch rules:** HTTPS only, 10-second timeout, no redirects, 512 KB cap, `Cache-Control: no-store`.
 - **Validation:** the payload must have `schemaVersion: 1` and an `entries` array; every entry must pass `SourceEntrySchema`, and duplicate domains are rejected.
 - **Atomic swap:** the catalog is replaced only after the whole payload is valid.
@@ -86,7 +86,7 @@ The Sources view shows the current entries, whether the source is `GitHub` or `B
 The app is configured with:
 
 - `CATALOG_URL`: the published JSON URL. Defaults to the catalog repository's Pages URL and must be HTTPS.
-- `CATALOG_SYNC_ON_START`: `true` by default; set `false` to keep the fallback until an admin syncs.
+- `CATALOG_SYNC_ON_START`: `false` by default; set `true` to also try one background sync at startup. Admins can always trigger a sync from the backoffice.
 
 GitHub Pages can serve a cached copy for a short time after a deploy. If a sync shows the previous version, wait for the Pages deployment and retry.
 

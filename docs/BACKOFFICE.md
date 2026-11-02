@@ -74,8 +74,8 @@ never fetches GitHub directly; an in-flight round keeps the plan it started with
 The Sources view shows entries, source (`GitHub` or `Bundled fallback`), last
 sync time, version, count and the configured URL. It has filters but no editor:
 edit `sources.json` in the catalog repository and open a PR. CI validates it and
-GitHub Pages publishes it. `CATALOG_SYNC_ON_START=true` also attempts a background
-sync at startup; it never blocks readiness.
+GitHub Pages publishes it. When `CATALOG_SYNC_ON_START=true`, the app also attempts
+a background sync at startup; it never blocks readiness.
 
 The admin API is:
 

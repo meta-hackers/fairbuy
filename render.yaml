@@ -67,7 +67,7 @@ projects:
               - key: CATALOG_URL
                 value: https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json
               - key: CATALOG_SYNC_ON_START
-                value: "true"
+                value: "false"
               - key: APP_ACCESS_TOKEN
                 sync: false # preserve the app password; never commit it
               - key: BACKOFFICE_ADMINS
