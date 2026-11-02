@@ -91,7 +91,7 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `PORT` | Render-injected listen port (normally `10000`); fallback `4000` when unset/empty. The server binds to `0.0.0.0`, as required by [Render port binding](https://render.com/docs/web-services#port-binding). |
 | `NODE_VERSION` | Tested/pinned in Blueprint and `.node-version`. |
 
-Reasoning effort settings accept `minimal`, `low`, `medium`, `high` or `xhigh`; `"max"` is not supported by the Contributor model. They replace the old shared `REASONING_EFFORT` variable, which is no longer used. Set the per-stage variables in your local `.env` or Render environment and restart/redeploy for changes to take effect.
+Reasoning effort settings accept `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. `"max"` is available on `muse-wonder-1.0` and `muse-spark-1.3` but not on `muse-spark-1.3-contributor`. They replace the old shared `REASONING_EFFORT` variable, which is no longer used. Set the per-stage variables in your local `.env` or Render environment and restart/redeploy for changes to take effect.
 
 Use model IDs your account actually supports. Defaults are configurable, not an assurance of account access. Provider errors are intentionally redacted; check model names, credits and provider dashboards. Never put secrets in `VITE_*`, frontend source, URLs or Git.
 

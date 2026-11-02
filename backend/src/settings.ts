@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createHash, scryptSync } from 'node:crypto';
-const ReasoningEffortSchema = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']);
+const ReasoningEffortSchema = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 const AdminUsernameSchema = z.string().min(1).max(80).regex(/^[a-zA-Z0-9_.-]+$/);
 const AdminSchema = z.union([
   z.object({ username: AdminUsernameSchema, passwordHash: z.string().regex(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/) }).strict(),

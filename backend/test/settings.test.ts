@@ -65,13 +65,13 @@ describe('per-stage reasoning effort settings', () => {
 
   it.each(effortKeys)('allows %s to be configured independently', key => {
     const defaults = settings({});
-    for (const effort of ['minimal', 'low', 'medium', 'high', 'xhigh']) {
+    for (const effort of ['minimal', 'low', 'medium', 'high', 'xhigh', 'max']) {
       expect(settings({ [key]: effort })).toEqual({ ...defaults, [key]: effort });
     }
   });
 
   it.each(effortKeys)('rejects unsupported values for %s', key => {
-    for (const effort of ['', 'max', 'LOW', 'invalid']) {
+    for (const effort of ['', 'none', 'LOW', 'invalid']) {
       expect(() => settings({ [key]: effort })).toThrow();
     }
   });

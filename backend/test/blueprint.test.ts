@@ -10,6 +10,9 @@ const project = blueprint.projects[0];
 const environment = project.environments[0];
 const service = environment.services[0];
 
+const stageModelKeys = ['ASK_MODEL', 'CONFIGURE_MODEL', 'DISCOVERY_MODEL'];
+const supportedStageModels = ['muse-spark-1.3', 'muse-spark-1.3-contributor', 'muse-wonder-1.0'];
+
 describe('Render web deployment with Supabase PostgreSQL', () => {
   it('groups the web service in the fairbuy production project without a Render database', () => {
     expect(blueprint.projects).toHaveLength(1);
@@ -52,7 +55,15 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
     expect(() => settings({ INSTANT_CLASSIFIER_MODEL: model })).not.toThrow();
   });
 
-  it('configures independent reasoning effort defaults for each stage', () => {
+  it('uses a supported Meta reasoning model for every stage', () => {
+    const models = service.envVars.filter((env: { key: string }) => stageModelKeys.includes(env.key));
+    expect(models.map((env: { key: string }) => env.key).sort()).toEqual([...stageModelKeys].sort());
+    for (const env of models as { key: string; value: string }[]) {
+      expect(supportedStageModels).toContain(env.value);
+    }
+  });
+
+  it('accepts a supported reasoning effort for every stage', () => {
     const efforts = service.envVars.filter((env: { key: string }) => env.key.endsWith('REASONING_EFFORT'));
     expect(efforts.map((env: { key: string }) => env.key).sort()).toEqual(
       ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'],
