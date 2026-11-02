@@ -38,6 +38,8 @@ AI extraction is not independent verification; prices, stock and seller claims m
 - [Render deployment and operations](docs/DEPLOYMENT.md)
 - [API routes](docs/API.md)
 - [Discovery policy and stopping rules](docs/DISCOVERY_POLICY.md)
+- [Category-aware source hints](docs/SOURCES.md)
+- [Source catalog repository](https://github.com/meta-hackers/fairbuy-sources-catalog) · [published catalog](https://meta-hackers.github.io/fairbuy-sources-catalog/)
 - [Backoffice administration](docs/BACKOFFICE.md)
 - [Demo integration notes](docs/INTEGRATION.md)
 - [Backend](backend/README.md) · [Frontend](frontend/README.md) · [Certificates](certs/README.md)

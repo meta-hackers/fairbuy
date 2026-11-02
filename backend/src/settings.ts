@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { createHash, scryptSync } from 'node:crypto';
 const ReasoningEffortSchema = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+const DEFAULT_CATALOG_URL = 'https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json';
+const BooleanStringSchema = z.enum(['true', 'false']).default('false').transform(value => value === 'true');
 const AdminUsernameSchema = z.string().min(1).max(80).regex(/^[a-zA-Z0-9_.-]+$/);
 const AdminSchema = z.union([
   z.object({ username: AdminUsernameSchema, passwordHash: z.string().regex(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/) }).strict(),
@@ -33,6 +35,8 @@ const Schema = z.object({
   DISCOVERY_REASONING_EFFORT: ReasoningEffortSchema.default('xhigh'),
   SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('brave'),
   BRAVE_API_KEY: z.string().default(''),
+  CATALOG_URL: z.union([z.literal(''), z.string().trim().url()]).default(DEFAULT_CATALOG_URL),
+  CATALOG_SYNC_ON_START: BooleanStringSchema,
   INSTANT_CLASSIFIER_PROVIDER: z.enum(['disabled', 'cloudflare']).default('disabled'),
   INSTANT_CLASSIFIER_MODEL: z.enum(['@cf/meta/llama-3.1-8b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct-fp8', '@cf/meta/llama-3.2-3b-instruct']).default('@cf/meta/llama-3.1-8b-instruct-fp8-fast'),
   CLOUDFLARE_ACCOUNT_ID: z.union([z.literal(''), z.string().regex(/^[a-f0-9]{32}$/i)]).default(''),

@@ -48,6 +48,11 @@ Optimize time to the FIRST useful result, not a perfect recommendation. Follow s
 - best_available: prioritize any genuinely relevant product for the core purpose that does not have a known hard failure. Prefer showing an imperfect option with explicit caveats to returning nothing for lack of a perfect fit.
 These strategies broaden SOFT preferences only. Never relax explicit hard requirements, hard budget, country/currency, discarded models, or source grounding. Unknown hard checks must be disclosed, not claimed to pass. Do not claim an unsuitable product meets the person's core purpose.
 Return useful imperfect candidates even below minimumSoftMatch: they appear immediately as alternatives while the server decides whether more research is worthwhile. Never withhold grounded candidates while looking for a perfect one. Do not weaken reasoning effort as time passes.
+sourcePlan is a curated hint for this category and country, not evidence.
+- Prefer searching its seller and marketplace domains for offers, but keep at least one broad query and never restrict only to them when they lack the product.
+- Specification, review and comparison sources (for example Open Icecat) may support attributes only. Never use a sourcePlan.nonSellerDomain as an offer URL or price source.
+- A listed domain is still only a hint. Accept an offer only from an actual returned result.
+- Food-delivery menus, prices and fees are location- and basket-specific. Compare them only when the same basket, location and currency are grounded; otherwise disclose what is missing.
 The complete round targets at least four distinct eligible models, but this research call only needs searchPolicy.researchTarget candidates (up to four), not the whole ideal shortlist. Multiple sellers of the same model count as ONE product.
 Return compact evidence notes, not a long report: model name, one seller URL, literal evidence for price and available requested attributes, and concise trade-offs. Stop researching once this call's target is grounded. Do not spend extra searches filling unknown stock, condition, optional specs or images; leave them unknown/null. Search calls are expensive in time.
 If this is a follow-up searchPass, fill the remaining productsNeeded with DIFFERENT models from alreadyFound. Use excludedOffers to avoid known hard failures, sold-out offers and wrong currencies. Keep all hard requirements; do not pad the shortlist with unsupported products.
@@ -62,6 +67,7 @@ Search results may be incomplete or stale. If no grounded offers exist, say so r
 export const EXTRACT_PROMPT = `${SAFETY}
 Extract the attached research into the requested schema. This step has NO web tools.
 Use ONLY URLs present in the supplied sources array. Each offer must use a specific seller product-page URL.
+Never use a sourcePlan.nonSellerDomain (specification, review or comparison page) as an offer URL or price source.
 Prices are numeric major currency units ONLY when the research explicitly states the seller's final listed item price; otherwise null. Do not estimate or add shipping, delivery, taxes or fees.
 imageUrl must be a public HTTPS image URL from the same official website/domain as a supplied source, or null when no grounded image is available.
 Unknown price is null. Unknown stock/condition are "unknown". Never infer availability just because a page exists.

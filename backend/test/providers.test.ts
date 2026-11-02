@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { EMPTY_CONFIG, rankProducts, type DiscoveryContext } from '@fairbuy/core';
+import { EMPTY_CONFIG, rankProducts, sourcePlan, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
+import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
 import { acceptableProductCount, discoveryPolicy, normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
@@ -209,6 +210,43 @@ describe('progressive multi-product discovery', () => {
     expect(updates.flat()).not.toContain('Invented');
     expect(discovered.summary).toContain('1 offer(s) were rejected');
   });
+  it('passes category-aware source hints to research without treating them as evidence', async () => {
+    const brief = structuredClone(context);
+    brief.config = { ...EMPTY_CONFIG, category: 'laptop', country: 'IT', purpose: 'software development' };
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(researchStream(data.research))
+      .mockResolvedValueOnce(stream(result(JSON.stringify(data.extracted))));
+    await new LiveAIProvider(config, fetcher).discover(brief);
+    const input = JSON.parse(JSON.parse(fetcher.mock.calls[0][1]!.body as string).input);
+    expect(input.sourcePlan.vertical).toBe('computers');
+    expect(input.sourcePlan.sellers.map((source: { domain: string }) => source.domain)).toContain('mediaworld.it');
+    expect(input.sourcePlan.specs.map((source: { domain: string }) => source.domain)).toContain('openicecat.com');
+    expect(fetcher.mock.calls[0][1]!.body as string).toContain('openicecat.com');
+  });
+  it('uses the persisted catalog loader when one is supplied', async () => {
+    const brief = structuredClone(context);
+    brief.config = { ...EMPTY_CONFIG, category: 'laptop', country: 'CH', purpose: 'software development' };
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(researchStream(data.research))
+      .mockResolvedValueOnce(stream(result(JSON.stringify(data.extracted))));
+    const custom: SourceEntry = { domain: 'custom-shop.ch', name: 'Custom Shop', roles: ['seller'], verticals: ['computers'], countries: ['CH'], priority: 3 };
+    await new LiveAIProvider(config, fetcher, undefined, { effective: async () => [custom] }).discover(brief);
+    const input = JSON.parse(JSON.parse(fetcher.mock.calls[0][1]!.body as string).input);
+    expect(input.sourcePlan.sellers.map((source: { domain: string }) => source.domain)).toEqual(['custom-shop.ch']);
+  });
+  it('rejects an offer grounded only on a specification or comparison page', () => {
+    const brief = structuredClone(context);
+    brief.config = { ...EMPTY_CONFIG, category: 'laptop', country: 'IT' };
+    const specResearch = { text: 'The Aster Laptop costs EUR 590 and has 16 GB RAM.', sources: [{ url: 'https://www.openicecat.com/en/product/aster', title: 'Open Icecat' }] };
+    const specExtracted = ExtractionSchema.parse({
+      summary: 'Found one.', products: [{ ...extracted.products[0], offers: [{ ...extracted.products[0].offers[0], url: specResearch.sources[0].url, quote: specResearch.text }] }],
+    });
+    const grounded = normalizeExtraction(specExtracted, specResearch, brief, sourcePlan(brief.config, SOURCE_CATALOG_SEED));
+    expect(grounded.products).toEqual([]);
+    expect(grounded.summary).toContain('specification, review or comparison page is not a seller');
+  });
   it('bounds empty research without making up products or looping forever', async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => researchStream({ text: 'No matches.', sources: [] }));
     const discovered = await new LiveAIProvider(config, fetcher).discover(context);
@@ -231,12 +269,19 @@ describe('progressive multi-product discovery', () => {
     });
     await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key' }, fetcher).discover(brief);
     const queries = fetcher.mock.calls.filter(([url]) => String(url).startsWith('https://api.search.brave.com/')).map(([url]) => new URL(String(url)).searchParams.get('q')!);
-    expect(queries).toHaveLength(3);
-    expect(queries[0]).toContain('Matte screen');
-    for (const query of queries.slice(1)) {
+    const broad = queries.filter(query => !query.includes('site:'));
+    const targeted = queries.filter(query => query.includes('site:'));
+    expect(broad).toHaveLength(3);
+    expect(targeted).toHaveLength(3);
+    expect(broad[0]).toContain('Matte screen');
+    for (const query of broad.slice(1)) {
       expect(query).not.toContain('Matte screen');
       expect(query).toContain('Required compatibility'); expect(query).toContain('IT');
       expect(query.includes('under 700')).toBe(budgetHard);
+    }
+    for (const query of targeted) {
+      expect(query).toContain('IT'); expect(query).toContain('site:');
+      expect(query).not.toContain('Matte screen');
     }
     expect(brief.config.requirements[0].hard).toBe(false);
   });

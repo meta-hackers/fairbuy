@@ -3,9 +3,11 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
+import { SOURCE_ROLES, SOURCE_VERTICALS } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { PostgresStore } from './store';
+import { SourceCatalogService } from './source-catalog';
 import { AppError } from './errors';
 import { logger } from './logger';
 
@@ -22,7 +24,7 @@ export async function verifyPassword(password: string, encoded: string) {
   return timingSafeEqual(actual, Buffer.from(expected, 'hex'));
 }
 interface LoginSession { username: string; credential_hash: string; expires_at: Date }
-export function adminRouter(service: ShoppingService, config: Settings) {
+export function adminRouter(service: ShoppingService, config: Settings, catalog = new SourceCatalogService(config)) {
   const router = Router();
   const pool = service.store instanceof PostgresStore ? service.store.pool : null;
   const sessions = new Map<string, LoginSession>();
@@ -90,6 +92,19 @@ export function adminRouter(service: ShoppingService, config: Settings) {
     service.usage.purgeMemory(id);
     logger.warn('maintenance.session.purge.completed', { sessionId: id, admin: res.locals.admin });
     res.status(204).end();
+  });
+  router.get('/sources', async (_req, res) => {
+    res.json({
+      ...catalog.status(), entries: await catalog.effective(),
+      roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
+    });
+  });
+  router.post('/sources/sync', async (_req, res) => {
+    const status = await catalog.sync();
+    res.json({
+      ...status, entries: await catalog.effective(),
+      roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
+    });
   });
   router.use((_req, _res, next) => next(new AppError(404, 'Admin endpoint not found.')));
   return router;

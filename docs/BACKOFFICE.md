@@ -53,6 +53,37 @@ hours, use opaque random HttpOnly, SameSite=Strict cookies (Secure in production
 and are stored hashed in PostgreSQL. Sign-out revokes the current session. Login
 is rate limited. Admin writes use the existing same-origin/header CSRF protection.
 
+## Discovery source catalog
+
+The **Sources** tab is a read-only view of the catalog published by the separate
+[fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog)
+repository. Canonical data lives in that repository's `sources.json`; the public
+page is https://meta-hackers.github.io/fairbuy-sources-catalog/.
+
+The app starts with a bundled fallback snapshot (`data/source-catalog.ts`).
+Clicking **Sync from GitHub** calls `POST /api/admin/sources/sync`, which:
+
+- fetches `CATALOG_URL` over HTTPS with a 10 s timeout, no redirects and a 512 KB cap;
+- requires a `schemaVersion: 1` envelope with an `entries` array;
+- validates every entry with `SourceEntrySchema` and rejects duplicate domains;
+- swaps the in-memory catalog atomically only when the whole payload is valid.
+
+On failure it keeps the last-known-good catalog and shows the error. Discovery
+never fetches GitHub directly; an in-flight round keeps the plan it started with.
+
+The Sources view shows entries, source (`GitHub` or `Bundled fallback`), last
+sync time, version, count and the configured URL. It has filters but no editor:
+edit `sources.json` in the catalog repository and open a PR. CI validates it and
+GitHub Pages publishes it. When `CATALOG_SYNC_ON_START=true`, the app also attempts
+a background sync at startup; it never blocks readiness.
+
+The admin API is:
+
+- `GET /api/admin/sources`: current entries plus source status, roles and verticals.
+- `POST /api/admin/sources/sync`: fetch, validate and replace the catalog.
+
+Both routes require an admin session; the POST also requires the normal CSRF header.
+
 ## Data and retention
 
 Sessions can be searched by category, session ID, or anonymous browser-owner hash
@@ -85,6 +116,7 @@ Admin API additions:
 
 - `GET /api/admin/sessions/:sessionId/history`: ordered immutable revisions and snapshots.
 - `POST /api/admin/sessions/:sessionId/purge`: JSON `{ "confirmSessionId": "<same UUID>" }`; returns `204`.
+- `GET /api/admin/sources` and `POST /api/admin/sources/sync` as described above.
 - `GET /api/admin/me`: `retentionDays: null` indicates no automatic expiry.
 
 ## Token accounting and approximate costs

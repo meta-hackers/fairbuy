@@ -13,13 +13,14 @@ import { LocationResolver } from './location';
 import { InstantClassifier } from './instant-classifier';
 import { logger } from './logger';
 import { adminRouter } from './admin';
+import type { SourceCatalogService } from './source-catalog';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b))); }
 function cookies(req: Request) {
   return Object.fromEntries((req.headers.cookie ?? '').split(';').map(c => c.trim().split('=')).filter(c => c.length === 2));
 }
-export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver(), classifier = new InstantClassifier(config), isReady: () => boolean = () => true) {
+export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver(), classifier = new InstantClassifier(config), isReady: () => boolean = () => true, catalog?: SourceCatalogService) {
   const app = express();
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
@@ -65,7 +66,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     res.locals.ownerToken = ownerToken;
     next();
   });
-  app.use('/api/admin', adminRouter(service, config));
+  app.use('/api/admin', adminRouter(service, config, catalog));
   app.get('/api/bootstrap', async (_req, res) => {
     const latest = res.locals.access ? await service.store.latest(res.locals.owner) : null;
     res.json({

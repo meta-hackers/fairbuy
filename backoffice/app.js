@@ -4,6 +4,7 @@ let page = 1;
 let activeSession = null;
 let priceTable = {};
 let generation = 0;
+let sourceData = [];
 const number = value => value == null ? 'Unknown' : value.toLocaleString();
 const cost = value => value == null ? 'Unknown' : `~$${value.toFixed(5)}`;
 const date = value => value ? new Date(value).toLocaleString() : '—';
@@ -13,22 +14,35 @@ function node(tag, text, className) {
   if (className) element.className = className;
   return element;
 }
-function show(view) { for (const id of ['login', 'history', 'detail']) $(id).hidden = id !== view; }
+function show(view) {
+  for (const id of ['login', 'history', 'detail', 'sources']) $(id).hidden = id !== view;
+  $('admin-nav').hidden = view === 'login';
+  $('nav-sessions').classList.toggle('active', view === 'history' || view === 'detail');
+  $('nav-sources').classList.toggle('active', view === 'sources');
+}
 function notice(message) { $('notice').textContent = message; $('notice').hidden = !message; }
-async function api(path, body) {
-  const response = await fetch(`/api/admin${path}`, { credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Fairbuy-Request': '1' }, ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+async function api(path, body, method = body === undefined ? 'GET' : 'POST') {
+  const response = await fetch(`/api/admin${path}`, {
+    credentials: 'same-origin', cache: 'no-store', method,
+    headers: { 'Content-Type': 'application/json', 'X-Fairbuy-Request': '1' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
   if (response.status === 204) return;
   const data = await response.json();
   if (!response.ok) {
-    if (response.status === 401) {
-      generation++; activeSession = null; $('session-content').replaceChildren(); $('sessions').replaceChildren(); $('account').hidden = true; show('login');
-    }
+    if (response.status === 401) signedOut();
     throw new Error(data.error || 'Request failed.');
   }
   return data;
 }
 function guarded(action) { return async event => { event?.preventDefault(); notice(''); try { await action(event); } catch (error) { notice(error.message); } }; }
-function account(data) { $('username').textContent = data.username; $('account').hidden = false; priceTable = data.prices || {}; }
+function account(data) { $('username').textContent = data.username; $('account').hidden = false; $('admin-nav').hidden = false; priceTable = data.prices || {}; }
+function signedOut() {
+  generation++; activeSession = null; sourceData = [];
+  $('session-content').replaceChildren(); $('sessions').replaceChildren(); $('source-rows').replaceChildren();
+  $('source-status').replaceChildren(); $('source-url').textContent = ''; $('source-count').textContent = '';
+  $('account').hidden = true; show('login');
+}
 $('login-form').addEventListener('submit', guarded(async event => {
   const button = event.target.querySelector('button'); button.disabled = true;
   try {
@@ -36,14 +50,14 @@ $('login-form').addEventListener('submit', guarded(async event => {
     await api('/login', values); event.target.reset(); account(await api('/me')); await load();
   } finally { button.disabled = false; }
 }));
-$('logout').addEventListener('click', guarded(async () => {
-  await api('/logout', {}); generation++; activeSession = null; $('session-content').replaceChildren(); $('sessions').replaceChildren(); $('account').hidden = true; show('login');
-}));
+$('logout').addEventListener('click', guarded(async () => { await api('/logout', {}); signedOut(); }));
 $('filters').addEventListener('submit', guarded(async () => { page = 1; await load(); }));
 $('refresh').addEventListener('click', guarded(load));
 $('previous').addEventListener('click', guarded(async () => { page--; await load(); }));
 $('next').addEventListener('click', guarded(async () => { page++; await load(); }));
 $('back').addEventListener('click', guarded(load));
+$('nav-sessions').addEventListener('click', guarded(load));
+$('nav-sources').addEventListener('click', guarded(loadSources));
 async function load() {
   const request = ++generation;
   const query = new URLSearchParams(new FormData($('filters'))); query.set('page', page);
@@ -66,6 +80,88 @@ async function load() {
   $('sessions').removeAttribute('aria-busy'); $('count').textContent = `${result.total} sessions · Page ${page}`;
   $('previous').disabled = page <= 1; $('next').disabled = page * result.pageSize >= result.total;
 }
+function fillSelect(id, values, allLabel, label = value => value) {
+  const select = $(id); const current = select.value;
+  const all = node('option', allLabel); all.value = '';
+  select.replaceChildren(all, ...values.map(value => {
+    const option = node('option', label(value)); option.value = value; return option;
+  }));
+  if (values.includes(current)) select.value = current;
+}
+function sourceStatus(data) {
+  $('source-status').replaceChildren(
+    metric('Entries', data.count),
+    metric('Source', data.source === 'github' ? 'GitHub' : 'Bundled fallback'),
+    metric('Last sync', data.fetchedAt ? date(data.fetchedAt) : 'Never'),
+    metric('Version', data.version || '—'),
+  );
+  $('source-url').textContent = data.url ? `Catalog URL: ${data.url}` : 'No catalog URL configured.';
+}
+function applySources(data) {
+  sourceData = data.entries;
+  fillSelect('source-vertical-filter', data.verticals, 'All verticals', value => value.replaceAll('_', ' '));
+  fillSelect('source-role-filter', data.roles, 'All roles');
+  const countries = [...new Set(sourceData.flatMap(entry => entry.countries === 'global' ? [] : entry.countries))].sort();
+  fillSelect('source-country-filter', ['global', ...countries], 'All countries', value => value === 'global' ? 'Global only' : value);
+  renderSources(); sourceStatus(data);
+}
+async function loadSources() {
+  const request = ++generation;
+  $('source-rows').setAttribute('aria-busy', 'true');
+  try {
+    const data = await api('/sources');
+    if (request !== generation) return;
+    applySources(data); show('sources');
+    notice(data.error || '');
+  } finally { $('source-rows').removeAttribute('aria-busy'); }
+}
+function renderSources() {
+  const filters = Object.fromEntries(new FormData($('source-filters')));
+  const search = String(filters.search ?? '').trim().toLowerCase();
+  const rows = sourceData.filter(entry => {
+    if (search && !`${entry.domain} ${entry.name}`.toLowerCase().includes(search)) return false;
+    if (filters.vertical && !entry.verticals.includes(filters.vertical)) return false;
+    if (filters.role && !entry.roles.includes(filters.role)) return false;
+    if (filters.country === 'global') { if (entry.countries !== 'global') return false; }
+    else if (filters.country && entry.countries !== 'global' && !entry.countries.includes(filters.country)) return false;
+    if (filters.state === 'active' && entry.enabled === false) return false;
+    if (filters.state === 'disabled' && entry.enabled !== false) return false;
+    return true;
+  });
+  $('source-rows').replaceChildren();
+  for (const entry of rows) {
+    const row = node('tr');
+    const source = node('td');
+    source.append(node('strong', entry.name), node('small', entry.domain, 'mono'));
+    const state = node('td');
+    state.append(node('span', entry.enabled === false ? 'Disabled' : 'Active', entry.enabled === false ? 'badge off' : 'badge'));
+    row.append(
+      source, node('td', entry.roles.join(', ')),
+      node('td', entry.verticals.map(value => value.replaceAll('_', ' ')).join(', ')),
+      node('td', entry.countries === 'global' ? 'Global' : entry.countries.join(', ')),
+      node('td', String(entry.priority)), state,
+    );
+    $('source-rows').append(row);
+  }
+  if (!rows.length) {
+    const row = node('tr');
+    const cell = node('td', sourceData.length ? 'No sources match these filters.' : 'No catalog entries loaded.', 'empty');
+    cell.colSpan = 6; row.append(cell); $('source-rows').append(row);
+  }
+  $('source-count').textContent = `${rows.length} of ${sourceData.length} sources`;
+}
+async function syncSources() {
+  const button = $('sources-sync'); button.disabled = true;
+  try {
+    const data = await api('/sources/sync', {});
+    applySources(data);
+    notice(data.error || '');
+  } finally { button.disabled = false; }
+}
+$('sources-refresh').addEventListener('click', guarded(loadSources));
+$('sources-sync').addEventListener('click', guarded(syncSources));
+$('source-filters').addEventListener('submit', event => { event.preventDefault(); renderSources(); });
+
 function jsonDisclosure(title, data) { const details = node('details'); details.append(node('summary', title), node('pre', JSON.stringify(data, null, 2))); return details; }
 function section(title) { const section = node('section', null, 'panel'); section.append(node('h2', title)); return section; }
 function metric(label, value) { const card = node('div', null, 'metric'); card.append(node('small', label), node('strong', value)); return card; }

@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig, type Source, type AttrValue, type Field } from '@fairbuy/core';
+import { DISCOVERY_MIN_PRODUCTS, OfferSchema, effectiveConfig, rankProducts, sourcePlan, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeImageUrl, safeUrl } from '../links';
 import { logger } from '../logger';
+import { DEFAULT_CATALOG_LOADER, type SourceCatalogLoader } from '../source-catalog';
 import { MetaClient, type Research } from './meta';
 import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, type Extraction } from './schemas';
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT } from './prompts';
@@ -16,6 +17,7 @@ export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
 export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string }
 export type DiscoveryProgress = (result: DiscoveryResult) => Promise<void>;
+interface BraveItem { title: string; url: string; description: string; extra_snippets?: string[] }
 export function discoveryPolicy(pass: number, elapsedMs: number) {
   const minimumSoftMatch = Math.max(0, 0.75 * (1 - Math.max(0, elapsedMs) / 90000));
   return {
@@ -53,12 +55,12 @@ export function mergeDiscoveryResults(current: DiscoveryResult, incoming: Discov
 export function productId(name: string) {
   return createHash('sha256').update(name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')).digest('hex').slice(0, 20);
 }
-export function normalizeExtraction(extracted: Extraction, research: Research, context: DiscoveryContext): DiscoveryResult {
+export function normalizeExtraction(extracted: Extraction, research: Research, context: DiscoveryContext, plan = sourcePlan(effectiveConfig(context))): DiscoveryResult {
   const allowed = new Set(research.sources.map(s => s.url));
   const sourceUrls = [...allowed];
   const discarded = new Set(context.discardedProducts.map(p => p.id));
   const now = new Date().toISOString();
-  let rejected = 0, rejectedImages = 0;
+  let rejected = 0, rejectedImages = 0, rejectedNonSeller = 0;
   const products = extracted.products.flatMap(raw => {
     const id = productId(raw.name);
     if (discarded.has(id)) return [];
@@ -67,6 +69,7 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
     const offers = raw.offers.flatMap(rawOffer => {
       const url = safeUrl(rawOffer.url);
       if (!url || !allowed.has(url) || !rawOffer.quote.trim() || !research.text.includes(rawOffer.quote)) { rejected++; return []; }
+      if (isNonSellerHost(url, plan)) { rejectedNonSeller++; return []; }
       const evidence = [{ sourceType: 'url' as const, ref: url, snippet: rawOffer.quote, at: now }];
       const attributes: Record<string, Field<AttrValue>> = {};
       for (const attr of rawOffer.attributes) {
@@ -102,13 +105,14 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
   }
   return {
     products: [...unique.values()], sources: research.sources,
-    summary: `${extracted.summary}${rejected ? ` ${rejected} offer(s) were rejected because their URL or evidence could not be grounded in this search.` : ''}${rejectedImages ? ` ${rejectedImages} image(s) were rejected because they were not hosted on a returned official source.` : ''}`,
+    summary: `${extracted.summary}${rejected ? ` ${rejected} offer(s) were rejected because their URL or evidence could not be grounded in this search.` : ''}${rejectedImages ? ` ${rejectedImages} image(s) were rejected because they were not hosted on a returned official source.` : ''}${rejectedNonSeller ? ` ${rejectedNonSeller} offer(s) were rejected because a specification, review or comparison page is not a seller.` : ''}`,
   };
 }
 
 export class LiveAIProvider implements AIProvider {
   private client: MetaClient;
-  constructor(private config: Settings, private fetcher: typeof fetch = fetch, private imageFinder = findSellerImage) { this.client = new MetaClient(config, fetcher); }
+  constructor(private config: Settings, private fetcher: typeof fetch = fetch, private imageFinder = findSellerImage,
+    private catalog: SourceCatalogLoader = DEFAULT_CATALOG_LOADER) { this.client = new MetaClient(config, fetcher); }
   ensureConfigured() { this.client.ensureConfigured(); }
   async converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig) {
     return this.client.structured(
@@ -131,22 +135,30 @@ export class LiveAIProvider implements AIProvider {
       const ranked = new Set(rankProducts(result.products, context).ranked.map(r => r.offerId));
       return result.products.filter(p => p.offers.some(o => ranked.has(o.id))).length;
     };
+    const config = effectiveConfig(context);
+    let plan = sourcePlan(config);
+    try { plan = sourcePlan(config, await this.catalog.effective()); }
+    catch (error) { logger.error('discovery.source_catalog.failed', { roundId, error: error instanceof Error ? error.name : 'unknown' }); }
     logger.info('discovery.run.started', {
       roundId, provider: this.config.SEARCH_PROVIDER, previousProducts: context.previousProducts.length,
       discardedProducts: context.discardedProducts.length, feedback: context.feedback.length,
+      vertical: plan.vertical, plannedSellers: plan.sellers.length, plannedSpecs: plan.specs.length,
     });
     // Bounded complementary searches, not retries of failed provider requests.
     for (let pass = 0; pass < 3 && acceptableProductCount(result, context, Date.now() - started) < DISCOVERY_MIN_PRODUCTS; pass++) {
       const passStarted = Date.now();
       const searchPolicy = discoveryPolicy(pass, passStarted - started);
       const input = {
-        ...context, effectiveConfig: effectiveConfig(context), searchPass: pass + 1,
+        ...context, effectiveConfig: config, sourcePlan: plan, searchPass: pass + 1,
         minimumProducts: DISCOVERY_MIN_PRODUCTS, productsNeeded: DISCOVERY_MIN_PRODUCTS - acceptableProductCount(result, context, passStarted - started),
         alreadyFound: result.products, excludedOffers: rankProducts(result.products, context).excluded,
         searchPolicy,
       };
-      logger.info('discovery.pass.started', { roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded, ...searchPolicy });
-      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, searchPolicy)
+      logger.info('discovery.pass.started', {
+        roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded,
+        vertical: plan.vertical, plannedSellers: plan.sellers.length, ...searchPolicy,
+      });
+      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, searchPolicy, plan)
         : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
       logger.info('discovery.research.completed', {
         roundId, pass: pass + 1, durationMs: Date.now() - passStarted,
@@ -167,10 +179,14 @@ export class LiveAIProvider implements AIProvider {
       const onText = streamObjectArray('products', async raw => {
         const parsed = ExtractionSchema.shape.products.element.safeParse(raw);
         if (!parsed.success) return;
-        const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context);
+        const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context, plan);
         if (grounded.products.length) {
           grounded.products.forEach(p => streamed.add(p.id));
-          logger.info('discovery.product.streamed', { roundId, pass: pass + 1, productId: grounded.products[0].id, offers: grounded.products[0].offers.length });
+          logger.info('discovery.product.streamed', {
+            roundId, pass: pass + 1, productId: grounded.products[0].id, offers: grounded.products[0].offers.length,
+            vertical: plan.vertical,
+            plannedSeller: grounded.products[0].offers.some(offer => isPlannedSellerHost(offer.provenanceUrl, plan)),
+          });
           await accept(grounded);
         }
       });
@@ -180,7 +196,7 @@ export class LiveAIProvider implements AIProvider {
         max_output_tokens: 16000, reasoning: { effort: 'low' },
       }, onText);
       // Also handles providers that send only a terminal event, and commits the final summary.
-      const grounded = normalizeExtraction(extracted, research, context);
+      const grounded = normalizeExtraction(extracted, research, context, plan);
       logger.info('discovery.extraction.completed', {
         roundId, pass: pass + 1, durationMs: Date.now() - extractionStarted,
         extractedProducts: extracted.products.length, acceptedProducts: grounded.products.length,
@@ -201,26 +217,54 @@ export class LiveAIProvider implements AIProvider {
     logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length });
     return result;
   }
-  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, policy: ReturnType<typeof discoveryPolicy>): Promise<Research> {
+  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, policy: ReturnType<typeof discoveryPolicy>, plan: SourcePlan): Promise<Research> {
+    const configuredAt = Date.now();
+    try { this.ensureConfigured(); }
+    catch (error) { recordUsage('brave', 'web-search', 'search', 'failed', Date.now() - configuredAt); throw error; }
+    const config = effectiveConfig(context);
+    const focused = policy.matchStrategy === 'quick_start' || policy.matchStrategy === 'focused';
+    const requirements = config.requirements.filter(r => r.hard || focused);
+    const broadQuery = [config.category, config.country, config.city, config.currency,
+      pass ? `alternative models ${alreadyFound.slice(0, 4).map(p => `-"${p.name}"`).join(' ')}` : '',
+      config.budgetMax && (config.budgetHard || focused) ? `under ${config.budgetMax} ${config.currency}` : '',
+      ...requirements.map(r => r.label), config.purpose, 'buy price'].filter(Boolean).join(' ').slice(0, 400);
+    const targetedQuery = this.braveTargetedQuery(config, plan);
+    const queries = targetedQuery ? [broadQuery, targetedQuery] : [broadQuery];
+    // Run the broad and the planned-seller queries together: a failed targeted
+    // query must not discard the broad result, and neither should add latency.
+    const settled = await Promise.allSettled(queries.map(query => this.braveSearchTracked(query)));
+    const pages = settled.flatMap((outcome, index) => outcome.status === 'fulfilled' ? [{ query: queries[index], items: outcome.value.items }] : []);
+    if (!pages.length) {
+      const failure = settled.find(outcome => outcome.status === 'rejected');
+      throw failure?.status === 'rejected' ? failure.reason : new AppError(502, 'Brave search failed. Please retry.', 'SEARCH_PROVIDER_ERROR');
+    }
+    const items = [...new Map(pages.flatMap(page => page.items).map(item => [item.url, item])).values()];
+    return {
+      text: pages.map(page => `Brave search snippets only; full pages not fetched. Query: ${page.query}\n` +
+        page.items.map(r => `${r.title}\n${r.url}\n${r.description}\n${r.extra_snippets?.join('\n') ?? ''}`).join('\n\n')).join('\n\n').slice(0, 40000),
+      sources: items.map(r => ({ url: r.url, title: r.title })),
+    };
+  }
+  /** A second, narrower query for curated seller domains; the broad query keeps coverage. */
+  private braveTargetedQuery(config: ShoppingConfig, plan: SourcePlan): string {
+    if (plan.vertical === 'general' || !plan.sellers.length) return '';
+    const sites = plan.sellers.slice(0, 4).map(source => `site:${source.domain}`).join(' OR ');
+    const intent = plan.vertical === 'food_delivery' ? 'menu price' : 'buy price';
+    return [config.category, config.purpose, config.country, config.city, config.currency, `(${sites})`, intent]
+      .filter(Boolean).join(' ').slice(0, 400);
+  }
+  private async braveSearchTracked(query: string) {
     const started = Date.now();
     let status = 'failed';
     try {
-      const result = await this.braveResearchRequest(context, alreadyFound, pass, policy);
+      const result = await this.braveSearch(query);
       status = 'completed';
       return result;
     } finally { recordUsage('brave', 'web-search', 'search', status, Date.now() - started); }
   }
-  private async braveResearchRequest(context: DiscoveryContext, alreadyFound: Product[], pass: number, policy: ReturnType<typeof discoveryPolicy>): Promise<Research> {
-    this.ensureConfigured();
-    const config = effectiveConfig(context);
-    const focused = policy.matchStrategy === 'quick_start' || policy.matchStrategy === 'focused';
-    const requirements = config.requirements.filter(r => r.hard || focused);
-    const q = [config.category, config.country, config.city, config.currency,
-      pass ? `alternative models ${alreadyFound.slice(0, 4).map(p => `-"${p.name}"`).join(' ')}` : '',
-      config.budgetMax && (config.budgetHard || focused) ? `under ${config.budgetMax} ${config.currency}` : '',
-      ...requirements.map(r => r.label), config.purpose, 'buy price'].filter(Boolean).join(' ').slice(0, 400);
+  private async braveSearch(query: string): Promise<{ items: BraveItem[] }> {
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
-    url.searchParams.set('q', q); url.searchParams.set('count', '15'); url.searchParams.set('extra_snippets', 'true');
+    url.searchParams.set('q', query); url.searchParams.set('count', '15'); url.searchParams.set('extra_snippets', 'true');
     let response: Response;
     try {
       response = await this.fetcher(url, { headers: { 'X-Subscription-Token': this.config.BRAVE_API_KEY, Accept: 'application/json' }, signal: AbortSignal.timeout(20000), redirect: 'error' });
@@ -231,9 +275,6 @@ export class LiveAIProvider implements AIProvider {
     try { results = schema.parse(await response.json()); }
     catch { throw new AppError(502, 'Brave returned invalid search data.', 'SEARCH_INVALID_DATA'); }
     const items = (results.web?.results ?? []).flatMap(r => { const safe = safeUrl(r.url); return safe ? [{ ...r, url: safe }] : []; });
-    return {
-      text: `Brave search snippets only; full pages not fetched. Query: ${q}\n` + items.map(r => `${r.title}\n${r.url}\n${r.description}\n${r.extra_snippets?.join('\n') ?? ''}`).join('\n\n').slice(0, 40000),
-      sources: items.map(r => ({ url: r.url, title: r.title })),
-    };
+    return { items };
   }
 }

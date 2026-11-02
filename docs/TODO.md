@@ -7,7 +7,8 @@ This is a maintainer follow-up list, not a promise that an item is already imple
 - [ ] Review and refine the UI to make it more visually appealing.
 - [ ] Improve discovery result relevance and overall quality.
 - [ ] Investigate and fix product images that do not consistently load.
-- [ ] Explore trusted-site hints for discovery, potentially starting with a narrower search scope.
+- [x] Add category- and country-aware source hints for discovery. See [source hints](SOURCES.md).
+- [ ] Assign a source-catalog owner and a review cadence for the [fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog) repository.
 - [ ] Add user login via a one-time code sent by email.
 - [ ] Limit each authenticated user to two searches per day; define how Discovery, Learn-triggered searches and retries count toward the allowance.
 
