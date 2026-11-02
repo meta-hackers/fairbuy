@@ -35,6 +35,10 @@ function braveThrottle(minIntervalMs: number): Promise<void> {
   braveQueue = run.catch(() => undefined);
   return run;
 }
+// A discovery round has a hard wall-clock limit. It is not an acceptance
+// threshold: when it is reached, in-flight provider calls are aborted, no new
+// research pass starts, and any grounded products already found are kept.
+export const DISCOVERY_TIMEOUT_MS = 5 * 60 * 1000;
 export function discoveryPolicy(pass: number, elapsedMs: number) {
   const minimumSoftMatch = Math.max(0, 0.75 * (1 - Math.max(0, elapsedMs) / 90000));
   return {
@@ -147,6 +151,11 @@ export class LiveAIProvider implements AIProvider {
     let result: DiscoveryResult = { products: [], sources: [], summary: '' };
     const images = new Map<string, Promise<string | null>>();
     const started = Date.now();
+    const deadline = started + DISCOVERY_TIMEOUT_MS;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DISCOVERY_TIMEOUT_MS);
+    timeout.unref();
+    let timedOut = false;
     const roundId = context.discoverySessionId;
     const eligibleCount = () => {
       const ranked = new Set(rankProducts(result.products, context).ranked.map(r => r.offerId));
@@ -160,81 +169,103 @@ export class LiveAIProvider implements AIProvider {
       roundId, provider: this.config.SEARCH_PROVIDER, previousProducts: context.previousProducts.length,
       discardedProducts: context.discardedProducts.length, feedback: context.feedback.length,
       vertical: plan.vertical, plannedSellers: plan.sellers.length, plannedSpecs: plan.specs.length,
+      timeoutMs: DISCOVERY_TIMEOUT_MS,
     });
-    // Bounded complementary searches, not retries of failed provider requests.
-    for (let pass = 0; pass < 3 && acceptableProductCount(result, context, Date.now() - started) < DISCOVERY_MIN_PRODUCTS; pass++) {
-      const passStarted = Date.now();
-      const searchPolicy = discoveryPolicy(pass, passStarted - started);
-      const input = {
-        ...context, effectiveConfig: config, sourcePlan: plan, searchPass: pass + 1,
-        minimumProducts: DISCOVERY_MIN_PRODUCTS, productsNeeded: DISCOVERY_MIN_PRODUCTS - acceptableProductCount(result, context, passStarted - started),
-        alreadyFound: result.products, excludedOffers: rankProducts(result.products, context).excluded,
-        searchPolicy,
-      };
-      logger.info('discovery.pass.started', {
-        roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded,
-        vertical: plan.vertical, plannedSellers: plan.sellers.length, ...searchPolicy,
-      });
-      const research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, plan)
-        : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input);
-      logger.info('discovery.research.completed', {
-        roundId, pass: pass + 1, durationMs: Date.now() - passStarted,
-        sources: research.sources.length, researchChars: research.text.length,
-      });
-      if (!research.sources.length) {
-        logger.warn('discovery.research.empty', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted });
-        continue;
+    try {
+      // Bounded complementary searches, not retries of failed provider requests.
+      for (let pass = 0; pass < 3 && acceptableProductCount(result, context, Date.now() - started) < DISCOVERY_MIN_PRODUCTS; pass++) {
+        if (controller.signal.aborted || Date.now() >= deadline) { timedOut = true; break; }
+        const passStarted = Date.now();
+        const searchPolicy = discoveryPolicy(pass, passStarted - started);
+        const input = {
+          ...context, effectiveConfig: config, sourcePlan: plan, searchPass: pass + 1,
+          minimumProducts: DISCOVERY_MIN_PRODUCTS, productsNeeded: DISCOVERY_MIN_PRODUCTS - acceptableProductCount(result, context, passStarted - started),
+          alreadyFound: result.products, excludedOffers: rankProducts(result.products, context).excluded,
+          searchPolicy,
+        };
+        logger.info('discovery.pass.started', {
+          roundId, pass: pass + 1, eligible: eligibleCount(), needed: input.productsNeeded,
+          vertical: plan.vertical, plannedSellers: plan.sellers.length, ...searchPolicy,
+        });
+        let research: Research;
+        try {
+          research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, plan, controller.signal)
+            : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input, controller.signal);
+        } catch (error) {
+          if (controller.signal.aborted || Date.now() >= deadline) { timedOut = true; break; }
+          throw error;
+        }
+        logger.info('discovery.research.completed', {
+          roundId, pass: pass + 1, durationMs: Date.now() - passStarted,
+          sources: research.sources.length, researchChars: research.text.length,
+        });
+        if (!research.sources.length) {
+          logger.warn('discovery.research.empty', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted });
+          continue;
+        }
+        const accept = async (incoming: DiscoveryResult) => {
+          for (const product of incoming.products) {
+            if (!images.has(product.id)) images.set(product.id, this.imageFinder(product).catch(() => null));
+          }
+          result = mergeDiscoveryResults(result, incoming);
+          await onProgress?.(result);
+        };
+        const streamed = new Set<string>();
+        const onText = streamObjectArray('products', async raw => {
+          const parsed = ExtractionSchema.shape.products.element.safeParse(raw);
+          if (!parsed.success) return;
+          const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context, plan);
+          if (grounded.products.length) {
+            grounded.products.forEach(p => streamed.add(p.id));
+            logger.info('discovery.product.streamed', {
+              roundId, pass: pass + 1, productId: grounded.products[0].id, offers: grounded.products[0].offers.length,
+              vertical: plan.vertical,
+              plannedSeller: grounded.products[0].offers.some(offer => isPlannedSellerHost(offer.provenanceUrl, plan)),
+            });
+            await accept(grounded);
+          }
+        });
+        const extractionStarted = Date.now();
+        let extracted: z.infer<typeof ExtractionSchema>;
+        try {
+          extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema, {
+            // Extraction is mechanical: spend fewer tokens reasoning and more on the JSON result.
+            max_output_tokens: 16000, reasoning: { effort: 'low' },
+          }, onText, controller.signal);
+        } catch (error) {
+          // Keep products streamed before the deadline; they were already persisted by accept().
+          if (controller.signal.aborted || Date.now() >= deadline) { timedOut = true; break; }
+          throw error;
+        }
+        // Also handles providers that send only a terminal event, and commits the final summary.
+        const grounded = normalizeExtraction(extracted, research, context, plan);
+        logger.info('discovery.extraction.completed', {
+          roundId, pass: pass + 1, durationMs: Date.now() - extractionStarted,
+          extractedProducts: extracted.products.length, acceptedProducts: grounded.products.length,
+        });
+        for (const product of grounded.products) if (!streamed.has(product.id)) await accept({ products: [product], sources: grounded.sources, summary: '' });
+        await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
+        logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount() });
       }
-      const accept = async (incoming: DiscoveryResult) => {
-        for (const product of incoming.products) {
-          if (!images.has(product.id)) images.set(product.id, this.imageFinder(product).catch(() => null));
-        }
-        result = mergeDiscoveryResults(result, incoming);
-        await onProgress?.(result);
-      };
-      const streamed = new Set<string>();
-      const onText = streamObjectArray('products', async raw => {
-        const parsed = ExtractionSchema.shape.products.element.safeParse(raw);
-        if (!parsed.success) return;
-        const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context, plan);
-        if (grounded.products.length) {
-          grounded.products.forEach(p => streamed.add(p.id));
-          logger.info('discovery.product.streamed', {
-            roundId, pass: pass + 1, productId: grounded.products[0].id, offers: grounded.products[0].offers.length,
-            vertical: plan.vertical,
-            plannedSeller: grounded.products[0].offers.some(offer => isPlannedSellerHost(offer.provenanceUrl, plan)),
-          });
-          await accept(grounded);
-        }
-      });
-      const extractionStarted = Date.now();
-      const extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema, {
-        // Extraction is mechanical: spend fewer tokens reasoning and more on the JSON result.
-        max_output_tokens: 16000, reasoning: { effort: 'low' },
-      }, onText);
-      // Also handles providers that send only a terminal event, and commits the final summary.
-      const grounded = normalizeExtraction(extracted, research, context, plan);
-      logger.info('discovery.extraction.completed', {
-        roundId, pass: pass + 1, durationMs: Date.now() - extractionStarted,
-        extractedProducts: extracted.products.length, acceptedProducts: grounded.products.length,
-      });
-      for (const product of grounded.products) if (!streamed.has(product.id)) await accept({ products: [product], sources: grounded.sources, summary: '' });
-      await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
-      logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount() });
-    }
-    // Fetch images alongside research without delaying the first visible products.
-    let imagesChanged = false;
-    await Promise.all(result.products.map(async product => {
-      const image = await images.get(product.id);
-      if (image && image !== product.imageUrl) { product.imageUrl = image; imagesChanged = true; }
-    }));
-    if (imagesChanged) await onProgress?.(result);
+      // Fetch images alongside research without delaying the first visible products.
+      // Once the hard limit is reached, stop waiting instead of extending the round.
+      if (!controller.signal.aborted && Date.now() < deadline) {
+        let imagesChanged = false;
+        await Promise.all(result.products.map(async product => {
+          const image = await images.get(product.id);
+          if (image && image !== product.imageUrl) { product.imageUrl = image; imagesChanged = true; }
+        }));
+        if (imagesChanged) await onProgress?.(result);
+      }
+    } finally { clearTimeout(timeout); }
+    if (controller.signal.aborted) timedOut = true;
     const count = eligibleCount();
     if (count < DISCOVERY_MIN_PRODUCTS) result.summary = `${result.summary}${result.summary ? ' ' : ''}Only ${count} distinct eligible product${count === 1 ? '' : 's'} could be grounded after additional searches. We could not reach ${DISCOVERY_MIN_PRODUCTS} without breaking your must-haves or inventing offers.`;
-    logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length });
+    if (timedOut) result.summary = `${result.summary}${result.summary ? ' ' : ''}Search stopped at the 5-minute limit; the products already found are kept.`;
+    logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, sources: result.sources.length, timedOut });
     return result;
   }
-  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, plan: SourcePlan): Promise<Research> {
+  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, plan: SourcePlan, signal?: AbortSignal): Promise<Research> {
     const configuredAt = Date.now();
     try { this.ensureConfigured(); }
     catch (error) { recordUsage('brave', 'web-search', 'search', 'failed', Date.now() - configuredAt); throw error; }
@@ -245,14 +276,16 @@ export class LiveAIProvider implements AIProvider {
     // Sequential calls respect the provider's per-second limit. A failed query
     // must not discard results from the queries that did run.
     for (const query of queries) {
-      try { pages.push({ query, items: (await this.braveSearchTracked(query)).items }); }
+      if (signal?.aborted) break;
+      try { pages.push({ query, items: (await this.braveSearchTracked(query, signal)).items }); }
       catch (error) { failures.push(error); }
     }
     logger.info('discovery.brave.queries', {
       roundId: context.discoverySessionId, pass: pass + 1, queries: queries.length,
-      completed: pages.length, failed: failures.length,
+      completed: pages.length, failed: failures.length, timedOut: !!signal?.aborted,
     });
     if (!pages.length) {
+      if (signal?.aborted) throw new AppError(504, 'The search reached its 5-minute limit.', 'SEARCH_TIME_LIMIT');
       const failure = failures[0];
       throw failure instanceof Error ? failure : new AppError(502, 'Brave search failed. Please retry.', 'SEARCH_PROVIDER_ERROR');
     }
@@ -300,30 +333,36 @@ export class LiveAIProvider implements AIProvider {
     const price = config.requirements.find(r => /^(price|total|budget|budgetmax)$/i.test(r.attribute ?? '') || /\b(price|budget)\b/i.test(r.label));
     return price?.label ?? '';
   }
-  private async braveSearchTracked(query: string) {
+  private async braveSearchTracked(query: string, signal?: AbortSignal) {
     const started = Date.now();
     let status = 'failed';
     try {
-      const result = await this.braveSearch(query);
+      const result = await this.braveSearch(query, 0, signal);
       status = 'completed';
       return result;
     } finally { recordUsage('brave', 'web-search', 'search', status, Date.now() - started); }
   }
-  private async braveSearch(query: string, attempt = 0): Promise<{ items: BraveItem[] }> {
+  private async braveSearch(query: string, attempt = 0, signal?: AbortSignal): Promise<{ items: BraveItem[] }> {
+    if (signal?.aborted) throw new AppError(504, 'The search reached its 5-minute limit.', 'SEARCH_TIME_LIMIT');
     await braveThrottle(this.config.BRAVE_MIN_INTERVAL_MS);
+    if (signal?.aborted) throw new AppError(504, 'The search reached its 5-minute limit.', 'SEARCH_TIME_LIMIT');
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
     url.searchParams.set('q', query); url.searchParams.set('count', '15'); url.searchParams.set('extra_snippets', 'true');
     let response: Response;
+    const timeout = AbortSignal.timeout(20000);
     try {
-      response = await this.fetcher(url, { headers: { 'X-Subscription-Token': this.config.BRAVE_API_KEY, Accept: 'application/json' }, signal: AbortSignal.timeout(20000), redirect: 'error' });
-    } catch { throw new AppError(502, 'Brave search could not be reached. Please retry.', 'SEARCH_UNREACHABLE'); }
+      response = await this.fetcher(url, { headers: { 'X-Subscription-Token': this.config.BRAVE_API_KEY, Accept: 'application/json' }, signal: signal ? AbortSignal.any([signal, timeout]) : timeout, redirect: 'error' });
+    } catch {
+      if (signal?.aborted) throw new AppError(504, 'The search reached its 5-minute limit.', 'SEARCH_TIME_LIMIT');
+      throw new AppError(502, 'Brave search could not be reached. Please retry.', 'SEARCH_UNREACHABLE');
+    }
     if (response.status === 429 && attempt === 0) {
       await response.body?.cancel();
       // Retry once after the documented one-request-per-second window. The
       // throttle will also wait if another query is already queued.
       logger.warn('discovery.brave.rate_limited', { retryInMs: Math.max(1100, this.config.BRAVE_MIN_INTERVAL_MS) });
       await sleep(Math.max(1100, this.config.BRAVE_MIN_INTERVAL_MS));
-      return this.braveSearch(query, 1);
+      return this.braveSearch(query, 1, signal);
     }
     if (!response.ok) { await response.body?.cancel(); throw new AppError(502, 'Brave search rejected the request. Check your search API key, credit and limits.', 'SEARCH_PROVIDER_ERROR'); }
     const schema = z.object({ web: z.object({ results: z.array(z.object({ title: z.string(), url: z.string(), description: z.string(), extra_snippets: z.array(z.string()).optional() })) }).optional() });

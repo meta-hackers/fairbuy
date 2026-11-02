@@ -51,6 +51,23 @@ describe('real backend shopping orchestration', () => {
     expect(current.rounds.at(-1)?.context.discardedProducts).toEqual([]);
     expect(current.rounds.at(-1)?.products.map(p => p.id)).toContain(rejected.id);
   });
+  it('removes only the rejected product and re-ranks the rest of the shortlist', async () => {
+    const { service, store, session } = await setup();
+    await service.discover(session.id, 'alice'); await run(service);
+    let current = await store.get(session.id);
+    const before = current.rounds[0].products;
+    const rejected = before[0];
+    const expected = before.filter(product => product.id !== rejected.id).map(product => product.id);
+    const queued = await service.learn(session.id, 'alice', { productId: rejected.id, reason: 'Too heavy for my commute' });
+    const learned = queued.rounds.at(-1)!;
+    expect(learned.products.map(product => product.id)).toEqual(expected);
+    expect(learned.products.map(product => product.id)).not.toContain(rejected.id);
+    expect(learned.ranking?.ranked.length).toBeGreaterThan(0); // scores are recomputed with the new feedback
+    await run(service);
+    current = await store.get(session.id);
+    expect(current.rounds.at(-1)!.products.map(product => product.id)).toEqual(expect.arrayContaining(expected));
+    expect(current.rounds.at(-1)!.products.map(product => product.id)).not.toContain(rejected.id);
+  });
   it('is idempotent for concurrent discovery and rejects edits during a search', async () => {
     const { service, store, session } = await setup();
     await Promise.all([service.discover(session.id, 'alice'), service.discover(session.id, 'alice')]);

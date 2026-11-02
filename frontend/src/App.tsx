@@ -219,7 +219,10 @@ export default function App() {
       <p>With your browser’s permission, rounded coordinates are sent to OpenStreetMap’s Nominatim service to suggest your city and country. Precise coordinates and street addresses are not saved. Only your shopping city, country and chosen currency enter the search brief. You can deny access and set these manually.</p><p>FairBuy researches and explains; it does not certify products, guarantee prices, or complete transactions.</p>
     </details><span className="footer-meta">Made for more considered choices.</span></footer>
     {learning && session && <LearnModal product={learning.product} busy={busy} error={error} onClose={() => setLearning(null)} onApply={reason => perform(async () => {
-      accept(await api<ShoppingSession>(`/sessions/${session.id}/learn`, 'POST', { productId: learning.product?.id ?? null, reason })); setNotice('Feedback saved. Fresh search, with everything we’ve learned.');
+      accept(await api<ShoppingSession>(`/sessions/${session.id}/learn`, 'POST', { productId: learning.product?.id ?? null, reason }));
+      // Close immediately after the feedback is accepted; the preserved shortlist
+      // and its refreshed ranking are already part of the returned session.
+      setLearning(null); setNotice('Feedback saved. Fresh search, with everything we’ve learned.');
     })} />}
   </div>;
 }

@@ -96,6 +96,7 @@ An unknown hard check is not a verified pass. Under the existing ranking policy,
 ## Limits and timing caveats
 
 - **90 seconds is not a deadline.** The worker checks time between provider calls/passes; it does not interrupt a running request when the threshold changes.
+- **Five minutes is a hard deadline.** A discovery round aborts its in-flight provider calls at five minutes, starts no further research pass, and completes with the grounded products already found. The round summary states that the limit was reached.
 - Time includes live research, extraction, and progress persistence, but not time spent queued before the provider run begins. The UI's overall elapsed indicator can therefore differ from the acceptance-policy clock.
 - Four products are a target, not a guarantee. After three passes, FairBuy retains the grounded eligible results it has, including below-threshold alternatives. If fewer than four eligible models were found, the summary explains the shortfall rather than inventing offers.
 - A slow in-flight research call can still delay the first result. This policy improves search objectives and stopping decisions; it does not guarantee provider latency.

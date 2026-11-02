@@ -379,7 +379,7 @@ export class PostgresStore implements Store {
   }
   async claim(): Promise<Job | null> {
     const result = await this.pool.query(`
-      UPDATE discovery_jobs SET state = 'running', attempts = attempts + 1, lease_until = now() + interval '5 minutes'
+      UPDATE discovery_jobs SET state = 'running', attempts = attempts + 1, lease_until = now() + interval '6 minutes'
       WHERE id = (SELECT j.id FROM discovery_jobs j
         CROSS JOIN LATERAL (SELECT archived FROM session_versions WHERE session_id = j.session_id ORDER BY version DESC LIMIT 1) v
         WHERE NOT v.archived AND (j.state = 'queued' OR (j.state = 'running' AND j.lease_until < now()))

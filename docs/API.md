@@ -19,7 +19,7 @@ Same-origin JSON API; no CORS. All writes require `X-Fairbuy-Request: 1`. Browse
 | PUT | `/api/sessions/:id/configure` | Full validated `ShoppingConfig`; no AI call. |
 | POST | `/api/sessions/:id/configure/chat` | `{message}`: separate small-model conversation. |
 | POST | `/api/sessions/:id/discovery` | Queue fresh discovery; `202` with session state. Repeated click while pending does not create another round. |
-| POST | `/api/sessions/:id/learn` | `{productId: string \| null, reason}`: 1–2000 characters; interpret feedback, discard selected product if present, queue new round; `202`. |
+| POST | `/api/sessions/:id/learn` | `{productId: string \| null, reason}`: 1–2000 characters; interpret feedback, discard only the selected product if present, carry the remaining shortlist into a re-ranked new round, queue new round; `202`. |
 | DELETE | `/api/sessions/:id/learn/:feedbackId` | Append a feedback revocation and queue fresh discovery; `202`. Previous versions retain the feedback. |
 | POST | `/api/sessions/:id/select` | `{productId}`: select a currently eligible product for read-only Buy. |
 | PATCH | `/api/sessions/:id/stage` | `{stage}`: persist validated navigation (`ask`, `configure`, `discovery`, `buy`). |
@@ -75,8 +75,8 @@ Budget values in configuration are major currency units; offer prices and the ps
 
 - 15 active owned searches (closed searches do not count); 20 editable requirements; 40 messages (20 user turns) in each conversation.
 - 12 discovery rounds/search; 30 feedback entries; up to 5 learned requirements/feedback.
-- Up to 3 research/extraction passes per round, with 8 extracted products per pass and 4 offers per product/pass; 25 extracted attributes/offer. Repeated models/offers are merged.
+- Up to 3 research/extraction passes per round, with 8 extracted products per pass and 4 offers per product/pass; 25 extracted attributes/offer. Repeated models/offers are merged. Each discovery round has a hard five-minute budget; in-flight provider calls are aborted and grounded results found so far are kept.
 - 45 AI operations/hour/owner; 150 AI operations/day/IP; 1800 API requests/15 minutes/IP. Access-token attempts are separately limited.
 - Instant classifier: separate 20 requests/minute/owner and 200/day/IP; at most four concurrent provider calls/process, one/owner, and 500 provider calls per rolling day/process. Eight-second timeout, five-minute owner-isolated memory cache (100 entries), no provider retries. These counters are process-local, not persistent billing guarantees.
 - 20 reverse-location lookups/hour/IP. Nominatim requests are limited to one/second/process; rounded city-level results are cached in memory for 24 hours (up to 500 entries). Busy or unavailable lookups fall back to manual entry, not a guessed location.
-- Two background searches/process; five-minute lease; maximum two attempts after a process interruption. A provider error is visible and requires an explicit retry.
+- Two background searches/process; six-minute lease; maximum two attempts after a process interruption. A provider error is visible and requires an explicit retry.

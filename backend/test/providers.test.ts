@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { EMPTY_CONFIG, rankProducts, sourcePlan, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
 import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
-import { acceptableProductCount, discoveryPolicy, normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
+import { acceptableProductCount, discoveryPolicy, DISCOVERY_TIMEOUT_MS, normalizeExtraction, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
 import { ExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
@@ -74,6 +74,20 @@ describe('Meta Model API REST integration', () => {
     await expect(client.response('m', 's', {})).rejects.toMatchObject({ code: 'AI_INCOMPLETE' });
     fetcher.mockResolvedValueOnce(stream({ status: 'completed', output: [{ type: 'message', content: [{ type: 'refusal' }] }] }));
     await expect(client.response('m', 's', {})).rejects.toMatchObject({ code: 'AI_EMPTY_RESPONSE' });
+  });
+  it('aborts an in-flight discovery request when its hard-limit signal fires', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_url, init) => {
+      if (init?.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+      });
+    });
+    const client = new MetaClient(config, fetcher);
+    const controller = new AbortController();
+    const pending = client.research('m', 's', context, controller.signal);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ code: 'AI_ABORTED' });
   });
   it('redacts provider failures and supports the optional Brave connector', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('SECRET upstream body', { status: 401 }));
@@ -253,6 +267,18 @@ describe('progressive multi-product discovery', () => {
     expect(fetcher).toHaveBeenCalledTimes(3);
     expect(discovered.products).toEqual([]);
     expect(discovered.summary).toContain('Only 0 distinct eligible products');
+  });
+  it('stops starting new search passes at the five-minute hard limit and keeps partial results', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const data = catalog(['Aster']);
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(researchStream(data.research))
+      .mockImplementationOnce(async () => { now = DISCOVERY_TIMEOUT_MS; return stream(result(JSON.stringify(data.extracted))); });
+    const discovered = await new LiveAIProvider(config, fetcher).discover(context);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(discovered.products).toHaveLength(1);
+    expect(discovered.summary).toContain('5-minute limit');
   });
   it.each([false, true])('broadens Brave preferences while preserving hard budget=%s and must-haves', async budgetHard => {
     let now = 0;

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   EMPTY_CONFIG, activeProducts, allProducts, isConfigReady, latestRound, rankProducts,
-  type DiscoveryContext, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
+  type DiscoveryContext, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
 import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
 import type { Store, Job } from './store';
@@ -52,17 +52,25 @@ export class ShoppingService {
       discardedProducts: previousProducts.filter(p => discardedIds.has(p.id)), feedback: session.feedback,
     });
   }
-  private queue(session: ShoppingSession, trigger: 'configure' | 'learn' | 'refresh') {
+  // A Learn round keeps the current shortlist instead of emptying it. The
+  // rejected product is already excluded by its feedback; every other product
+  // is re-ranked against the newly learned requirements and stays visible.
+  private retainedProducts(session: ShoppingSession): Product[] {
+    const discarded = new Set(session.feedback.map(f => f.productId));
+    return structuredClone((latestRound(session)?.products ?? []).filter(p => !discarded.has(p.id)));
+  }
+  private queue(session: ShoppingSession, trigger: 'configure' | 'learn' | 'refresh', retained: Product[] = []) {
     this.idle(session);
     if (session.rounds.length >= 12) throw new AppError(429, 'This search has reached its 12-round limit. Start a new search.');
     if (!isConfigReady(session.config)) throw new AppError(400, 'Set a product category, intended use and country before searching.');
     if (!session.initialConfig) session.initialConfig = structuredClone(session.config);
     const id = randomUUID();
+    const context = this.context(session, id);
     session.rounds.push({
       id, number: session.rounds.length + 1, attempt: 0, trigger, status: 'queued',
       createdAt: new Date().toISOString(), startedAt: null, finishedAt: null, durationMs: null,
-      products: [], sources: [], summary: '', error: null,
-      context: this.context(session, id), ranking: null,
+      products: retained, sources: [], summary: '', error: null,
+      context, ranking: retained.length ? rankProducts(retained, context) : null,
     });
     session.stage = 'discovery'; session.selectedProductId = null;
   }
@@ -130,7 +138,7 @@ export class ShoppingService {
       const feedback = { id: randomUUID(), productId: product?.id ?? null, productName: product?.name ?? null, reason: input.reason, at: new Date().toISOString(), learned: learned.requirements };
       session.feedback.push(feedback);
       // Learned requirements are separate from editable base config: removing feedback is lossless.
-      this.queue(session, 'learn');
+      this.queue(session, 'learn', this.retainedProducts(session));
     }, base.version);
     logger.info('session.feedback.learned', { sessionId: id, durationMs: Date.now() - started, productId: input.productId, learnedRequirements: session.feedback.at(-1)?.learned.length ?? 0 });
     return session;
@@ -142,7 +150,7 @@ export class ShoppingService {
       if (!session.feedback.some(f => f.id === feedbackId)) throw new AppError(404, 'Feedback not found.');
       if (session.rounds.length >= 12) throw new AppError(429, 'Round limit reached. Start a new search.');
       session.feedback = session.feedback.filter(f => f.id !== feedbackId);
-      this.queue(session, 'learn');
+      this.queue(session, 'learn', this.retainedProducts(session));
     });
     logger.info('session.feedback.removed', { sessionId: id, feedbackId });
     return session;

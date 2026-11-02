@@ -115,7 +115,7 @@ The default is `SEARCH_PROVIDER=meta`, which uses Meta hosted web search and ret
 ## Operations and recovery
 
 - Keep **one web instance** until rate limits are backed by shared storage. PostgreSQL claims can coordinate workers across processes, but current abuse limiters are process-local.
-- Jobs survive redeploys. A terminated job’s five-minute lease expires; it is reclaimed on a subsequent worker tick. After two interrupted attempts it fails visibly. A provider failure does not automatically burn another call; Refresh queues a new round subject to limits.
+- Jobs survive redeploys. A terminated job’s six-minute lease expires; it is reclaimed on a subsequent worker tick. After two interrupted attempts it fails visibly. A provider failure does not automatically burn another call; Refresh queues a new round subject to limits.
 - Render gets up to 300 seconds for graceful shutdown; the app waits for active jobs/API calls, then closes PostgreSQL. Abrupt termination still uses lease recovery.
 - Database retention: no automatic expiry or pruning. “New search” archives the current search without deleting versions, jobs or usage. Only confirmed backoffice maintenance purges a selected session. Complete state snapshots consume increasing storage; monitor database size and perform maintenance intentionally. Configure Supabase backups/recovery according to your own privacy/reliability policy.
 - Review Supabase's plan limits, inactivity pausing and backup/recovery coverage before relying on this as a production service. Application retention is separate from provider retention and backups.

@@ -27,7 +27,7 @@ export class MetaClient {
     if (!this.config.MODEL_API_KEY) throw new AppError(503, 'Add MODEL_API_KEY in Render to enable the AI assistant. No demo results have been substituted.', 'AI_NOT_CONFIGURED');
     if (this.config.SEARCH_PROVIDER === 'brave' && !this.config.BRAVE_API_KEY) throw new AppError(503, 'Add BRAVE_API_KEY or set SEARCH_PROVIDER=meta.', 'SEARCH_NOT_CONFIGURED');
   }
-  async response(model: string, instructions: string, input: unknown, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>) {
+  async response(model: string, instructions: string, input: unknown, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>, signal?: AbortSignal) {
     const started = Date.now();
     const operation = Array.isArray(extra.tools) ? 'research' : 'generation';
     let reported = false;
@@ -35,16 +35,17 @@ export class MetaClient {
       return await this.responseTracked(model, instructions, input, extra, onText, (status, usage) => {
         reported = true;
         recordUsage('meta', model, operation, status, Date.now() - started, usage, this.config.AI_PRICE_TABLE);
-      });
+      }, signal);
     } finally {
       if (!reported) recordUsage('meta', model, operation, 'failed', Date.now() - started);
     }
   }
-  private async responseTracked(model: string, instructions: string, input: unknown, extra: Record<string, unknown>, onText: ((delta: string) => Promise<void>) | undefined, report: (status: string, usage?: unknown) => void) {
+  private async responseTracked(model: string, instructions: string, input: unknown, extra: Record<string, unknown>, onText: ((delta: string) => Promise<void>) | undefined, report: (status: string, usage?: unknown) => void, signal?: AbortSignal) {
     this.ensureConfigured();
     const started = Date.now();
     logger.info('ai.request.started', { model, stream: true, tools: Array.isArray(extra.tools) ? extra.tools.length : 0 });
     let response: Response;
+    const backstop = AbortSignal.timeout(600000);
     try {
       response = await this.fetcher('https://api.meta.ai/v1/responses', {
         method: 'POST', headers: { 'Authorization': `Bearer ${this.config.MODEL_API_KEY}`, 'Content-Type': 'application/json' },
@@ -53,9 +54,14 @@ export class MetaClient {
         // Reasoning tokens share this budget; keep it above the largest structured result.
         body: JSON.stringify({ model, instructions, input: JSON.stringify(input), store: false, stream: true, max_output_tokens: 10000, ...extra }),
         // Generous client-side backstop only; normal long generations stream incrementally.
-        signal: AbortSignal.timeout(600000), redirect: 'error',
+        // Discovery adds an earlier hard deadline through `signal`.
+        signal: signal ? AbortSignal.any([signal, backstop]) : backstop, redirect: 'error',
       });
     } catch {
+      if (signal?.aborted) {
+        logger.warn('ai.request.aborted', { model, durationMs: Date.now() - started });
+        throw new AppError(504, 'The AI request was stopped at the search time limit.', 'AI_ABORTED');
+      }
       logger.error('ai.request.unreachable', { model, durationMs: Date.now() - started });
       throw new AppError(502, 'The AI provider timed out or could not be reached. Please retry.', 'AI_UNREACHABLE');
     }
@@ -119,7 +125,7 @@ export class MetaClient {
     } finally { reader.releaseLock(); }
     throw new AppError(502, 'The AI response stream ended before completion. Please retry.', 'AI_INCOMPLETE');
   }
-  async structured<T extends z.ZodType>(model: string, instructions: string, input: unknown, schema: T, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>): Promise<z.infer<T>> {
+  async structured<T extends z.ZodType>(model: string, instructions: string, input: unknown, schema: T, extra: Record<string, unknown> = {}, onText?: (delta: string) => Promise<void>, signal?: AbortSignal): Promise<z.infer<T>> {
     const jsonSchema = z.toJSONSchema(schema, { target: 'draft-7' });
     delete jsonSchema.$schema;
     // Decoding is always constrained to the schema. strict:true additionally enforces a subset
@@ -127,18 +133,18 @@ export class MetaClient {
     const { text } = await this.response(model, instructions, input, {
       ...extra,
       text: { format: { type: 'json_schema', name: 'fairbuy_result', strict: false, schema: jsonSchema } },
-    }, onText);
+    }, onText, signal);
     try { return schema.parse(JSON.parse(text)); }
     catch { throw new AppError(502, 'The AI returned data that failed validation. Nothing was changed; please retry.', 'AI_INVALID_DATA'); }
   }
-  async research(model: string, instructions: string, context: unknown): Promise<Research> {
+  async research(model: string, instructions: string, context: unknown, signal?: AbortSignal): Promise<Research> {
     const { data, text, content } = await this.response(model, instructions, context, {
       reasoning: { effort: this.config.DISCOVERY_REASONING_EFFORT },
       tools: [{ type: 'web_search', search_context_size: 'medium' }],
       include: ['web_search_call.results'],
       // Preserve the reasoning budget; latency changes acceptance, not reasoning quality.
       max_output_tokens: 16000,
-    });
+    }, undefined, signal);
     if (!data.output.some(o => o.type === 'web_search_call' && o.status === 'completed')) throw new AppError(502, 'No completed web search was returned. No unsourced products were accepted.', 'SEARCH_NOT_RUN');
     const sources = [
       ...data.output.flatMap(o => o.results ?? []),
