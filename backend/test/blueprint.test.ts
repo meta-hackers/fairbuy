@@ -10,6 +10,13 @@ const project = blueprint.projects[0];
 const environment = project.environments[0];
 const service = environment.services[0];
 
+const stageConfigs = [
+  ['ASK_MODEL', 'ASK_REASONING_EFFORT'],
+  ['CONFIGURE_MODEL', 'CONFIGURE_REASONING_EFFORT'],
+  ['DISCOVERY_MODEL', 'DISCOVERY_REASONING_EFFORT'],
+] as const;
+const supportedStageModels = ['muse-spark-1.3', 'muse-spark-1.3-contributor', 'muse-wonder-1.0'];
+
 describe('Render web deployment with Supabase PostgreSQL', () => {
   it('groups the web service in the fairbuy production project without a Render database', () => {
     expect(blueprint.projects).toHaveLength(1);
@@ -52,13 +59,23 @@ describe('Render web deployment with Supabase PostgreSQL', () => {
     expect(() => settings({ INSTANT_CLASSIFIER_MODEL: model })).not.toThrow();
   });
 
-  it('configures independent reasoning effort defaults for each stage', () => {
-    const efforts = service.envVars.filter((env: { key: string }) => env.key.endsWith('REASONING_EFFORT'));
-    expect(efforts.map((env: { key: string }) => env.key).sort()).toEqual(
-      ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'],
-    );
-    for (const env of efforts as { key: string; value: string }[]) {
-      expect(() => settings({ [env.key]: env.value })).not.toThrow();
+  it('uses a supported Meta reasoning model for every stage', () => {
+    const stageModelKeys: string[] = stageConfigs.map(([modelKey]) => modelKey);
+    const models = service.envVars.filter((env: { key: string }) => stageModelKeys.includes(env.key));
+    expect(models.map((env: { key: string }) => env.key).sort()).toEqual([...stageModelKeys].sort());
+    for (const env of models as { key: string; value: string }[]) {
+      expect(supportedStageModels).toContain(env.value);
+    }
+  });
+
+  it('accepts the configured model and reasoning effort for every stage', () => {
+    const envVars = Object.fromEntries(
+      service.envVars.map((env: { key: string; value: string }) => [env.key, env.value]),
+    ) as Record<string, string>;
+    for (const [modelKey, effortKey] of stageConfigs) {
+      expect(envVars).toHaveProperty(modelKey);
+      expect(envVars).toHaveProperty(effortKey);
+      expect(() => settings({ [modelKey]: envVars[modelKey], [effortKey]: envVars[effortKey] })).not.toThrow();
     }
   });
 

@@ -3,6 +3,11 @@ import { settings } from '../src/settings';
 import { verifyPassword } from '../src/admin';
 
 const effortKeys = ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'] as const;
+const modelKeyForEffort = {
+  ASK_REASONING_EFFORT: 'ASK_MODEL',
+  CONFIGURE_REASONING_EFFORT: 'CONFIGURE_MODEL',
+  DISCOVERY_REASONING_EFFORT: 'DISCOVERY_MODEL',
+} as const;
 
 describe('HTTP port binding configuration', () => {
   it('uses the documented fallback when PORT is unset or empty', () => {
@@ -70,8 +75,20 @@ describe('per-stage reasoning effort settings', () => {
     }
   });
 
+  it.each(effortKeys)('allows max reasoning on standard models for %s', key => {
+    for (const model of ['muse-spark-1.3', 'muse-wonder-1.0']) {
+      expect(settings({ [modelKeyForEffort[key]]: model, [key]: 'max' })[key]).toBe('max');
+    }
+  });
+
+  it.each(effortKeys)('rejects none and max reasoning with the contributor model for %s', key => {
+    for (const effort of ['none', 'max']) {
+      expect(() => settings({ [modelKeyForEffort[key]]: 'muse-spark-1.3-contributor', [key]: effort })).toThrow();
+    }
+  });
+
   it.each(effortKeys)('rejects unsupported values for %s', key => {
-    for (const effort of ['', 'max', 'LOW', 'invalid']) {
+    for (const effort of ['', 'none', 'LOW', 'invalid']) {
       expect(() => settings({ [key]: effort })).toThrow();
     }
   });
