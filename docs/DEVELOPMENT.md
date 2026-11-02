@@ -16,11 +16,10 @@ Set `MODEL_API_KEY` in `.env`, then:
 
 ```bash
 npm run db:migrate
-npm run catalog:seed   # optional: startup also inserts missing seed domains
 npm run dev
 ```
 
-Open **http://localhost:5173**. Vite proxies the API to `PORT` from the root `.env` or process environment, falling back to port 4000. The example database password is for local development only.
+Open **http://localhost:5173**. Discovery starts with the bundled catalog fallback. To load the published catalog, set `CATALOG_URL`/`CATALOG_SYNC_ON_START` or use **Backoffice → Sources → Sync from GitHub** on the backend port. Vite proxies the API to `PORT` from the root `.env` or process environment, falling back to port 4000. The example database password is for local development only.
 
 ### Optional instant classifier
 

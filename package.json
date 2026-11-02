@@ -12,9 +12,6 @@
     "start": "node --env-file-if-exists=.env --env-file-if-exists=.env.backoffice backend/dist/main.js",
     "admin:create": "node scripts/create-admin.mjs",
     "db:migrate": "node --env-file-if-exists=.env --import tsx backend/src/migrate.ts",
-    "catalog:seed": "node --env-file-if-exists=.env --import tsx scripts/seed-source-catalog.ts",
-    "catalog:export": "node --env-file-if-exists=.env --import tsx scripts/seed-source-catalog.ts --export",
-    "catalog:seed:dist": "node --env-file-if-exists=.env backend/dist/seed-source-catalog.js",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check:blueprint": "node scripts/validate-blueprint.mjs"

@@ -3,7 +3,6 @@ import { MemoryStore, PostgresStore } from './store';
 import { DemoAIProvider } from './ai/demo';
 import { LiveAIProvider } from './ai/provider';
 import { SourceCatalogService } from './source-catalog';
-import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
 import { ShoppingService } from './shopping-service';
 import { createApp } from './app';
 import { startWorker } from './worker';
@@ -13,31 +12,31 @@ import { logger } from './logger';
 const config = settings();
 if (!config.DATABASE_URL && config.FAIRBUY_MODE !== 'demo') throw new Error('Live mode requires DATABASE_URL. Use FAIRBUY_MODE=demo for an explicitly synthetic, ephemeral preview.');
 const store = config.DATABASE_URL ? new PostgresStore(config.DATABASE_URL) : new MemoryStore();
-const sourceCatalog = new SourceCatalogService(store);
-const seedSourceCatalog = () => sourceCatalog.seed(SOURCE_CATALOG_SEED, 'insert-missing', 'startup-seed');
-// Memory mode has no migration step, but it still needs the seed catalog.
-if (!(store instanceof PostgresStore)) await seedSourceCatalog();
+// The bundled seed is available immediately; the published catalog can replace
+// it on startup and on an admin-triggered sync without touching discovery latency.
+const sourceCatalog = new SourceCatalogService(config);
 // Readiness gate: /healthz (liveness) passes as soon as we listen; /health
-// (readiness) passes only after migrations and the baseline catalog seed succeed.
+// (readiness) passes only after migrations succeed.
 let ready = !(store instanceof PostgresStore);
 const ai = config.FAIRBUY_MODE === 'demo' ? new DemoAIProvider()
   : new LiveAIProvider(config, fetch, undefined, sourceCatalog);
 const service = new ShoppingService(store, ai, config.FAIRBUY_MODE, new UsageStore(store instanceof PostgresStore ? store.pool : undefined), config);
-const app = createApp(service, config, undefined, undefined, () => ready);
+const app = createApp(service, config, undefined, undefined, () => ready, sourceCatalog);
 // config.PORT is the validated numeric equivalent of process.env.PORT || 4000.
 // Render requires binding the public HTTP server to all interfaces.
 const server = app.listen(config.PORT, '0.0.0.0', () => { console.info(`FairBuy listening on port ${config.PORT} (${config.FAIRBUY_MODE}).`); });
+if (config.CATALOG_SYNC_ON_START) {
+  void sourceCatalog.sync().then(status => {
+    if (status.error) logger.warn('source_catalog.startup.failed', { error: status.error });
+    else logger.info('source_catalog.startup.synced', { entries: status.count, version: status.version });
+  });
+}
 
 async function migrateWithRetry(attempts = 12) {
   if (!(store instanceof PostgresStore)) return;
   for (let attempt = 1; ; attempt++) {
-    try {
-      await store.migrate();
-      const report = await seedSourceCatalog();
-      ready = true;
-      logger.info('database.ready', { catalog: report });
-      return;
-    } catch (error) {
+    try { await store.migrate(); ready = true; logger.info('database.ready', {}); return; }
+    catch (error) {
       logger.error('database.migration.retrying', { attempt, error: error instanceof Error ? error.name : 'unknown' });
       if (attempt >= attempts) { logger.error('database.migration.failed', { attempts }); throw error; }
       await new Promise(resolve => setTimeout(resolve, Math.min(5000 * attempt, 30000)));

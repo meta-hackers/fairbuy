@@ -3,8 +3,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
-import { SOURCE_ROLES, SOURCE_VERTICALS, SourceEntrySchema } from '@fairbuy/core';
-import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
+import { SOURCE_ROLES, SOURCE_VERTICALS } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { PostgresStore } from './store';
@@ -25,10 +24,9 @@ export async function verifyPassword(password: string, encoded: string) {
   return timingSafeEqual(actual, Buffer.from(expected, 'hex'));
 }
 interface LoginSession { username: string; credential_hash: string; expires_at: Date }
-export function adminRouter(service: ShoppingService, config: Settings) {
+export function adminRouter(service: ShoppingService, config: Settings, catalog = new SourceCatalogService(config)) {
   const router = Router();
   const pool = service.store instanceof PostgresStore ? service.store.pool : null;
-  const catalog = new SourceCatalogService(service.store);
   const sessions = new Map<string, LoginSession>();
   const cookieOptions = { httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'strict' as const, path: '/api/admin' };
   router.use((_req, _res, next) => {
@@ -97,24 +95,16 @@ export function adminRouter(service: ShoppingService, config: Settings) {
   });
   router.get('/sources', async (_req, res) => {
     res.json({
-      entries: await catalog.views(), roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
-      builtinCount: SOURCE_CATALOG_SEED.length,
+      ...catalog.status(), entries: await catalog.effective(),
+      roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
     });
   });
-  router.put('/sources/:domain', async (req, res) => {
-    const domain = z.string().trim().min(3).max(253).parse(req.params.domain).toLowerCase();
-    const { entry } = z.object({ entry: SourceEntrySchema }).strict().parse(req.body);
-    res.json({ entry: await catalog.save(domain, entry, res.locals.admin) });
-  });
-  router.delete('/sources/:domain', async (req, res) => {
-    const domain = z.string().trim().min(3).max(253).parse(req.params.domain).toLowerCase();
-    await catalog.remove(domain, res.locals.admin);
-    res.status(204).end();
-  });
-  router.post('/sources/reset', async (req, res) => {
-    z.object({ confirm: z.literal('reset') }).strict().parse(req.body);
-    await catalog.resetAll(res.locals.admin);
-    res.status(204).end();
+  router.post('/sources/sync', async (_req, res) => {
+    const status = await catalog.sync();
+    res.json({
+      ...status, entries: await catalog.effective(),
+      roles: SOURCE_ROLES, verticals: SOURCE_VERTICALS,
+    });
   });
   router.use((_req, _res, next) => next(new AppError(404, 'Admin endpoint not found.')));
   return router;

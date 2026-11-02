@@ -55,42 +55,34 @@ is rate limited. Admin writes use the existing same-origin/header CSRF protectio
 
 ## Discovery source catalog
 
-The **Sources** tab in the backoffice lists the category- and country-aware
-discovery hints described in [source hints](SOURCES.md). Each entry has a
-domain, display name, roles (`seller`, `marketplace`, `spec`, `review`,
-`comparison`), verticals, country coverage or `global`, priority (1-3), an
-optional note and an enabled flag.
+The **Sources** tab is a read-only view of the catalog published by the separate
+[fairbuy-sources-catalog](https://github.com/meta-hackers/fairbuy-sources-catalog)
+repository. Canonical data lives in that repository's `sources.json`; the public
+page is https://meta-hackers.github.io/fairbuy-sources-catalog/.
 
-The database `source_catalog` table is the runtime source of truth. The seed
-file `data/source-catalog.ts` is the reviewed baseline; startup applies it with
-`insert-missing`, and `npm run catalog:seed` applies explicit updates. Each row
-stores the effective `entry`, the seeded `default_entry`, the seed version and
-the last editor. Saving an edit changes `entry`; resetting restores
-`default_entry`; deleting a custom entry removes the row. Custom domains can be
-added. Disabling an entry keeps it in the catalog for role enforcement: a
-disabled specification source is still never accepted as an offer URL.
+The app starts with a bundled fallback snapshot (`data/source-catalog.ts`).
+Clicking **Sync from GitHub** calls `POST /api/admin/sources/sync`, which:
 
-Changes apply to the next discovery round; an in-flight round keeps the plan it
-started with. The admin API is:
+- fetches `CATALOG_URL` over HTTPS with a 10 s timeout, no redirects and a 512 KB cap;
+- requires a `schemaVersion: 1` envelope with an `entries` array;
+- validates every entry with `SourceEntrySchema` and rejects duplicate domains;
+- swaps the in-memory catalog atomically only when the whole payload is valid.
 
-- `GET /api/admin/sources`: database entries, their `default`/`modified`/`custom`
-  origin, the optional `defaultEntry`, roles, verticals and the seed-file count.
-- `PUT /api/admin/sources/:domain`: JSON `{ "entry": { ... } }`. Creates a custom
-  entry or replaces the effective entry. The path domain and `entry.domain` must
-  match.
-- `DELETE /api/admin/sources/:domain`: restores a seeded entry to its default, or
-  deletes a custom entry.
-- `POST /api/admin/sources/reset`: JSON `{ "confirm": "reset" }`; restores every
-  seeded default and deletes every custom entry.
+On failure it keeps the last-known-good catalog and shows the error. Discovery
+never fetches GitHub directly; an in-flight round keeps the plan it started with.
 
-To merge runtime edits back into the seed file, run `npm run catalog:export` and
-review the JSON before editing `data/source-catalog.ts`.
+The Sources view shows entries, source (`GitHub` or `Bundled fallback`), last
+sync time, version, count and the configured URL. It has filters but no editor:
+edit `sources.json` in the catalog repository and open a PR. CI validates it and
+GitHub Pages publishes it. `CATALOG_SYNC_ON_START=true` also attempts a background
+sync at startup; it never blocks readiness.
 
-Catalog writes use the same admin session, same-origin/header CSRF protection
-and request logging as other admin actions. `updated_at` and `updated_by` are
-shown in the UI; the server also logs the admin and domain on each change.
-Catalog hints are not evidence: the discovery grounding and non-seller
-validation described in [source hints](SOURCES.md) still apply.
+The admin API is:
+
+- `GET /api/admin/sources`: current entries plus source status, roles and verticals.
+- `POST /api/admin/sources/sync`: fetch, validate and replace the catalog.
+
+Both routes require an admin session; the POST also requires the normal CSRF header.
 
 ## Data and retention
 
@@ -124,7 +116,7 @@ Admin API additions:
 
 - `GET /api/admin/sessions/:sessionId/history`: ordered immutable revisions and snapshots.
 - `POST /api/admin/sessions/:sessionId/purge`: JSON `{ "confirmSessionId": "<same UUID>" }`; returns `204`.
-- `GET /api/admin/sources` and the source catalog write routes described above.
+- `GET /api/admin/sources` and `POST /api/admin/sources/sync` as described above.
 - `GET /api/admin/me`: `retentionDays: null` indicates no automatic expiry.
 
 ## Token accounting and approximate costs

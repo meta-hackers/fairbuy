@@ -1,9 +1,13 @@
 import type { SourceEntry, SourceRole, Vertical } from '@fairbuy/core';
 
-// Seed data for the discovery source catalog. This file is data, not app logic:
-// edit it with the catalog seed script or the backoffice, then run
-// `npm run catalog:seed` to persist changes. The seed script validates every
-// entry with SourceEntrySchema before writing.
+// Bundled fallback snapshot for the discovery source catalog.
+//
+// Canonical data: https://github.com/meta-hackers/fairbuy-sources-catalog
+// Published JSON:  https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json
+//
+// FairBuy starts with this snapshot, then replaces it in memory when an admin
+// syncs the published JSON. Keep this file as a safe offline fallback; edit the
+// canonical catalog repository for normal changes.
 const PRODUCT_VERTICALS: Vertical[] = ['computers', 'electronics', 'home', 'fashion', 'sports', 'books', 'auto', 'general'];
 
 function entry(

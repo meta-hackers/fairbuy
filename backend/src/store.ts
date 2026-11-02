@@ -4,20 +4,13 @@ import { readFile } from 'node:fs/promises';
 import {
   EMPTY_CONFIG, rankProducts,
   type AttrValue, type ChatMessage, type DiscoveryContext, type DiscoveryRound, type Feedback,
-  type Field, type FinalPrice, type Offer, type Product, type Requirement, type ShoppingConfig, type ShoppingSession, type Source, type SourceEntry,
+  type Field, type FinalPrice, type Offer, type Product, type Requirement, type ShoppingConfig, type ShoppingSession, type Source,
 } from '@fairbuy/core';
 import { AppError } from './errors';
 import { logger } from './logger';
 import type { SessionStartup } from './session-startup';
 
 export interface Job { id: string; sessionId: string; attempts: number }
-export interface SourceCatalogRecord {
-  domain: string; entry: SourceEntry; defaultEntry: SourceEntry | null;
-  seedVersion: string | null; updatedAt: string; updatedBy: string;
-}
-export interface SourceCatalogWrite {
-  domain: string; entry: SourceEntry; defaultEntry: SourceEntry | null; seedVersion: string | null;
-}
 export interface SessionRevision {
   version: number; parentVersion: number | null; kind: 'created' | 'migrated' | 'changed' | 'archived';
   archived: boolean; revokedFeedbackIds: string[]; createdAt: string; session: ShoppingSession;
@@ -35,11 +28,6 @@ export interface Store {
   purge(id: string): Promise<void>;
   claim(): Promise<Job | null>;
   finish(job: Job): Promise<void>;
-  listSourceCatalog(): Promise<SourceCatalogRecord[]>;
-  getSourceCatalog(domain: string): Promise<SourceCatalogRecord | null>;
-  upsertSourceCatalog(record: SourceCatalogWrite, admin: string): Promise<void>;
-  resetSourceCatalogEntry(domain: string, admin: string): Promise<void>;
-  resetSourceCatalog(admin: string): Promise<void>;
   health(): Promise<void>;
   close(): Promise<void>;
 }
@@ -265,8 +253,6 @@ export class PostgresStore implements Store {
         await client.query('ALTER TABLE shopping_sessions DROP COLUMN IF EXISTS data');
       }
       await client.query(await readFile(new URL('../migrations/004_session_versions.sql', import.meta.url), 'utf8'));
-      await client.query(await readFile(new URL('../migrations/005_source_catalog.sql', import.meta.url), 'utf8'));
-      await client.query(await readFile(new URL('../migrations/006_source_catalog_table.sql', import.meta.url), 'utf8'));
       // A single baseline preserves the state available at upgrade time. Earlier
       // revisions cannot be reconstructed from the old mutable tables.
       const baselines = await client.query<{ id: string }>('SELECT id FROM shopping_sessions s WHERE NOT EXISTS (SELECT 1 FROM session_versions v WHERE v.session_id = s.id)');
@@ -403,40 +389,6 @@ export class PostgresStore implements Store {
     return row ? { id: row.id, sessionId: row.session_id, attempts: row.attempts } : null;
   }
   async finish(job: Job) { await this.pool.query("UPDATE discovery_jobs SET state = 'done', lease_until = NULL WHERE id = $1 AND attempts = $2", [job.id, job.attempts]); }
-  async listSourceCatalog() {
-    const { rows } = await this.pool.query<SourceCatalogRecord>(`SELECT domain, entry, default_entry AS "defaultEntry",
-      seed_version AS "seedVersion", updated_at AS "updatedAt", updated_by AS "updatedBy" FROM source_catalog ORDER BY domain`);
-    return rows.map(row => ({ ...row, updatedAt: new Date(row.updatedAt).toISOString() }));
-  }
-  async getSourceCatalog(domain: string) {
-    const { rows } = await this.pool.query<SourceCatalogRecord>(`SELECT domain, entry, default_entry AS "defaultEntry",
-      seed_version AS "seedVersion", updated_at AS "updatedAt", updated_by AS "updatedBy" FROM source_catalog WHERE domain = $1`, [domain]);
-    const row = rows[0];
-    return row ? { ...row, updatedAt: new Date(row.updatedAt).toISOString() } : null;
-  }
-  async upsertSourceCatalog(record: SourceCatalogWrite, admin: string) {
-    await this.pool.query(`INSERT INTO source_catalog(domain, entry, default_entry, seed_version, updated_by)
-      VALUES ($1, $2::jsonb, $3::jsonb, $4, $5)
-      ON CONFLICT (domain) DO UPDATE SET entry = EXCLUDED.entry, default_entry = EXCLUDED.default_entry,
-        seed_version = EXCLUDED.seed_version, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [record.domain, JSON.stringify(record.entry), record.defaultEntry ? JSON.stringify(record.defaultEntry) : null, record.seedVersion, admin]);
-  }
-  async resetSourceCatalogEntry(domain: string, admin: string) {
-    await this.pool.query(`WITH reset AS (
-      UPDATE source_catalog SET entry = default_entry, updated_at = now(), updated_by = $2
-      WHERE domain = $1 AND default_entry IS NOT NULL RETURNING domain
-    ) DELETE FROM source_catalog WHERE domain = $1 AND default_entry IS NULL`, [domain, admin]);
-  }
-  async resetSourceCatalog(admin: string) {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('UPDATE source_catalog SET entry = default_entry, updated_at = now(), updated_by = $1 WHERE default_entry IS NOT NULL', [admin]);
-      await client.query('DELETE FROM source_catalog WHERE default_entry IS NULL');
-      await client.query('COMMIT');
-    } catch (error) { await client.query('ROLLBACK'); throw error; }
-    finally { client.release(); }
-  }
   async health() { await this.pool.query('SELECT 1'); }
   async close() { await this.pool.end(); }
 
@@ -812,36 +764,6 @@ export class MemoryStore implements Store {
     return { id: job.id, sessionId: job.sessionId, attempts: job.attempts };
   }
   async finish(job: Job) { const entry = this.jobs.get(job.id); if (entry && entry.attempts === job.attempts) entry.state = 'done'; }
-  private sourceCatalog = new Map<string, SourceCatalogRecord>();
-  async listSourceCatalog() {
-    return structuredClone([...this.sourceCatalog.values()]).sort((a, b) => a.domain.localeCompare(b.domain));
-  }
-  async getSourceCatalog(domain: string) {
-    const record = this.sourceCatalog.get(domain);
-    return record ? structuredClone(record) : null;
-  }
-  async upsertSourceCatalog(record: SourceCatalogWrite, admin: string) {
-    this.sourceCatalog.set(record.domain, {
-      ...structuredClone(record), updatedAt: new Date().toISOString(), updatedBy: admin,
-    });
-  }
-  async resetSourceCatalogEntry(domain: string, admin: string) {
-    const record = this.sourceCatalog.get(domain);
-    if (!record) return;
-    if (record.defaultEntry) {
-      this.sourceCatalog.set(domain, {
-        ...record, entry: structuredClone(record.defaultEntry), updatedAt: new Date().toISOString(), updatedBy: admin,
-      });
-    } else {
-      this.sourceCatalog.delete(domain);
-    }
-  }
-  async resetSourceCatalog(admin: string) {
-    for (const [domain, record] of [...this.sourceCatalog]) {
-      if (record.defaultEntry) await this.resetSourceCatalogEntry(domain, admin);
-      else this.sourceCatalog.delete(domain);
-    }
-  }
   async health() {}
   async close() {}
 }
