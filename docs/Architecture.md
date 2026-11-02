@@ -84,6 +84,17 @@ Offers that never reach ranking are not silent either. Extraction records each d
 
 `roundOutcome()` tells an empty round apart: no pages retrieved, pages without a verifiable offer, or offers that all failed a check. Discovery shows these in a "Why these results" panel, separately from ranking exclusions, and the backoffice shows them per round. A product that never appeared in the research is reported as not found, never as rejected.
 
+Users can also ask about one product by name or reference ("Why isn't it here?"). `explainMissing()` matches the name, or the reference number with punctuation ignored, against the latest round, and picks the first cause that applies:
+
+1. shown in the results;
+2. removed through feedback;
+3. found but excluded, with the exclusion reasons;
+4. dropped during extraction, with the drop reason;
+5. mentioned on a retrieved page with no verifiable offer;
+6. never retrieved.
+
+If none can be determined, for example because the search returned no pages, it says so. Each answer has next steps that match its cause, plus a summary of what was searched. Answers come only from stored round data, never from a model. They are kept in `round.missingQuestions` (last 20) and shown in the backoffice.
+
 ## Persistence, queue and security
 
 - `shopping_sessions`: immutable identity, owner hash and startup configuration. Legacy mutable columns remain for upgrade compatibility but are not current-state projections. `expires_at` is ignored; new identities have no expiry.
