@@ -82,4 +82,15 @@ describe('provisional instant-classifier contracts', () => {
     expect(instantHints({ ...empty, budget: { amount: 700, currency: null, hard: true, evidence: 'max 700' } })).toEqual([{ kind: 'Budget', text: '700 · firm', evidence: 'max 700' }]);
     expect(instantHints({ ...empty, clarification: 'Which baby product?' })).toEqual([]);
   });
+  it('fills a missing currency only when the budget quote names exactly one', () => {
+    const budget = (evidence: string, currency: string | null = null) =>
+      groundInstantClassification({ ...empty, budget: { amount: 500, currency, hard: false, evidence } }, evidence).budget?.currency;
+    expect(budget('circa 500 euro')).toBe('EUR');
+    expect(budget('environ 500 €')).toBe('EUR');
+    expect(budget('bis 500 CHF')).toBe('CHF');
+    expect(budget('budget $500')).toBeNull();
+    expect(budget('¥500')).toBeNull();
+    expect(budget('500 EUR or CHF 500')).toBeNull();
+    expect(budget('around 500')).toBeNull();
+  });
 });

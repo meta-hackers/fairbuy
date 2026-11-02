@@ -63,6 +63,12 @@ export function groundInstantClassification(value: unknown, text: string): Insta
   let budget = parsed.budget && grounded(parsed.budget.evidence) && hasAmount(parsed.budget.evidence, parsed.budget.amount) ? parsed.budget : null;
   if (budget) {
     if (budget.currency && !hasCurrencyMarker(budget.currency, budget.evidence)) budget = { ...budget, currency: null };
+    // Small models often leave the currency empty for "500 euro" or "400 €". The quote
+    // itself names it, so fill it only when exactly one currency is unmistakable.
+    if (!budget.currency) {
+      const named = CurrencySchema.options.filter(currency => hasCurrencyMarker(currency, budget!.evidence));
+      if (named.length === 1) budget = { ...budget, currency: named[0] };
+    }
     // A model must not silently turn an approximate budget into a hard ceiling.
     if (/\b(around|about|approximately|environ|circa|ungefahr)\b/.test(normalize(budget.evidence))) budget = { ...budget, hard: false };
   }
