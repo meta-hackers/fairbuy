@@ -30,4 +30,4 @@ This is a consolidation, not two demos embedded behind a switch. There is one fr
 
 Automated coverage includes ranking/unknown costs/currency/unit handling; AI REST payloads, strict-output failures and citations; source/evidence rejection; owner isolation/CSRF/access gate/input limits; full feedback-context restart and Undo; PostgreSQL persistence, row locking, exclusive job leases, recovery and deletion; desktop/320/390 px browser flows. Provider tests mock HTTP and browser tests use clearly labelled synthetic products.
 
-Real Meta Model API billing, model access, seller-page freshness and actual Render synchronization must still be checked after secrets are configured. Blueprint validation verifies structure, not account permissions, resource provisioning or model availability.
+Real Meta Model API billing, model access, seller-page freshness and actual Render deployment must still be checked after secrets are configured. Automated tests do not verify live Render settings, account permissions, resource provisioning or model availability.

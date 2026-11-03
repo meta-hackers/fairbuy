@@ -7,33 +7,34 @@
 - Access to Render **My Workspace** and the Supabase `fairbuy` project. The app does not use Supabase Auth or the browser Data API.
 - A Meta Model API key from [dev.meta.ai](https://dev.meta.ai) with billing, access to the configured model (`muse-spark-1.3-contributor`), the Responses API (search grounding) and structured output. Pay-as-you-go Contributor mode is lower cost in exchange for Meta possibly using submitted content to train its models.
 
-## Blueprint
+## Blueprint sync and direct Discovery configuration
 
-The root `render.yaml` defines the web deployment, not a Render PostgreSQL instance:
+The root `render.yaml` declares infrastructure and synchronized settings. `DISCOVERY_MODEL` uses `sync: false`: set it directly to `muse-spark-1.3-contributor` on the existing Render service. Blueprint syncs preserve this value and all secrets.
+
+The previous Blueprint `exs-dbjgfmmtlv9c73d5gjng` was disconnected. Restoring YAML alone does not reconnect it. First push the updated YAML: the old repository version pins a different Discovery model and must not be synced. Then use the Render Dashboard to create a Blueprint that **adopts the existing service**, enable Auto Sync, and review its plan before approval. The public API does not expose Blueprint creation/reconnection. Verify the target is `srv-dbjgia67bikc73fd27tg`, not a suffixed duplicate; do not approve new services or databases. Record the new Blueprint ID after adoption.
 
 | Resource | Location | Configuration |
 |---|---|---|
 | Render workspace `My Workspace` | `tea-db0m51s9v7es73c21lf0` | Active deployment; select explicitly in the Dashboard/API |
-| Render Blueprint `fairbuy` | `exs-dbjgfmmtlv9c73d5gjng` | Reuse this existing Blueprint |
-| Render project / environment | `fairbuy` / `production` | Declared in the Blueprint |
+| Render project / environment | `fairbuy` / `production` | Preserve the existing grouping |
 | Render web service `fairbuy` | Virginia, `srv-dbjgia67bikc73fd27tg` | Free plan, one instance; https://fairbuy.onrender.com |
 | Supabase project `fairbuy` | `ekhurxapawdqcaqvqrwu`, Ireland (`eu-west-1`) | Database `postgres`, private schema `fairbuy` |
 
-The Blueprint deliberately has no `databases:` declaration or `fromDatabase` reference. Supabase resources are managed separately. A Render project name does **not** select its workspace; workspace ownership must be set explicitly when creating the Blueprint/service.
+Do not provision a Render PostgreSQL instance. Supabase resources are managed separately. A Render project name does **not** select its workspace; select the workspace explicitly.
 
 Do not move the web service to Frankfurt/EU for Meta calls: in testing, Meta Model API returned `404 model_not_found` for both `muse-spark-1.3-contributor` and `muse-spark-1.3` from Frankfurt, while the same key worked from Switzerland and from Render Virginia.
 
-### Create or attach the Blueprint
+### Configure the existing service
 
-1. Configure Supabase as below, then push the deployment changes to `https://github.com/meta-hackers/fairbuy`. The service follows the Blueprint branch; there is no hardcoded `main` override.
-2. In the Render Dashboard, select **My Workspace → Blueprints → fairbuy**. The separate workspace named `fairbuy` is not the active deployment target.
-3. Reuse the existing Blueprint and service IDs above. Retry a failed sync with **Manual Sync**, reviewing/approving its plan if prompted; do not recreate the resources to clear an error. For a genuinely new deployment only, use **New → Blueprint**, or **Generate Blueprint** to adopt existing resources rather than replicate them. Initial Blueprint creation/approval requires the Dashboard; the public API supports validation and updating existing Blueprints but does not expose creation.
-4. Review the sync plan: the project must be `fairbuy`, its environment `production`, the service plan `free`, and there must be **no Render database**. When adopting the API-created service, verify its ID rather than accepting a suffixed duplicate.
-5. Supply or preserve `DATABASE_URL`, `MODEL_API_KEY` and `APP_ACCESS_TOKEN` as secrets. They use `sync: false`; do not paste their values into Git. A later Blueprint sync leaves these variables unchanged, but recreating a service does **not** copy the old service's secrets. A missing `DATABASE_URL` prevents production startup. Keep the app password configured even when the model key is supplied later.
-6. Approve/sync, then verify the Blueprint, project and service all belong to workspace `tea-db0m51s9v7es73c21lf0` and https://fairbuy.onrender.com/healthz succeeds.
+1. In the Render Dashboard, select **My Workspace → fairbuy → production → fairbuy**, or open the [existing service](https://dashboard.render.com/web/srv-dbjgia67bikc73fd27tg). The separate workspace named `fairbuy` is not the active deployment target.
+2. In **Settings**, preserve repository `https://github.com/meta-hackers/fairbuy`, branch `main`, Node runtime, Virginia, Free plan and one instance. Set auto-deploy to **After CI Checks Pass** (`checksPass`). Do not recreate the service.
+3. Set **Build Command** to `npm ci --include=dev && npm run build && npm prune --omit=dev`, **Start Command** to `node --env-file-if-exists=.env --env-file-if-exists=.env.backoffice backend/dist/main.js`, and **Health Check Path** to `/healthz`. Leave the root directory empty and do not set a pre-deploy command.
+4. In **Environment**, preserve all existing secrets and set `DISCOVERY_MODEL=muse-spark-1.3-contributor`. Other declared values are synchronized from `render.yaml`; manual changes to those values can be overwritten by sync. Update individual keys rather than replacing the whole environment. Never set `PORT` manually; Render injects it.
+5. Configure Supabase as below if needed. Preserve `DATABASE_URL`, `MODEL_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `BRAVE_API_KEY`, `APP_ACCESS_TOKEN` and `BACKOFFICE_ADMINS` privately in Render, never Git. Recreating a service does **not** copy its secrets. A missing `DATABASE_URL` prevents production startup.
+6. Deploy to apply environment changes. Verify the service still belongs to workspace `tea-db0m51s9v7es73c21lf0`, then check both https://fairbuy.onrender.com/healthz and https://fairbuy.onrender.com/health. Local code changes require a commit/push before Render can deploy them; changing Render settings does not deploy your local worktree.
 7. Smoke-test live Ask → Configure → Discovery → Learn → Buy using a small request. Check clickable citations and the live/preview banner. Confirm that prices/charges/stock not found in evidence remain unknown. Watch API billing/latency.
 
-Render builds with `npm ci --include=dev && npm run build` and starts with `npm start`. Free web services do not support `preDeployCommand`; instead, the app safely initializes schema at startup before accepting requests. `npm run db:migrate` remains available for explicit maintenance runs. `/healthz` checks database availability, not paid AI access. Without a valid `MODEL_API_KEY`, the app serves setup guidance and never substitutes demo results. `APP_ACCESS_TOKEN` is the fixed app password, not a per-user account.
+Render injects `NODE_ENV=production` during builds too, so `npm ci --include=dev` must install TypeScript/Vite and other build-only dependencies explicitly; prune them after building. Free web services do not support a pre-deploy command. The app listens first, then initializes the schema with retry: `/healthz` is liveness and `/health` is database readiness; neither verifies paid AI access. `npm run db:migrate` remains available for explicit maintenance runs. Without a valid `MODEL_API_KEY`, the app serves setup guidance and never substitutes demo results. `APP_ACCESS_TOKEN` is the fixed app password, not a per-user account.
 
 ## Supabase PostgreSQL
 
@@ -60,13 +61,15 @@ Before upgrading a populated deployment, take and verify a database backup. Star
 
 ### Replacing the initial Render deployment
 
-Render cannot transfer an existing service between workspaces. The active deployment is now back in **My Workspace**, using its original `fairbuy.onrender.com` hostname and the existing Blueprint/service IDs above. Do not move or recreate it as part of ordinary configuration changes. If a future workspace change is explicitly requested, retain all connection/provider/password secrets securely before deleting anything; a replacement service does not inherit them. Disconnect an obsolete Blueprint **before** deleting its resources, otherwise a future sync can recreate them. The previous Render PostgreSQL database has already been removed and must not be reintroduced into the Blueprint.
+Render cannot transfer an existing service between workspaces. The active deployment is in **My Workspace**, using its original `fairbuy.onrender.com` hostname and the existing service ID above. Do not move or recreate it as part of ordinary configuration changes. If a future workspace change is explicitly requested, retain all connection/provider/password secrets securely before deleting anything; a replacement service does not inherit them. Reconnecting Blueprint management must adopt this service, not replace it. The previous Render PostgreSQL database has already been removed and must not be reintroduced.
 
 The owner explicitly approved discarding the initial Render database's data and downtime during this early-stage reset. This is not a general migration policy: take and verify backups before deleting any future populated deployment. Do not remove unrelated services from `My Workspace`.
 
 Automatic deploys wait for GitHub checks to pass. This repository supplies CI with typechecking, build, PostgreSQL tests, Blueprint validation, dependency audit and mobile/desktop browser tests. On first deploy or if no checks run, use Render’s manual deploy controls as needed.
 
 ## Environment
+
+Infrastructure and declared values are synchronized from `render.yaml` once the Blueprint is connected. `DISCOVERY_MODEL` and secrets are managed directly in Render with `sync: false`. For a genuinely new service, supply these values during onboarding; they are not inherited from another service.
 
 | Variable | Default / purpose |
 |---|---|
@@ -75,24 +78,25 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 | `ASK_MODEL` | `muse-spark-1.3-contributor`; question-asking and structured brief. |
 | `CONFIGURE_MODEL` | `muse-spark-1.3-contributor`; Configure and Learn interpretation calls. |
 | `DISCOVERY_MODEL` | `muse-spark-1.3-contributor`; discovery research and evidence extraction. |
-| `ASK_REASONING_EFFORT` | `low`; Ask conversation and structured brief. |
+| `ASK_REASONING_EFFORT` | Render: `minimal` (app default `low`); Ask conversation and structured brief. |
 | `CONFIGURE_REASONING_EFFORT` | `low`; Configure and Learn interpretation calls. |
-| `DISCOVERY_REASONING_EFFORT` | `xhigh`; Meta discovery research. Mechanical evidence extraction stays at `low`, including with Brave search. |
+| `DISCOVERY_REASONING_EFFORT` | Render: `medium` (app default `xhigh`); Meta discovery research. Mechanical evidence extraction stays at `low`, including with Brave search. |
 | `SEARCH_PROVIDER` | `meta` (default; Meta hosted web search, no extra search key) or `brave` (snippet-only; requires `BRAVE_API_KEY`). |
-| `BRAVE_API_KEY` | Required secret only for `SEARCH_PROVIDER=brave` (`sync: false` in Blueprint); the Meta key is still required for interpretation/extraction. |
+| `BRAVE_API_KEY` | Required secret only for `SEARCH_PROVIDER=brave`; the Meta key is still required for interpretation/extraction. |
 | `BRAVE_MIN_INTERVAL_MS` | `1100`; serializes Brave calls in-process. Brave Free permits one request/second, so parallel broad/seller queries would otherwise return `429`. Set `0` only on a plan that allows higher concurrency. |
 | `CATALOG_URL` | Published discovery catalog JSON. Defaults to `https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json`. Must be HTTPS. |
 | `CATALOG_SYNC_ON_START` | `false` (default) loads the persisted database catalog and waits for an admin sync; `true` also tries one background fetch after startup. A fresh database is empty until the first successful sync. |
-| `INSTANT_CLASSIFIER_PROVIDER` | `disabled` unless set; the Blueprint sets `cloudflare`. Preview still requires both Cloudflare credentials and live mode. |
-| `INSTANT_CLASSIFIER_MODEL` | Server default `@cf/meta/llama-3.1-8b-instruct-fp8-fast`; the Blueprint selects `@cf/meta/llama-3.1-8b-instruct-fp8`, and the fallback is `@cf/meta/llama-3.2-3b-instruct`. The 1B model rejects the required JSON Schema requests. Ordinary Instruct models, no separate thinking phase. See [model choices](INSTANT_CLASSIFIER.md#model-choices). |
-| `CLOUDFLARE_ACCOUNT_ID` | Optional server-only account identifier (`sync: false`), 32 hexadecimal characters. Not a Zone ID. |
-| `CLOUDFLARE_API_TOKEN` | Optional server-only Workers AI Read + Edit token restricted to that account (`sync: false`). Never use the Global API Key or expose in `VITE_*`. |
-| `APP_ACCESS_TOKEN` | Fixed app password set in Render (`sync: false` in the Blueprint). Local empty value disables gate; not recommended for a public deployment. |
+| `INSTANT_CLASSIFIER_PROVIDER` | Render: `cloudflare` (app default `disabled`). Preview still requires both Cloudflare credentials and live mode. |
+| `INSTANT_CLASSIFIER_MODEL` | Render and server default: `@cf/meta/llama-3.1-8b-instruct-fp8-fast`; the fallback is `@cf/meta/llama-3.2-3b-instruct`. The 1B model rejects the required JSON Schema requests. Ordinary Instruct models, no separate thinking phase. See [model choices](INSTANT_CLASSIFIER.md#model-choices). |
+| `CLOUDFLARE_ACCOUNT_ID` | Optional server-only account identifier, 32 hexadecimal characters. Not a Zone ID. |
+| `CLOUDFLARE_API_TOKEN` | Optional server-only Workers AI Read + Edit token restricted to that account. Never use the Global API Key or expose in `VITE_*`. |
+| `APP_ACCESS_TOKEN` | Fixed app password set privately in Render. Local empty value disables gate; not recommended for a public deployment. |
+| `BACKOFFICE_ADMINS` | Secret JSON array of administrator usernames with `password` or `passwordHash`; preserve the existing Render value. See [backoffice setup](BACKOFFICE.md#administrator-accounts). |
 | `APP_ORIGIN` | Optional exact HTTPS public origin for a custom domain, with no trailing slash. Default uses Render’s `RENDER_EXTERNAL_URL`. |
 | `FAIRBUY_MODE` | `live`; use `demo` only for an explicitly labelled scripted preview. |
 | `NODE_ENV` | `production` on Render: Secure cookies and database requirement. |
 | `PORT` | Render-injected listen port (normally `10000`); fallback `4000` when unset/empty. The server binds to `0.0.0.0`, as required by [Render port binding](https://render.com/docs/web-services#port-binding). |
-| `NODE_VERSION` | Tested/pinned in Blueprint and `.node-version`. |
+| `NODE_VERSION` | Render: `24.22.1`, matching `.node-version`. |
 
 Reasoning effort settings accept `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. `"max"` is available on `muse-wonder-1.0` and `muse-spark-1.3` but not on `muse-spark-1.3-contributor`. They replace the old shared `REASONING_EFFORT` variable, which is no longer used. Set the per-stage variables in your local `.env` or Render environment and restart/redeploy for changes to take effect.
 
@@ -102,7 +106,7 @@ Use model IDs your account actually supports. Defaults are configurable, not an 
 
 Create a Free Cloudflare account, then open Workers AI → Use REST API → Create a Workers AI API Token. Keep the restricted Read + Edit template and copy the account ID and token into the two server-only variables above. Set `INSTANT_CLASSIFIER_PROVIDER=cloudflare`. No domain, DNS change, Cloudflare Worker or paid plan is required. See [Cloudflare's REST setup](https://developers.cloudflare.com/workers-ai/get-started/rest-api/).
 
-Render never reads a developer's local `.env` automatically. Set these four classifier variables on the existing `fairbuy` service without replacing unrelated environment variables; the Blueprint deliberately leaves credentials as `sync: false`. Deploy the integration code before expecting the new bootstrap flag or preview. Changing secrets alone does not deploy a local worktree. Leave `MODEL_API_KEY`, the main models, database and app password untouched.
+Render never reads a developer's local `.env` automatically. Set these four classifier variables directly on the existing `fairbuy` service without replacing unrelated environment variables. Deploy the integration code before expecting the new bootstrap flag or preview. Changing secrets alone does not deploy a local worktree. Leave `MODEL_API_KEY`, the main models, database and app password untouched.
 
 Cloudflare currently grants 10,000 neurons/day, not 10,000 requests. On Workers Free, excess usage fails until the quota resets; upgrading to Paid allows charges beyond the allowance. Review [current pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/). FairBuy treats all quota/provider/validation errors as a missing preview and keeps Send available. No automatic fallback spends Meta Model API credits. The application has process-local rate/call caps, not a provider-wide spending guarantee.
 
@@ -125,4 +129,4 @@ The default is `SEARCH_PROVIDER=meta`, which uses Meta hosted web search and ret
 
 ## What is not deployed by the code
 
-The Blueprint describes only the Render web deployment; Supabase provisioning and connection secrets are managed separately. Editing/validating YAML alone does not attach live resources to a Blueprint. Verify the workspace and resource IDs after syncing. No resources, external transactions or paid provider calls are created during the test suite. Account auth, seller inventory integrations, screenshots/audio, arbitrary crawling and payments are not implemented.
+The Blueprint manages the Render web deployment, not Supabase provisioning, secrets or the Discovery model value. Editing documentation or validating YAML does not reconnect the Blueprint. Verify the workspace, service ID, environment and health checks after configuration changes. No resources, external transactions or paid provider calls are created during the test suite. Account auth, seller inventory integrations, screenshots/audio, arbitrary crawling and payments are not implemented.

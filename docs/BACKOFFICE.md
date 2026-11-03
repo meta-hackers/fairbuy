@@ -19,7 +19,7 @@ settings using a JSON array of usernames and plaintext passwords:
 ```
 
 Use a separate entry for each administrator. Do not commit real passwords to
-`render.yaml` or Git. Plaintext configuration is converted to scrypt hashes at
+Git. Plaintext configuration is converted to scrypt hashes at
 startup and is never included in API responses. Existing `passwordHash` entries
 remain supported; each entry must contain exactly one of `password` or
 `passwordHash`. Changing a password invalidates existing sessions after restart.

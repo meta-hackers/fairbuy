@@ -74,6 +74,6 @@ Remaining 8B misses are mostly requirements folded into the category ("Windows l
 
 ## Applying model changes
 
-To enable the preview, set `INSTANT_CLASSIFIER_PROVIDER=cloudflare` and provide server-only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Set `INSTANT_CLASSIFIER_MODEL` to one of the IDs above to override the default in the server's `.env` or the Render service environment; don't put credentials in frontend variables. The Render blueprint and `.env.example` select the fast 8B model. An existing Render environment value can override the blueprint, so update it to the fast 8B model when deploying this choice. See [deployment configuration](DEPLOYMENT.md#optional-cloudflare-instant-classifier).
+To enable the preview, set `INSTANT_CLASSIFIER_PROVIDER=cloudflare` and provide server-only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Set `INSTANT_CLASSIFIER_MODEL` to one of the IDs above to override the default in the server's `.env` or the Render service environment; don't put credentials in frontend variables. The existing Render service environment and `.env.example` select the fast 8B model. Manage production values directly on the Render service. See [deployment configuration](DEPLOYMENT.md#optional-cloudflare-instant-classifier).
 
 Model settings are currently read at application startup. Updating a Render environment variable requires a restart/redeploy and takes effect only when the new instance is live; hot reload or a database-backed runtime override is not implemented.

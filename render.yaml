@@ -1,8 +1,5 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
-# Active deployment: the existing "fairbuy" Blueprint in Render "My Workspace".
-# Reuse that Blueprint/service; do not create a duplicate in another workspace.
-# Workspace ownership is set in Render, not by the project name below.
-# Keep the web service in Virginia for Meta Model API access.
+# Keep the existing Virginia service in Render "My Workspace".
 # PostgreSQL is hosted by Supabase; do not provision a Render database.
 projects:
   - name: fairbuy
@@ -16,14 +13,9 @@ projects:
             region: virginia
             plan: free
             numInstances: 1
-            # Render injects NODE_ENV=production into the build too, and `npm ci`
-            # then omits devDependencies. TypeScript, Vite and the React type
-            # packages are build-only, so they must be installed explicitly;
-            # prune them again afterwards to keep the runtime image small.
+            # Build tools are devDependencies, including with NODE_ENV=production.
             buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
-            # Free services do not support preDeployCommand; the app listens first,
-            # then migrates with retry. /healthz is liveness, /health is readiness.
-            # Never set PORT manually: Render injects it (normally 10000).
+            # Free services migrate after listening. /healthz is liveness.
             startCommand: node --env-file-if-exists=.env --env-file-if-exists=.env.backoffice backend/dist/main.js
             healthCheckPath: /healthz
             autoDeployTrigger: checksPass
@@ -35,8 +27,6 @@ projects:
               - key: FAIRBUY_MODE
                 value: live
               - key: DATABASE_URL
-                # Supabase Session pooler (IPv4, port 5432), verified TLS,
-                # dedicated fairbuy_app role with the private fairbuy schema.
                 sync: false
               - key: MODEL_API_KEY
                 sync: false
@@ -53,7 +43,9 @@ projects:
               - key: CONFIGURE_MODEL
                 value: muse-spark-1.3-contributor
               - key: DISCOVERY_MODEL
-                value: muse-wonder-1.0
+                # Managed directly in Render: muse-spark-1.3-contributor.
+                # Blueprint syncs must not overwrite the operator's choice.
+                sync: false
               - key: ASK_REASONING_EFFORT
                 value: minimal
               - key: CONFIGURE_REASONING_EFFORT
@@ -71,6 +63,6 @@ projects:
               - key: CATALOG_SYNC_ON_START
                 value: "false"
               - key: APP_ACCESS_TOKEN
-                sync: false # preserve the app password; never commit it
+                sync: false
               - key: BACKOFFICE_ADMINS
-                sync: false # JSON array of usernames with password or passwordHash; configure privately in Render
+                sync: false
