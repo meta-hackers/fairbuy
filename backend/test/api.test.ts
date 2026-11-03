@@ -7,6 +7,8 @@ import { MemoryStore } from '../src/store';
 import { ShoppingService } from '../src/shopping-service';
 import { settings } from '../src/settings';
 import { ConfigSchema, RANKING_VERSION, formatQuestionAnswer } from '@fairbuy/core';
+import { ProductImageResolver } from '../src/product-image-resolver';
+import { logger } from '../src/logger';
 
 function setup(extra: Record<string, string> = {}) {
   const config = settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo', ...extra });
@@ -16,6 +18,55 @@ function setup(extra: Record<string, string> = {}) {
   const app = createApp(service, config);
   return { app, store, service };
 }
+describe('product image recovery and browser diagnostics', () => {
+  it('serves recovered images for an owned saved product, including older rounds', async () => {
+    const { app, store, service } = setup(); const client = request.agent(app);
+    const send = (path: string, body?: object) => client.post(path).set('X-Fairbuy-Request', '1').send(body);
+    const { body: created } = await send('/api/sessions');
+    await send(`/api/sessions/${created.id}/ask`, { message: 'A laptop for coding in Italy' });
+    await send(`/api/sessions/${created.id}/discovery`);
+    await service.runJob((await store.claim())!);
+    const saved = await store.get(created.id);
+    const product = saved.rounds[0].products[0];
+    expect(product.imageUrl).toBeNull();
+    const resolve = vi.spyOn(ProductImageResolver.prototype, 'get').mockResolvedValue({ body: Buffer.from('test-image'), contentType: 'image/png' });
+    try {
+      const path = `/api/sessions/${created.id}/products/${product.id}/image`;
+      await request(app).get(path).expect(404);
+      expect(resolve).not.toHaveBeenCalled();
+      const response = await client.get(path).expect(200);
+      expect(response.headers['content-type']).toBe('image/png');
+      expect(response.headers['cache-control']).toBe('private, max-age=3600');
+      expect(resolve).toHaveBeenCalledWith(expect.objectContaining({ id: product.id, imageUrl: null }));
+      await client.get(`/api/sessions/${created.id}/products/unknown/image`).expect(404);
+      // A newer empty round must not make earlier products inaccessible.
+      await send(`/api/sessions/${created.id}/discovery`);
+      await client.get(path).expect(200);
+      resolve.mockResolvedValueOnce(null);
+      const unavailable = await client.get(path).expect(404);
+      expect(unavailable.body.code).toBe('IMAGE_UNAVAILABLE');
+      expect(unavailable.headers['cache-control']).toBe('no-store');
+    } finally { resolve.mockRestore(); }
+  });
+
+  it('accepts bounded browser error metadata but refuses console text and URLs', async () => {
+    const { app } = setup(); const client = request.agent(app);
+    const log = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    const event = { kind: 'runtime_error', errorType: 'TypeError', asset: '/assets/index-abcd.js', line: 4, column: 20 };
+    const post = (body: object) => client.post('/api/client-events').set('X-Fairbuy-Request', '1').send(body);
+    try {
+      await client.post('/api/client-events').send(event).expect(403);
+      await post(event).expect(204);
+      expect(log).toHaveBeenCalledWith('client.error', event);
+      await post({ ...event, message: 'private chat text' }).expect(400);
+      await post({ ...event, asset: 'https://seller.org/private?token=secret' }).expect(400);
+      await post({ kind: 'unhandled_rejection', errorType: 'UnknownError' }).expect(204);
+      await post({ kind: 'image_unavailable', sessionId: 'c6684151-7c26-4dbd-9173-c45d8c9ceab4', productId: 'test-product' }).expect(204);
+      const gated = request(createApp(new ShoppingService(new MemoryStore(), new DemoAIProvider(), 'demo'), settings({ APP_ACCESS_TOKEN: 'private' })));
+      await gated.post('/api/client-events').set('X-Fairbuy-Request', '1').send(event).expect(401);
+    } finally { log.mockRestore(); }
+  });
+});
 describe('missing product questions (issue #23)', () => {
   it('answers from the latest round, keeps the answer and validates the question', async () => {
     const { app, store, service } = setup(); const client = request.agent(app);

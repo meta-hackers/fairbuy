@@ -3,6 +3,8 @@ import { get } from 'node:https';
 import type { Product } from '@fairbuy/core';
 import { safeUrl } from './links';
 import { publicImagePageAddress } from './public-network';
+import { getPublicImage } from './image-proxy';
+import { logger } from './logger';
 
 export { publicImagePageAddress } from './public-network';
 
@@ -60,7 +62,12 @@ function requestPage(url: string, signal?: AbortSignal): Promise<PageResponse> {
       let size = 0;
       response.on('data', (chunk: Buffer) => {
         size += chunk.length;
-        if (size > MAX_PAGE_BYTES) { response.destroy(); finish({ status, location: null, html: null }); }
+        // Large storefronts often exceed the limit, but their head already
+        // contains usable metadata. Keep the bounded prefix instead of losing it.
+        if (size > MAX_PAGE_BYTES) {
+          chunks.push(chunk.subarray(0, Math.max(0, MAX_PAGE_BYTES - (size - chunk.length))));
+          response.destroy(); finish({ status, location: null, html: Buffer.concat(chunks).toString('utf8') });
+        }
         else chunks.push(chunk);
       });
       response.on('end', () => finish({ status, location: null, html: Buffer.concat(chunks).toString('utf8') }));
@@ -83,6 +90,7 @@ async function readPage(value: string, signal?: AbortSignal): Promise<Page | nul
       if (!url) return null;
       continue;
     }
+    if (result.html === null) logger.info('image.page.unavailable', { host: new URL(url).hostname, status: result.status });
     return result.html !== null ? { html: result.html, url } : null;
   }
   return null;
@@ -113,11 +121,12 @@ function productJsonImages(value: unknown, output: string[]): void {
   const types = Array.isArray(object['@type']) ? object['@type'] : [object['@type']];
   if (types.includes('Product')) {
     for (const image of Array.isArray(object.image) ? object.image : [object.image]) {
-      const url = typeof image === 'string' ? image : image && typeof image === 'object' ? (image as Record<string, unknown>).url : null;
+      const url = typeof image === 'string' ? image : image && typeof image === 'object' ? (image as Record<string, unknown>).url ?? (image as Record<string, unknown>).contentUrl : null;
       if (typeof url === 'string') output.push(url);
     }
   }
   if (object['@graph']) productJsonImages(object['@graph'], output);
+  if (object.mainEntity) productJsonImages(object.mainEntity, output);
 }
 
 /** Reject obvious site furniture so a logo is not presented as the product. */
@@ -135,7 +144,7 @@ export function isGenericImageUrl(value: string): boolean {
  * `itemprop=image`, `link rel=image_src`) is preferred over generic social
  * cards, and obvious logos/placeholders are skipped.
  */
-export function sellerImage(html: string, pageUrl: string): string | null {
+export function sellerImages(html: string, pageUrl: string): string[] {
   const candidates: string[] = [];
 
   for (const script of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script\s*>/gi)) {
@@ -161,18 +170,25 @@ export function sellerImage(html: string, pageUrl: string): string | null {
     const values = attributes(tag);
     if (!(values.get('itemprop') ?? '').toLowerCase().split(/\s+/).includes('image')) continue;
     if (values.get('content')) candidates.push(values.get('content')!);
-    const srcset = values.get('srcset');
+    const srcset = values.get('data-srcset') ?? values.get('srcset');
     if (srcset) candidates.push(...srcsetUrls(srcset).reverse());
+    if (values.get('data-src')) candidates.push(values.get('data-src')!);
+    if (values.get('data-original')) candidates.push(values.get('data-original')!);
     if (values.get('src')) candidates.push(values.get('src')!);
   }
 
-  for (const candidate of [...new Set(candidates)]) {
+  const images = new Set<string>();
+  for (const candidate of candidates) {
     try {
       const image = safeUrl(new URL(candidate, pageUrl).toString());
-      if (image && image.length <= 2000 && !isGenericImageUrl(image)) return image;
+      if (image && image.length <= 2000 && !isGenericImageUrl(image)) images.add(image);
     } catch { /* Try the next metadata image. */ }
   }
-  return null;
+  return [...images];
+}
+
+export function sellerImage(html: string, pageUrl: string): string | null {
+  return sellerImages(html, pageUrl)[0] ?? null;
 }
 
 /** True when a candidate image is explicitly referenced by the seller HTML. */
@@ -180,19 +196,32 @@ export function imageMentionedInHtml(html: string, value: string): boolean {
   return decode(html).includes(value);
 }
 
-export async function findSellerImage(product: Product, preferredImage: string | null = null, signal?: AbortSignal): Promise<string | null> {
-  // One bounded request per offer; never fetch arbitrary model-generated URLs.
-  for (const offer of product.offers) {
-    if (signal?.aborted) return null;
+export async function findSellerImage(product: Product, preferredImage: string | null = product.imageUrl, signal?: AbortSignal): Promise<string | null> {
+  const bounded = AbortSignal.timeout(20000);
+  signal = signal ? AbortSignal.any([signal, bounded]) : bounded;
+  const offers = product.offers.filter(offer => offer.mode === 'live');
+  const checked = new Set<string>();
+  const usable = async (url: string, referer?: string) => {
+    const key = JSON.stringify([url, referer]);
+    if (checked.has(key) || isGenericImageUrl(url) || signal.aborted) return false;
+    checked.add(key);
+    return !!await getPublicImage(url, signal, referer);
+  };
+  // An accepted extraction URL may work even when the storefront blocks HTML
+  // scraping. Validate and warm the byte cache, rather than publishing a dead URL.
+  if (preferredImage && await usable(preferredImage, offers[0]?.provenanceUrl)) return preferredImage;
+  for (const offer of offers) {
+    if (signal.aborted) return null;
     const source = offer.provenanceUrl;
     if (!source) continue;
     const page = await readPage(source, signal);
     if (!page) continue;
-    // Prefer product-specific page metadata; a model-proposed image is still
-    // grounded when the seller page itself references it.
-    const image = sellerImage(page.html, page.url);
-    if (image) return image;
-    if (preferredImage && imageMentionedInHtml(page.html, preferredImage)) return preferredImage;
+    // A broken first candidate must not hide other images or other sellers.
+    const candidates = sellerImages(page.html, page.url).slice(0, 6);
+    if (!candidates.length) logger.info('image.page.no_candidates', { host: new URL(page.url).hostname });
+    for (const image of candidates) {
+      if (await usable(image, page.url)) return image;
+    }
   }
   return null;
 }

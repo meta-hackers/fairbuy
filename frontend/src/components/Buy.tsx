@@ -2,7 +2,7 @@ import type { Product, ShoppingSession } from '@fairbuy/core';
 import { money, ProductImage } from './ProductCard';
 export default function Buy({ product, session, onBack }: { product: Product; session: ShoppingSession; onBack: () => void }) {
   return <section><button className="text-button back-button" onClick={onBack}>← Back to discovery</button>
-    <div className="buy-intro panel"><ProductImage product={product} category={session.config.category ?? ''} small /><div><span className="eyebrow">THE ONE YOU CHOSE</span><h2>{product.name}</h2><p className="muted">{product.summary}</p></div></div>
+    <div className="buy-intro panel"><ProductImage product={product} sessionId={session.id} category={session.config.category ?? ''} small /><div><span className="eyebrow">THE ONE YOU CHOSE</span><h2>{product.name}</h2><p className="muted">{product.summary}</p></div></div>
     <div className="notice"><span aria-hidden="true">↗</span><p>FairBuy never checks out for you. Verify the exact model, final price, stock, warranty and returns on the seller’s site before paying. Shipping and delivery depend on your location and are not estimated here. Nothing has been purchased.</p></div>
     <div className="seller-grid">{product.offers.map(offer => {
       const ranked = session.rounds.at(-1)?.ranking;

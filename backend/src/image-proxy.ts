@@ -2,6 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { get } from 'node:https';
 import { safeUrl } from './links';
 import { publicImagePageAddress } from './public-network';
+import { logger } from './logger';
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -13,12 +14,13 @@ const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 
 export interface PublicImage { body: Buffer; contentType: string }
 
-interface ImageResponse { status: number; location: string | null; image: PublicImage | null }
+interface ImageResponse { status: number; location: string | null; image: PublicImage | null; reason?: string }
 interface CacheEntry { image: PublicImage; expiresAt: number }
 
 // Process-local LRU. Browser/CDN caching is the primary cache; this avoids
 // repeated upstream fetches when several clients request the same product.
 const cache = new Map<string, CacheEntry>();
+const inFlight = new Map<string, Promise<PublicImage | null>>();
 let cacheBytes = 0;
 
 function readCache(key: string): PublicImage | null {
@@ -55,7 +57,18 @@ export function clearPublicImageCache() {
   cacheBytes = 0;
 }
 
-function requestImage(url: string, signal?: AbortSignal): Promise<ImageResponse> {
+function isRasterImage(body: Buffer, contentType: string): boolean {
+  // Some bot challenges/error pages claim an image MIME type. Do not cache and
+  // publish those as successful images; try the seller's next candidate instead.
+  if (contentType === 'image/jpeg' || contentType === 'image/jpg') return body.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
+  if (contentType === 'image/png') return body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (contentType === 'image/gif') return /^GIF8[79]a$/.test(body.subarray(0, 6).toString('ascii'));
+  if (contentType === 'image/webp') return body.subarray(0, 4).toString('ascii') === 'RIFF' && body.subarray(8, 12).toString('ascii') === 'WEBP';
+  if (contentType === 'image/avif') return body.subarray(4, 8).toString('ascii') === 'ftyp' && /avif|avis/.test(body.subarray(8, 64).toString('ascii'));
+  return false;
+}
+
+function requestImage(url: string, signal?: AbortSignal, referer?: string): Promise<ImageResponse> {
   return new Promise(resolve => {
     let settled = false;
     let timer: NodeJS.Timeout | undefined;
@@ -73,6 +86,9 @@ function requestImage(url: string, signal?: AbortSignal): Promise<ImageResponse>
         Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'User-Agent': BROWSER_USER_AGENT,
+        // Match a browser's cross-origin referrer policy without forwarding
+        // seller query strings or other potentially sensitive URL components.
+        ...(referer && safeUrl(referer) ? { Referer: `${new URL(referer).origin}/` } : {}),
       },
       // Pin every lookup to a checked public IPv4 address; no automatic redirects.
       lookup: (hostname, options, callback) => {
@@ -93,16 +109,20 @@ function requestImage(url: string, signal?: AbortSignal): Promise<ImageResponse>
       const contentType = (response.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
       const responseLength = Number(response.headers['content-length'] ?? 0);
       if (status !== 200 || !ALLOWED_IMAGE_TYPES.has(contentType) || responseLength > MAX_IMAGE_BYTES) {
-        response.destroy(); finish({ status, location: null, image: null }); return;
+        response.destroy(); finish({ status, location: null, image: null, reason: status !== 200 ? 'http_status' : responseLength > MAX_IMAGE_BYTES ? 'too_large' : 'content_type' }); return;
       }
       const chunks: Buffer[] = [];
       let size = 0;
       response.on('data', (chunk: Buffer) => {
         size += chunk.length;
-        if (size > MAX_IMAGE_BYTES) { response.destroy(); finish({ status, location: null, image: null }); }
+        if (size > MAX_IMAGE_BYTES) { response.destroy(); finish({ status, location: null, image: null, reason: 'too_large' }); }
         else chunks.push(chunk);
       });
-      response.on('end', () => finish({ status, location: null, image: { body: Buffer.concat(chunks), contentType } }));
+      response.on('end', () => {
+        const body = Buffer.concat(chunks);
+        finish(isRasterImage(body, contentType) ? { status, location: null, image: { body, contentType } }
+          : { status, location: null, image: null, reason: 'invalid_image' });
+      });
       response.on('error', () => finish({ status: 0, location: null, image: null }));
     });
     request.on('error', () => finish({ status: 0, location: null, image: null }));
@@ -111,28 +131,37 @@ function requestImage(url: string, signal?: AbortSignal): Promise<ImageResponse>
   });
 }
 
-export async function fetchPublicImage(value: string, signal?: AbortSignal): Promise<PublicImage | null> {
+export async function fetchPublicImage(value: string, signal?: AbortSignal, referer?: string): Promise<PublicImage | null> {
   let url = safeUrl(value);
   if (!url) return null;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     if (signal?.aborted) return null;
-    const response = await requestImage(url, signal);
+    const response = await requestImage(url, signal, referer);
     if (response.status >= 300 && response.status < 400 && response.location) {
       try { url = safeUrl(new URL(response.location, url).toString()); } catch { return null; }
       if (!url) return null;
       continue;
     }
-    return response.image;
+    if (!response.image) logger.info('image.fetch.unavailable', { host: new URL(url).hostname, status: response.status, reason: response.reason ?? 'network_or_timeout' });
+    return response.image?.body.length ? response.image : null;
   }
   return null;
 }
 
-export async function getPublicImage(value: string, signal?: AbortSignal): Promise<PublicImage | null> {
+export async function getPublicImage(value: string, signal?: AbortSignal, referer?: string): Promise<PublicImage | null> {
   const url = safeUrl(value);
   if (!url) return null;
   const cached = readCache(url);
   if (cached) return cached;
-  const image = await fetchPublicImage(url, signal);
-  if (image) writeCache(url, image);
-  return image;
+  // Only share non-cancellable requests; one discovery's deadline must not
+  // cancel an unrelated browser request.
+  const key = JSON.stringify([url, referer]);
+  if (!signal && inFlight.has(key)) return inFlight.get(key)!;
+  const pending = fetchPublicImage(url, signal, referer).then(image => {
+    if (image) writeCache(url, image);
+    return image;
+  });
+  if (!signal) inFlight.set(key, pending);
+  try { return await pending; }
+  finally { if (!signal) inFlight.delete(key); }
 }

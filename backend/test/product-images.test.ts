@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isGenericImageUrl, publicImagePageAddress, sellerImage } from '../src/product-images';
+import { isGenericImageUrl, publicImagePageAddress, sellerImage, sellerImages } from '../src/product-images';
 
 const page = 'https://shop.fairbuy-fixture.org/products/laptop';
 describe('seller product images', () => {
@@ -27,6 +27,12 @@ describe('seller product images', () => {
     expect(sellerImage('<link rel="image_src" href="/image-src.jpg">', page)).toBe('https://shop.fairbuy-fixture.org/image-src.jpg');
     expect(sellerImage('<meta itemprop="image" content="/itemprop.jpg">', page)).toBe('https://shop.fairbuy-fixture.org/itemprop.jpg');
     expect(sellerImage('<img itemprop="image" srcset="/small.jpg 200w, /large.jpg 800w">', page)).toBe('https://shop.fairbuy-fixture.org/large.jpg');
+  });
+  it('retains alternatives and handles nested product metadata and lazy images', () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({
+      '@type': 'ItemPage', mainEntity: { '@type': 'Product', image: [{ contentUrl: '/first.png' }, '/second.png'] },
+    })}</script><meta property="og:image" content="/first.png"><img itemprop="image" data-src="/third.png">`;
+    expect(sellerImages(html, page)).toEqual(['first', 'second', 'third'].map(name => `https://shop.fairbuy-fixture.org/${name}.png`));
   });
   it('skips logos, placeholders and unrelated metadata', () => {
     expect(sellerImage('<meta property="og:image" content="/images/logo.png"><meta property="og:image" content="/images/laptop.jpg">', page))

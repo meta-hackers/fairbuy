@@ -36,6 +36,7 @@ AI extraction is not independent verification; prices, stock and seller claims m
 - [Instant classifier setup and model limitations](docs/INSTANT_CLASSIFIER.md)
 - [Local development, demo and testing](docs/DEVELOPMENT.md)
 - [Render deployment and operations](docs/DEPLOYMENT.md)
+- [Browser errors and image diagnostics](docs/CLIENT_DIAGNOSTICS.md)
 - [API routes](docs/API.md)
 - [Discovery policy and stopping rules](docs/DISCOVERY_POLICY.md)
 - [Category-aware source hints](docs/SOURCES.md)

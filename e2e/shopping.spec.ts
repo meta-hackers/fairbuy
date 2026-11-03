@@ -31,6 +31,49 @@ test.beforeEach(async ({ page }) => {
   } }));
 });
 
+test('saved products without image URLs recover photos; failures report only safe metadata', async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  // Demo products intentionally have no photos. Model a live saved search whose
+  // offers exist but whose image enrichment previously failed.
+  for (const product of boot.session.rounds.at(-1).products) {
+    product.imageUrl = null;
+    for (const offer of product.offers) offer.mode = 'live';
+  }
+  const first = boot.session.rounds.at(-1).products[0];
+  boot.session.rounds.at(-1).products[1].imageUrl = 'https://images.seller-cdn.org/dead.png';
+  const reports: Record<string, unknown>[] = [];
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.route('**/api/image?*', route => route.fulfill({ status: 404 }));
+  await page.route(`**/api/sessions/${boot.session.id}/products/*/image?*`, route => {
+    if (route.request().url().includes(`/products/${first.id}/`)) {
+      return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64') });
+    }
+    return route.fulfill({ status: 404, json: { code: 'IMAGE_UNAVAILABLE' } });
+  });
+  await page.route('**/api/client-events', route => {
+    reports.push(route.request().postDataJSON());
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto('/');
+  const card = page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: first.name, exact: true }) });
+  const photo = card.getByRole('img');
+  await expect(photo).toBeVisible();
+  await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  const failedCard = page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: boot.session.rounds.at(-1).products[1].name, exact: true }) });
+  await failedCard.scrollIntoViewIfNeeded();
+  await expect(failedCard.locator('.product-glyph')).toBeVisible();
+  await expect.poll(() => reports.some(event => event.kind === 'image_unavailable')).toBe(true);
+  await page.evaluate(() => {
+    for (let i = 0; i < 2; i++) window.dispatchEvent(new ErrorEvent('error', {
+      error: new TypeError('secret chat text'), message: 'secret chat text',
+      filename: `${location.origin}/assets/test.js?token=secret`, lineno: 12, colno: 3,
+    }));
+  });
+  await expect.poll(() => reports.filter(event => event.kind === 'runtime_error').length).toBe(1);
+  expect(reports.find(event => event.kind === 'runtime_error')).toEqual({ kind: 'runtime_error', errorType: 'TypeError', asset: '/assets/test.js', line: 12, column: 3 });
+  expect(JSON.stringify(reports)).not.toContain('secret');
+});
+
 test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload', { tag: '@mobile-smoke' }, async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

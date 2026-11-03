@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { scorePoints, type Product, type RankedOffer } from '@fairbuy/core';
+import { reportClientEvent } from '../telemetry';
 export function money(cents: number, currency: string) { return new Intl.NumberFormat('en', { style: 'currency', currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100); }
 export function ProductGlyph({ category = '', small = false }: { category?: string; small?: boolean }) {
   const laptop = /laptop|computer|pc|notebook/i.test(category);
@@ -8,17 +9,25 @@ export function ProductGlyph({ category = '', small = false }: { category?: stri
       : <><path d="m70 12 43 24v42l-43 20-43-20V36l43-24Z" stroke="currentColor" strokeWidth="2"/><path d="m27 36 43 23 43-23M70 59v39M49 24l43 23v18" stroke="currentColor" strokeWidth="2"/><path d="m27 36 43 23v39L27 78V36Z" fill="currentColor" opacity=".08" /></>}
   </svg></div>;
 }
-export function ProductImage({ product, category, small = false }: { product: Product; category?: string; small?: boolean }) {
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  if (!product.imageUrl || failedUrl === product.imageUrl) return <ProductGlyph category={category ?? product.offers[0]?.category ?? ''} small={small} />;
-  // Load through the same-origin proxy: seller CDNs often reject direct
-  // cross-site embedding, and the proxy also keeps the browser request private.
-  const src = `/api/image?url=${encodeURIComponent(product.imageUrl)}`;
+export function ProductImage({ product, sessionId, category, small = false }: { product: Product; sessionId: string; category?: string; small?: boolean }) {
+  const [failedUrls, setFailedUrls] = useState<string[]>([]);
+  // Recovery works for saved searches with no image URL, too. Change the request
+  // when new evidence arrives so an earlier failed load does not stick forever.
+  const version = JSON.stringify([product.imageUrl, product.offers.map(o => o.id)]);
+  const recoverySrc = `/api/sessions/${sessionId}/products/${encodeURIComponent(product.id)}/image?v=${encodeURIComponent(version)}`;
+  const preferredSrc = product.imageUrl ? `/api/image?url=${encodeURIComponent(product.imageUrl)}` : null;
+  // Keep the cheap, cacheable URL-proxy path for known images. Only load owned
+  // session evidence when that image is missing or fails.
+  const src = preferredSrc && !failedUrls.includes(preferredSrc) ? preferredSrc : recoverySrc;
+  if (failedUrls.includes(src) || (!product.imageUrl && !product.offers.some(o => o.mode === 'live'))) return <ProductGlyph category={category ?? product.offers[0]?.category ?? ''} small={small} />;
   return <img className={`product-photo ${small ? 'product-photo--small' : ''}`} src={src} alt={`${product.name} product image`}
-    loading="lazy" decoding="async" onError={() => setFailedUrl(product.imageUrl)} />;
+    loading="lazy" decoding="async" onError={() => {
+      setFailedUrls(urls => [...urls.slice(-3), src]);
+      if (src === recoverySrc) reportClientEvent({ kind: 'image_unavailable', sessionId, productId: product.id });
+    }} />;
 }
-export default function ProductCard({ product, ranked, index, onLearn, onSelect, busy }: {
-  product: Product; ranked: RankedOffer[]; index: number; onLearn: () => void; onSelect: () => void; busy: boolean;
+export default function ProductCard({ product, sessionId, ranked, index, onLearn, onSelect, busy }: {
+  product: Product; sessionId: string; ranked: RankedOffer[]; index: number; onLearn: () => void; onSelect: () => void; busy: boolean;
 }) {
   const best = ranked[0];
   const eligible = product.offers.filter(o => ranked.some(r => r.offerId === o.id));
@@ -34,7 +43,7 @@ export default function ProductCard({ product, ranked, index, onLearn, onSelect,
     ? `Deterministic score: ${pct(best.weights.cost)}% price, ${pct(best.weights.suitability)}% preferences, ${pct(best.weights.reliability)}% evidence reliability`
     : `Deterministic score: ${pct(best.weights.cost)}% price, ${pct(best.weights.reliability)}% evidence reliability. No preference could be checked automatically`;
   return <article className={`product-card ${index === 0 ? 'product-card--first' : ''}`} data-testid="product-card">
-    <div className="product-visual"><span className="rank-index">{String(index + 1).padStart(2, '0')}</span><ProductImage product={product} />{index === 0 && <span className="top-pick">Best scored option</span>}</div>
+    <div className="product-visual"><span className="rank-index">{String(index + 1).padStart(2, '0')}</span><ProductImage product={product} sessionId={sessionId} />{index === 0 && <span className="top-pick">Best scored option</span>}</div>
     <div className="product-content">
       <div className="product-heading"><div><h2>{product.name}</h2><p className="micro">{[...new Set(eligible.map(o => o.seller))].join(' · ')}</p></div><span className="fit-score" title={scoreTitle}>{points.total}<small>/100 fit</small></span></div>
       <p className="product-summary">{product.summary}</p>

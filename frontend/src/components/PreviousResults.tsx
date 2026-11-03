@@ -16,7 +16,7 @@ export default function PreviousResults({ session, activeIds }: { session: Shopp
         : excluded.length ? `Excluded from current recommendations: ${[...new Set(excluded.flatMap(item => item.reasons))].join('; ')}`
         : inCurrentSearch ? 'Not currently ranked. Kept for reference.' : 'From an earlier search. Not revalidated against your current brief.';
       return <article className="previous-result" data-testid="archived-product" key={product.id}>
-        <div className="previous-result-heading"><ProductImage product={product} small /><div><h2>{product.name}</h2><p className="micro">{reason}</p></div></div>
+        <div className="previous-result-heading"><ProductImage product={product} sessionId={session.id} small /><div><h2>{product.name}</h2><p className="micro">{reason}</p></div></div>
         <p>{product.summary}</p>
         <details className="product-details"><summary>Details & sources</summary>
           <p>{product.why}</p>
