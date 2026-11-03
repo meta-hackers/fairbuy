@@ -88,6 +88,26 @@ The admin API is:
 
 Both routes require an admin session; the POST also requires the normal CSRF header.
 
+## Error diagnostics
+
+The **Diagnostics** tab reads the dedicated `diagnostic_events` table. Filter by
+exact trace UUID, search UUID, browser/server origin or severity. Clicking a trace
+shows its steps chronologically; the global feed is newest first. Shared in-flight
+requests link to the trace that performed the actual upstream work. Search detail
+has a **View diagnostics for this search** shortcut.
+
+`GET /api/admin/diagnostics` accepts optional `traceId`, `sessionId`, `source`
+(`browser`/`server`), `level` (`info`/`warn`/`error`) and `page` (default 1).
+It returns `{events, total, page, pageSize: 50, persistent, retentionDays: null}`.
+Only authenticated administrators can query it; a trace UUID alone grants no
+access. This tab explicitly labels ephemeral demo storage when no DB is configured.
+
+Diagnostic retention is managed externally: the app does not automatically delete
+events or hide older records. Permanent session purge still removes its linked
+events; anonymous runtime reports without a search require external retention. See
+[browser/image diagnostics](CLIENT_DIAGNOSTICS.md) for privacy, limits and delivery
+semantics. Browser reports are untrusted signals, not verified seller facts.
+
 ## Data and retention
 
 Sessions can be searched by category, session ID, or anonymous browser-owner hash
@@ -111,7 +131,7 @@ include conversations: treat them as private data, not public diagnostic logs.
 
 In a session detail, choose **Permanently delete this session** and type its exact
 UUID. This explicitly purges the identity and all versions, legacy child rows,
-jobs and usage through foreign-key cascades. It cannot be undone; other sessions
+jobs, usage and linked diagnostics through foreign-key cascades. It cannot be undone; other sessions
 are unaffected. The server enforces admin authentication, the normal CSRF/origin
 checks and matching confirmation. The completion event logs the admin and UUID,
 not session contents. Database backups have their own retention.

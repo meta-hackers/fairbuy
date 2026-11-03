@@ -97,10 +97,20 @@ If none can be determined, for example because the search returned no pages, it 
 
 ## Persistence, queue and security
 
+Operational diagnostics use a separate, mutable `diagnostic_events` table, never
+session versions. Explicit allowlisted image/browser events are correlated with
+UUID trace IDs; `AsyncLocalStorage` isolates simultaneous server image attempts,
+and concurrent discovery products get separate child traces. A bounded asynchronous
+writer persists independently of shopping transactions. Image/browser references
+are owner-checked at the API boundary; only the admin API exposes diagnostic reads.
+There is no age-based filtering or automatic cleanup; retention is managed
+externally. Permanent session purge still cascades to its linked diagnostics.
+See [client diagnostics](CLIENT_DIAGNOSTICS.md) for limits and best-effort semantics.
+
 - `shopping_sessions`: immutable identity, owner hash and startup configuration. Legacy mutable columns remain for upgrade compatibility but are not current-state projections. `expires_at` is ignored; new identities have no expiry.
 - `session_versions`: append-only, complete JSONB state snapshots keyed by `(session_id, version)`, with parent version, kind, archive flag and explicit revoked-feedback IDs. Messages, configuration, feedback, round attempts and progressive results are preserved in previous snapshots. Current state comes from the highest version, never by updating an earlier row. PostgreSQL triggers reject updates to both identity and version rows.
 - This is snapshot versioning, not a delta-only event store: it deliberately duplicates unchanged state to keep reconstruction and API compatibility simple. Storage grows with each changed version and has no automatic pruning; monitor capacity. Legacy normalized tables remain as migration input and are not rewritten during normal requests. Historical versions before migration cannot be reconstructed.
-- `discovery_jobs`: atomically inserted with new session versions, claimed with `FOR UPDATE SKIP LOCKED`, six-minute leases, at most two research attempts after interruptions. The operational queue remains mutable and is separate from immutable session history. Closed sessions are excluded from claims. Ordinary provider failures are not automatically retried; the user can refresh. Two concurrent jobs per process.
+- `discovery_jobs`: atomically inserted with new session versions, claimed with `FOR UPDATE SKIP LOCKED`, six-minute leases, at most two research attempts after interruptions. The operational queue remains mutable and is separate from immutable session history. Closed sessions are excluded from claims. Ordinary provider failures are not automatically retried; the user can refresh. Four concurrent jobs per process.
 - Ask, Configure chat and Learn call AI outside any database transaction or checked-out connection. Their results append only if the source version is still current; otherwise `409 SESSION_CONFLICT` is returned without replaying the provider call. Pure synchronous changes may be recomputed after a competing insert, bounded to five attempts. The unique version key prevents lost updates, and no-op changes add no row. Overlapping discovery clicks remain idempotent. Async discovery results commit only to their running round/attempt. Closed or purged sessions cannot be resurrected by late results.
 - Schema initialization is idempotent and serialized with a PostgreSQL advisory lock. Startup reruns it before accepting requests; `db:migrate` is also available for explicit maintenance. Free Render services do not support a pre-deploy command. Add versioned migrations for future incompatible schema changes.
 - Existing JSONB sessions are copied transactionally into normalized rows before the legacy `data` column is dropped. Legacy item prices are retained; old shipping/fee estimates are discarded. Back up populated databases before upgrading.

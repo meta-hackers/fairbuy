@@ -42,9 +42,11 @@ test('saved products without image URLs recover photos; failures report only saf
   const first = boot.session.rounds.at(-1).products[0];
   boot.session.rounds.at(-1).products[1].imageUrl = 'https://images.seller-cdn.org/dead.png';
   const reports: Record<string, unknown>[] = [];
+  const imageRequests: string[] = [];
   await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
-  await page.route('**/api/image?*', route => route.fulfill({ status: 404 }));
+  await page.route('**/api/image?*', route => { imageRequests.push(route.request().url()); return route.fulfill({ status: 404 }); });
   await page.route(`**/api/sessions/${boot.session.id}/products/*/image?*`, route => {
+    imageRequests.push(route.request().url());
     if (route.request().url().includes(`/products/${first.id}/`)) {
       return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64') });
     }
@@ -63,6 +65,11 @@ test('saved products without image URLs recover photos; failures report only saf
   await failedCard.scrollIntoViewIfNeeded();
   await expect(failedCard.locator('.product-glyph')).toBeVisible();
   await expect.poll(() => reports.some(event => event.kind === 'image_unavailable')).toBe(true);
+  const failedProduct = boot.session.rounds.at(-1).products[1];
+  const report = reports.find(event => event.kind === 'image_unavailable' && event.productId === failedProduct.id)!;
+  const attempts = imageRequests.filter(url => url.includes(failedProduct.id));
+  expect(attempts).toHaveLength(2);
+  expect(attempts.every(url => new URL(url).searchParams.get('traceId') === report.traceId)).toBe(true);
   await page.evaluate(() => {
     for (let i = 0; i < 2; i++) window.dispatchEvent(new ErrorEvent('error', {
       error: new TypeError('secret chat text'), message: 'secret chat text',
@@ -70,7 +77,7 @@ test('saved products without image URLs recover photos; failures report only saf
     }));
   });
   await expect.poll(() => reports.filter(event => event.kind === 'runtime_error').length).toBe(1);
-  expect(reports.find(event => event.kind === 'runtime_error')).toEqual({ kind: 'runtime_error', errorType: 'TypeError', asset: '/assets/test.js', line: 12, column: 3 });
+  expect(reports.find(event => event.kind === 'runtime_error')).toEqual({ kind: 'runtime_error', errorType: 'TypeError', asset: '/assets/test.js', line: 12, column: 3, traceId: expect.any(String), sessionId: boot.session.id });
   expect(JSON.stringify(reports)).not.toContain('secret');
 });
 

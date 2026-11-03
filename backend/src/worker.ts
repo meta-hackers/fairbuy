@@ -1,13 +1,14 @@
 import type { ShoppingService } from './shopping-service';
 import { logger } from './logger';
+const MAX_CONCURRENT_JOBS = 4;
 export function startWorker(service: ShoppingService, isReady: () => boolean = () => true) {
   let stopped = false, pumping = false, active = 0;
   const tasks = new Set<Promise<void>>();
   const pump = async () => {
-    if (stopped || pumping || active >= 2 || !isReady()) return;
+    if (stopped || pumping || active >= MAX_CONCURRENT_JOBS || !isReady()) return;
     pumping = true;
     try {
-      while (!stopped && active < 2) {
+      while (!stopped && active < MAX_CONCURRENT_JOBS) {
         const job = await service.store.claim();
         if (!job) break;
         active++;

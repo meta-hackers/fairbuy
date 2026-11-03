@@ -9,6 +9,7 @@ import { DemoAIProvider } from '../src/ai/demo';
 import { ShoppingService } from '../src/shopping-service';
 import { settings } from '../src/settings';
 import { recordUsage } from '../src/usage';
+import { randomUUID } from 'node:crypto';
 
 let hash: string;
 beforeAll(async () => { hash = await passwordHash('test-password-not-for-production'); });
@@ -80,6 +81,30 @@ describe('backoffice authentication and authorization', () => {
   });
 });
 describe('backoffice session data', () => {
+  it('restricts diagnostic history to admins, filters traces, and removes session-linked events on purge', async () => {
+    const { app, service, store } = setup(); const client = request.agent(app);
+    const session = await service.create('diagnostics-owner'); const traceId = randomUUID();
+    service.diagnostics.record({ traceId, source: 'browser', sessionId: session.id, roundId: null, productId: null,
+      event: 'client.runtime_error', level: 'error', details: { errorType: 'TypeError' } });
+    service.diagnostics.record({ traceId, source: 'server', sessionId: session.id, roundId: null, productId: null,
+      event: 'image.request.completed', level: 'warn', details: { available: false, status: 404 } });
+    await client.get('/api/admin/diagnostics').expect(401);
+    await login(client);
+    const all = (await client.get('/api/admin/diagnostics').expect(200)).body;
+    expect(all).toMatchObject({ total: 2, persistent: false, retentionDays: null, pageSize: 50 });
+    const trace = (await client.get(`/api/admin/diagnostics?traceId=${traceId}&sessionId=${session.id}`).expect(200)).body;
+    expect(trace.events.map((e: any) => e.source)).toEqual(['browser', 'server']);
+    expect((await client.get('/api/admin/diagnostics?source=browser&level=error').expect(200)).body.total).toBe(1);
+    await client.get('/api/admin/diagnostics?traceId=invalid').expect(400);
+    await client.get('/api/admin/diagnostics?page=0').expect(400);
+    await client.get('/api/admin/diagnostics?sql=anything').expect(400);
+    await store.archive(session.id, 'diagnostics-owner');
+    expect((await client.get(`/api/admin/diagnostics?sessionId=${session.id}`).expect(200)).body.total).toBe(2);
+    await client.post(`/api/admin/sessions/${session.id}/purge`).set(write).send({ confirmSessionId: session.id }).expect(204);
+    expect((await client.get(`/api/admin/diagnostics?sessionId=${session.id}`).expect(200)).body.total).toBe(0);
+    await client.post('/api/admin/logout').set(write).expect(204);
+    await client.get('/api/admin/diagnostics').expect(401);
+  });
   it('shows all owners only to admins, supports filters, and preserves complete detail', async () => {
     const { app, service } = setup();
     const first = await service.create('first-browser'); const second = await service.create('second-browser');

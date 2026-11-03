@@ -9,6 +9,9 @@ import { settings } from '../src/settings';
 import { ConfigSchema, RANKING_VERSION, formatQuestionAnswer } from '@fairbuy/core';
 import { ProductImageResolver } from '../src/product-image-resolver';
 import { logger } from '../src/logger';
+import { randomUUID } from 'node:crypto';
+import { recordDiagnostic } from '../src/diagnostics';
+import * as imageProxy from '../src/image-proxy';
 
 function setup(extra: Record<string, string> = {}) {
   const config = settings({ NODE_ENV: 'test', FAIRBUY_MODE: 'demo', ...extra });
@@ -19,6 +22,45 @@ function setup(extra: Record<string, string> = {}) {
   return { app, store, service };
 }
 describe('product image recovery and browser diagnostics', () => {
+  it('correlates proxy, recovery and browser failures while enforcing search ownership', async () => {
+    const { app, store, service } = setup(); const client = request.agent(app); const other = request.agent(app);
+    const send = (path: string, body?: object) => client.post(path).set('X-Fairbuy-Request', '1').send(body);
+    const created = (await send('/api/sessions')).body;
+    await send(`/api/sessions/${created.id}/ask`, { message: 'Laptop for coding in Italy' });
+    await send(`/api/sessions/${created.id}/discovery`);
+    await service.runJob((await store.claim())!);
+    await store.append(created.id, null, session => { session.rounds[0].products[0].imageUrl = 'https://images.seller-cdn.org/dead.png'; });
+    const saved = await store.get(created.id); const product = saved.rounds[0].products[0]; const traceId = randomUUID();
+    const proxy = vi.spyOn(imageProxy, 'getPublicImage').mockResolvedValue(null);
+    const resolve = vi.spyOn(ProductImageResolver.prototype, 'get').mockImplementation(async () => {
+      recordDiagnostic('image.fetch.unavailable', 'warn', { domain: 'images.seller-cdn.org', status: 403, reason: 'http_status' });
+      return null;
+    });
+    const log = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    try {
+      const initial = `/api/image?${new URLSearchParams({ url: product.imageUrl!, sessionId: saved.id, productId: product.id, traceId })}`;
+      const recovery = `/api/sessions/${saved.id}/products/${product.id}/image?traceId=${traceId}`;
+      await other.get(initial).expect(404);
+      await other.get(recovery).expect(404);
+      expect(proxy).not.toHaveBeenCalled(); expect(resolve).not.toHaveBeenCalled();
+      expect((await client.get(initial).expect(404)).headers['x-trace-id']).toBe(traceId);
+      const response = await client.get(recovery).expect(404);
+      expect(response.body.traceId).toBe(traceId);
+      const report = { kind: 'image_unavailable', sessionId: saved.id, productId: product.id, traceId };
+      await other.post('/api/client-events').set('X-Fairbuy-Request', '1').send(report).expect(404);
+      await send('/api/client-events', report).expect(204);
+      await send('/api/client-events', report).expect(204);
+      const trace = await service.diagnostics.list({ page: 1, traceId });
+      expect(trace.events.filter(e => e.event === 'image.request.started')).toHaveLength(2);
+      expect(trace.events.filter(e => e.event === 'image.request.started').map(e => e.details.operation)).toEqual(['proxy', 'recovery']);
+      expect(trace.events.filter(e => e.event === 'client.image_unavailable')).toHaveLength(1);
+      expect(trace.events.find(e => e.event === 'image.fetch.unavailable')?.details.status).toBe(403);
+      expect(trace.events.every(e => e.traceId === traceId && e.sessionId === saved.id && e.roundId === saved.rounds[0].id && e.productId === product.id)).toBe(true);
+      expect(JSON.stringify(trace)).not.toContain(product.imageUrl);
+      await client.get(`${recovery}not-a-uuid`).expect(400);
+      await request(app).get('/api/admin/diagnostics').expect(503);
+    } finally { proxy.mockRestore(); resolve.mockRestore(); log.mockRestore(); }
+  });
   it('serves recovered images for an owned saved product, including older rounds', async () => {
     const { app, store, service } = setup(); const client = request.agent(app);
     const send = (path: string, body?: object) => client.post(path).set('X-Fairbuy-Request', '1').send(body);
@@ -57,11 +99,11 @@ describe('product image recovery and browser diagnostics', () => {
     try {
       await client.post('/api/client-events').send(event).expect(403);
       await post(event).expect(204);
-      expect(log).toHaveBeenCalledWith('client.error', event);
+      expect(log).toHaveBeenCalledWith('client.error', { ...event, traceId: expect.any(String) });
       await post({ ...event, message: 'private chat text' }).expect(400);
       await post({ ...event, asset: 'https://seller.org/private?token=secret' }).expect(400);
       await post({ kind: 'unhandled_rejection', errorType: 'UnknownError' }).expect(204);
-      await post({ kind: 'image_unavailable', sessionId: 'c6684151-7c26-4dbd-9173-c45d8c9ceab4', productId: 'test-product' }).expect(204);
+      await post({ kind: 'image_unavailable', sessionId: 'c6684151-7c26-4dbd-9173-c45d8c9ceab4', productId: 'test-product' }).expect(404);
       const gated = request(createApp(new ShoppingService(new MemoryStore(), new DemoAIProvider(), 'demo'), settings({ APP_ACCESS_TOKEN: 'private' })));
       await gated.post('/api/client-events').set('X-Fairbuy-Request', '1').send(event).expect(401);
     } finally { log.mockRestore(); }

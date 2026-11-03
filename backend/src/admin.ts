@@ -3,7 +3,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
-import { SOURCE_ROLES, SOURCE_VERTICALS } from '@fairbuy/core';
+import { DiagnosticQuerySchema, SOURCE_ROLES, SOURCE_VERTICALS } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { PostgresStore } from './store';
@@ -62,6 +62,10 @@ export function adminRouter(service: ShoppingService, config: Settings, catalog 
     next();
   });
   router.get('/me', (_req, res) => res.json({ username: res.locals.admin, persistent: !!pool, retentionDays: null, prices: config.AI_PRICE_TABLE }));
+  router.get('/diagnostics', async (req, res) => {
+    const result = await service.diagnostics.list(DiagnosticQuerySchema.parse(req.query));
+    res.json({ ...result, persistent: service.diagnostics.persistent, retentionDays: null });
+  });
   router.post('/logout', async (_req, res) => {
     if (pool) await pool.query('DELETE FROM admin_sessions WHERE token_hash = $1', [res.locals.adminTokenHash]);
     else sessions.delete(res.locals.adminTokenHash);
@@ -90,6 +94,7 @@ export function adminRouter(service: ShoppingService, config: Settings, catalog 
     await service.store.get(id);
     await service.store.purge(id);
     service.usage.purgeMemory(id);
+    service.diagnostics.purgeSession(id);
     logger.warn('maintenance.session.purge.completed', { sessionId: id, admin: res.locals.admin });
     res.status(204).end();
   });

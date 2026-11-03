@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { scorePoints, type Product, type RankedOffer } from '@fairbuy/core';
-import { reportClientEvent } from '../telemetry';
+import { imageTraceId, reportClientEvent } from '../telemetry';
 export function money(cents: number, currency: string) { return new Intl.NumberFormat('en', { style: 'currency', currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100); }
 export function ProductGlyph({ category = '', small = false }: { category?: string; small?: boolean }) {
   const laptop = /laptop|computer|pc|notebook/i.test(category);
@@ -14,16 +14,16 @@ export function ProductImage({ product, sessionId, category, small = false }: { 
   // Recovery works for saved searches with no image URL, too. Change the request
   // when new evidence arrives so an earlier failed load does not stick forever.
   const version = JSON.stringify([product.imageUrl, product.offers.map(o => o.id)]);
-  const recoverySrc = `/api/sessions/${sessionId}/products/${encodeURIComponent(product.id)}/image?v=${encodeURIComponent(version)}`;
-  const preferredSrc = product.imageUrl ? `/api/image?url=${encodeURIComponent(product.imageUrl)}` : null;
-  // Keep the cheap, cacheable URL-proxy path for known images. Only load owned
-  // session evidence when that image is missing or fails.
+  const traceId = imageTraceId(JSON.stringify([sessionId, product.id, version]));
+  const recoverySrc = `/api/sessions/${sessionId}/products/${encodeURIComponent(product.id)}/image?v=${encodeURIComponent(version)}&traceId=${traceId}`;
+  const preferredSrc = product.imageUrl ? `/api/image?url=${encodeURIComponent(product.imageUrl)}&sessionId=${sessionId}&productId=${encodeURIComponent(product.id)}&traceId=${traceId}` : null;
+  // One trace connects the initial proxy load, recovery, and final browser error.
   const src = preferredSrc && !failedUrls.includes(preferredSrc) ? preferredSrc : recoverySrc;
   if (failedUrls.includes(src) || (!product.imageUrl && !product.offers.some(o => o.mode === 'live'))) return <ProductGlyph category={category ?? product.offers[0]?.category ?? ''} small={small} />;
   return <img className={`product-photo ${small ? 'product-photo--small' : ''}`} src={src} alt={`${product.name} product image`}
     loading="lazy" decoding="async" onError={() => {
       setFailedUrls(urls => [...urls.slice(-3), src]);
-      if (src === recoverySrc) reportClientEvent({ kind: 'image_unavailable', sessionId, productId: product.id });
+      if (src === recoverySrc) reportClientEvent({ kind: 'image_unavailable', sessionId, productId: product.id, traceId });
     }} />;
 }
 export default function ProductCard({ product, sessionId, ranked, index, onLearn, onSelect, busy }: {

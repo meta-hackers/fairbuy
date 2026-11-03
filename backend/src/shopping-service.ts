@@ -4,16 +4,18 @@ import {
   type DiscoveryContext, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
 import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
-import type { Store, Job } from './store';
+import { PostgresStore, type Store, type Job } from './store';
 import { AppError, publicError } from './errors';
 import { logger } from './logger';
 import { UsageStore } from './usage';
 import { settings, type Settings } from './settings';
 import { sessionStartup, type SessionStartup } from './session-startup';
+import { DiagnosticStore } from './diagnostics';
 
 export class ShoppingService {
   private readonly startup: SessionStartup;
-  constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo', readonly usage = new UsageStore(), config: Settings = settings({})) {
+  constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo', readonly usage = new UsageStore(), config: Settings = settings({}),
+    readonly diagnostics = new DiagnosticStore(store instanceof PostgresStore ? store.pool : undefined)) {
     this.startup = sessionStartup(config, mode);
   }
   async create(owner: string, location?: ShoppingLocation) {
@@ -195,7 +197,8 @@ export class ShoppingService {
     return session;
   }
   async runJob(job: Job) {
-    return this.usage.capture(job.sessionId, 'discovery', job.id, () => this.runJobWithUsage(job));
+    return this.diagnostics.capture({ traceId: randomUUID(), source: 'server', sessionId: job.sessionId, roundId: job.id, productId: null },
+      () => this.usage.capture(job.sessionId, 'discovery', job.id, () => this.runJobWithUsage(job)));
   }
   private async runJobWithUsage(job: Job) {
     const jobStarted = Date.now();

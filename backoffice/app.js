@@ -5,6 +5,7 @@ let activeSession = null;
 let priceTable = {};
 let generation = 0;
 let sourceData = [];
+let diagnosticPage = 1;
 const number = value => value == null ? 'Unknown' : value.toLocaleString();
 const cost = value => value == null ? 'Unknown' : `~$${value.toFixed(5)}`;
 const date = value => value ? new Date(value).toLocaleString() : '—';
@@ -15,10 +16,11 @@ function node(tag, text, className) {
   return element;
 }
 function show(view) {
-  for (const id of ['login', 'history', 'detail', 'sources']) $(id).hidden = id !== view;
+  for (const id of ['login', 'history', 'detail', 'sources', 'diagnostics']) $(id).hidden = id !== view;
   $('admin-nav').hidden = view === 'login';
   $('nav-sessions').classList.toggle('active', view === 'history' || view === 'detail');
   $('nav-sources').classList.toggle('active', view === 'sources');
+  $('nav-diagnostics').classList.toggle('active', view === 'diagnostics');
 }
 function notice(message) { $('notice').textContent = message; $('notice').hidden = !message; }
 async function api(path, body, method = body === undefined ? 'GET' : 'POST') {
@@ -41,6 +43,8 @@ function signedOut() {
   generation++; activeSession = null; sourceData = [];
   $('session-content').replaceChildren(); $('sessions').replaceChildren(); $('source-rows').replaceChildren();
   $('source-status').replaceChildren(); $('source-url').textContent = ''; $('source-count').textContent = '';
+  $('diagnostic-rows').replaceChildren(); $('diagnostic-filters').reset(); diagnosticPage = 1;
+  $('diagnostic-count').textContent = ''; $('diagnostics-policy').textContent = '';
   $('account').hidden = true; show('login');
 }
 $('login-form').addEventListener('submit', guarded(async event => {
@@ -58,6 +62,7 @@ $('next').addEventListener('click', guarded(async () => { page++; await load(); 
 $('back').addEventListener('click', guarded(load));
 $('nav-sessions').addEventListener('click', guarded(load));
 $('nav-sources').addEventListener('click', guarded(loadSources));
+$('nav-diagnostics').addEventListener('click', guarded(loadDiagnostics));
 async function load() {
   const request = ++generation;
   const query = new URLSearchParams(new FormData($('filters'))); query.set('page', page);
@@ -162,6 +167,51 @@ $('sources-refresh').addEventListener('click', guarded(loadSources));
 $('sources-sync').addEventListener('click', guarded(syncSources));
 $('source-filters').addEventListener('submit', event => { event.preventDefault(); renderSources(); });
 
+function diagnosticLink(traceId, label = traceId) {
+  const link = node('button', label, 'link mono');
+  link.addEventListener('click', guarded(async () => {
+    $('diagnostic-filters').reset();
+    $('diagnostic-filters').elements.namedItem('traceId').value = traceId;
+    diagnosticPage = 1; await loadDiagnostics();
+  }));
+  return link;
+}
+async function loadDiagnostics() {
+  const request = ++generation;
+  const query = new URLSearchParams();
+  for (const [key, value] of new FormData($('diagnostic-filters'))) if (String(value).trim()) query.set(key, String(value).trim());
+  query.set('page', diagnosticPage);
+  const result = await api(`/diagnostics?${query}`);
+  if (request !== generation) return;
+  show('diagnostics'); $('diagnostic-rows').replaceChildren();
+  $('diagnostics-policy').textContent = `${result.persistent ? 'Stored in PostgreSQL' : 'Ephemeral demo memory only'} · Retention managed externally; no automatic app cleanup · Browser reports are untrusted signals, not verified seller facts. Trace results are chronological; the global feed shows newest first.`;
+  for (const event of result.events) {
+    const row = node('tr');
+    const time = node('td'); time.append(node('span', date(event.createdAt)), node('small', `${event.source} · ${event.level}`));
+    const ids = node('td'); ids.append(diagnosticLink(event.traceId));
+    if (event.sessionId) {
+      const open = node('button', `Search ${event.sessionId}`, 'link mono');
+      open.addEventListener('click', guarded(() => detail(event.sessionId))); ids.append(open);
+    }
+    if (event.roundId) ids.append(node('small', `Round ${event.roundId}`, 'mono'));
+    if (event.productId) ids.append(node('small', `Product ${event.productId}`, 'mono'));
+    const details = node('td'); details.append(node('pre', JSON.stringify(event.details, null, 2)));
+    if (event.details.relatedTraceId) details.append(diagnosticLink(event.details.relatedTraceId, 'Open shared request trace'));
+    row.append(time, node('td', event.event), ids, details); $('diagnostic-rows').append(row);
+  }
+  if (!result.events.length) {
+    const row = node('tr'); const cell = node('td', 'No diagnostic events match these filters.', 'empty'); cell.colSpan = 4;
+    row.append(cell); $('diagnostic-rows').append(row);
+  }
+  $('diagnostic-count').textContent = `${result.total} events · Page ${diagnosticPage}`;
+  $('diagnostic-previous').disabled = diagnosticPage <= 1;
+  $('diagnostic-next').disabled = diagnosticPage * result.pageSize >= result.total;
+}
+$('diagnostic-filters').addEventListener('submit', guarded(async () => { diagnosticPage = 1; await loadDiagnostics(); }));
+$('diagnostics-refresh').addEventListener('click', guarded(loadDiagnostics));
+$('diagnostic-previous').addEventListener('click', guarded(async () => { diagnosticPage--; await loadDiagnostics(); }));
+$('diagnostic-next').addEventListener('click', guarded(async () => { diagnosticPage++; await loadDiagnostics(); }));
+
 function jsonDisclosure(title, data) { const details = node('details'); details.append(node('summary', title), node('pre', JSON.stringify(data, null, 2))); return details; }
 function section(title) { const section = node('section', null, 'panel'); section.append(node('h2', title)); return section; }
 function metric(label, value) { const card = node('div', null, 'metric'); card.append(node('small', label), node('strong', value)); return card; }
@@ -186,6 +236,12 @@ async function detail(id) {
   const heading = node('div', null, 'heading'); const title = node('div'); title.append(node('h1', s.config.category || 'Untitled session'), node('p', `${s.id} · ${s.mode} · ${s.stage}`));
   const refresh = node('button', 'Refresh', 'secondary'); refresh.addEventListener('click', guarded(() => detail(activeSession)));
   heading.append(title, refresh); root.append(heading);
+  const diagnostics = node('button', 'View diagnostics for this search', 'secondary');
+  diagnostics.addEventListener('click', guarded(async () => {
+    $('diagnostic-filters').reset(); $('diagnostic-filters').elements.namedItem('sessionId').value = s.id;
+    diagnosticPage = 1; await loadDiagnostics();
+  }));
+  root.append(diagnostics);
   const metrics = node('div', null, 'metrics'); metrics.append(metric('Input tokens', number(result.summary.inputTokens)), metric('Output tokens', number(result.summary.outputTokens)), metric('Estimated USD', cost(result.summary.estimatedCostUsd)), metric('Provider calls tracked', result.summary.calls)); root.append(metrics);
   root.append(node('p', `Created ${date(s.createdAt)} · Updated ${date(s.updatedAt)} · Selected product: ${s.selectedProductId || 'None'}`, 'policy'));
   const usage = section('Usage by phase'); usage.append(usageTable(result.usage));

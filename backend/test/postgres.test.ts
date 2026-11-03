@@ -9,6 +9,7 @@ import { createApp } from '../src/app';
 import { settings } from '../src/settings';
 import { sessionStartup } from '../src/session-startup';
 import { passwordHash } from '../src/admin';
+import { DiagnosticStore, recordDiagnostic } from '../src/diagnostics';
 import request from 'supertest';
 
 describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownership and durable jobs', () => {
@@ -17,6 +18,33 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownersh
   const owner = `test-${randomUUID()}`; const ids: string[] = [];
   beforeAll(async () => { store = new PostgresStore(url); second = new PostgresStore(url); await Promise.all([store.migrate(), second.migrate()]); });
   afterAll(async () => { for (const id of ids) await store.purge(id); await Promise.all([store.close(), second.close()]); });
+  it('persists diagnostic traces across connections, deduplicates clients, keeps older data visible and cascades session purge', async () => {
+    const service = new ShoppingService(store, new DemoAIProvider(), 'demo');
+    const session = await service.create(owner); ids.push(session.id);
+    const diagnostics = service.diagnostics, reader = new DiagnosticStore(second.pool); const traceId = randomUUID();
+    const scope = { traceId, source: 'server' as const, sessionId: session.id, roundId: null, productId: 'product-a' };
+    await diagnostics.capture(scope, async () => {
+      recordDiagnostic('image.request.started', 'info');
+      recordDiagnostic('image.fetch.unavailable', 'warn', { domain: 'seller.org', status: 403 });
+      recordDiagnostic('image.request.completed', 'warn', { available: false });
+    });
+    const client = { ...scope, source: 'browser' as const, event: 'client.image_unavailable' as const, level: 'error' as const, details: {} };
+    diagnostics.record(client); diagnostics.record(client); await diagnostics.flush();
+    const trace = await reader.list({ page: 1, traceId });
+    expect(trace.events.map(e => e.event)).toEqual(['image.request.started', 'image.fetch.unavailable', 'image.request.completed', 'client.image_unavailable']);
+    expect(trace.events.every(e => e.sessionId === session.id)).toBe(true);
+    expect((await reader.list({ page: 1, traceId, source: 'browser' })).total).toBe(1);
+    await store.archive(session.id, owner);
+    expect((await reader.list({ page: 1, traceId })).total).toBe(4);
+    await store.pool.query("UPDATE diagnostic_events SET created_at = now() - interval '31 days' WHERE trace_id = $1 AND source = 'browser'", [traceId]);
+    expect((await reader.list({ page: 1, traceId })).total).toBe(4);
+    expect((await reader.list({ page: 1, traceId, source: 'browser' })).total).toBe(1);
+    expect((await store.pool.query('SELECT id FROM diagnostic_events WHERE trace_id = $1', [traceId])).rowCount).toBe(4);
+    await store.purge(session.id);
+    expect((await reader.list({ page: 1, traceId })).total).toBe(0);
+    diagnostics.record({ ...client, traceId: randomUUID() }); await diagnostics.flush();
+    expect((await reader.list({ page: 1, sessionId: session.id })).total).toBe(0);
+  });
   it('atomically persists startup settings and preserves them across mutations and migrations', async () => {
     const config = settings({ FAIRBUY_MODE: 'demo', ASK_MODEL: 'startup-model', DISCOVERY_REASONING_EFFORT: 'medium' });
     const service = new ShoppingService(store, new DemoAIProvider(), 'demo', undefined, config);

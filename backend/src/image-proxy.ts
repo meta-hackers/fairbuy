@@ -3,6 +3,8 @@ import { get } from 'node:https';
 import { safeUrl } from './links';
 import { publicImagePageAddress } from './public-network';
 import { logger } from './logger';
+import { diagnosticTraceId, recordDiagnostic } from './diagnostics';
+import type { DiagnosticDetails } from '@fairbuy/core';
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -14,13 +16,13 @@ const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 
 export interface PublicImage { body: Buffer; contentType: string }
 
-interface ImageResponse { status: number; location: string | null; image: PublicImage | null; reason?: string }
+interface ImageResponse { status: number; location: string | null; image: PublicImage | null; reason?: DiagnosticDetails['reason'] }
 interface CacheEntry { image: PublicImage; expiresAt: number }
 
 // Process-local LRU. Browser/CDN caching is the primary cache; this avoids
 // repeated upstream fetches when several clients request the same product.
 const cache = new Map<string, CacheEntry>();
-const inFlight = new Map<string, Promise<PublicImage | null>>();
+const inFlight = new Map<string, { promise: Promise<PublicImage | null>; traceId?: string }>();
 let cacheBytes = 0;
 
 function readCache(key: string): PublicImage | null {
@@ -132,19 +134,26 @@ function requestImage(url: string, signal?: AbortSignal, referer?: string): Prom
 }
 
 export async function fetchPublicImage(value: string, signal?: AbortSignal, referer?: string): Promise<PublicImage | null> {
+  const started = Date.now();
   let url = safeUrl(value);
   if (!url) return null;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     if (signal?.aborted) return null;
     const response = await requestImage(url, signal, referer);
     if (response.status >= 300 && response.status < 400 && response.location) {
-      try { url = safeUrl(new URL(response.location, url).toString()); } catch { return null; }
-      if (!url) return null;
+      const domain = new URL(url).hostname;
+      try { url = safeUrl(new URL(response.location, url).toString()); } catch { url = null; }
+      if (!url) { recordDiagnostic('image.fetch.unavailable', 'warn', { domain, reason: 'unsafe_redirect' }); return null; }
       continue;
     }
     if (!response.image) logger.info('image.fetch.unavailable', { host: new URL(url).hostname, status: response.status, reason: response.reason ?? 'network_or_timeout' });
+    recordDiagnostic(response.image ? 'image.fetch.completed' : 'image.fetch.unavailable', response.image ? 'info' : 'warn', {
+      domain: new URL(url).hostname, status: response.status, durationMs: Date.now() - started,
+      ...(!response.image ? { reason: response.reason ?? 'network_or_timeout' } : {}),
+    });
     return response.image?.body.length ? response.image : null;
   }
+  recordDiagnostic('image.fetch.unavailable', 'warn', { domain: new URL(url).hostname, reason: 'redirect_limit' });
   return null;
 }
 
@@ -152,16 +161,20 @@ export async function getPublicImage(value: string, signal?: AbortSignal, refere
   const url = safeUrl(value);
   if (!url) return null;
   const cached = readCache(url);
-  if (cached) return cached;
+  if (cached) { recordDiagnostic('image.fetch.completed', 'info', { domain: new URL(url).hostname, cached: true }); return cached; }
   // Only share non-cancellable requests; one discovery's deadline must not
   // cancel an unrelated browser request.
   const key = JSON.stringify([url, referer]);
-  if (!signal && inFlight.has(key)) return inFlight.get(key)!;
+  const shared = !signal ? inFlight.get(key) : undefined;
+  if (shared) {
+    recordDiagnostic('image.fetch.shared', 'info', { ...(shared.traceId ? { relatedTraceId: shared.traceId } : {}) });
+    return shared.promise;
+  }
   const pending = fetchPublicImage(url, signal, referer).then(image => {
     if (image) writeCache(url, image);
     return image;
   });
-  if (!signal) inFlight.set(key, pending);
+  if (!signal) inFlight.set(key, { promise: pending, traceId: diagnosticTraceId() });
   try { return await pending; }
   finally { if (!signal) inFlight.delete(key); }
 }

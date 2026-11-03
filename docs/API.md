@@ -13,7 +13,7 @@ Same-origin JSON API; no CORS. All writes require `X-Fairbuy-Request: 1`. Browse
 | POST | `/api/location/reverse` | `{latitude, longitude}`: public, rate-limited city/country lookup through a fixed Nominatim endpoint; no AI call. Coordinates are rounded to two decimals, not persisted. Returns `{country, city, currency}`; currency is `null` when the local currency is unsupported. |
 | GET | `/api/image?url=…` | Same-origin proxy for accepted product images: validates a public HTTPS target, pins DNS, follows a bounded number of validated redirects, allows raster images up to 5 MB and caches bytes. `400` for an invalid target, `404` when unavailable. Requires app access. |
 | GET | `/api/sessions/:id/products/:productId/image` | Load/recover a photo from an owned search, including earlier rounds and products with `imageUrl: null`. Validates image downloads and tries alternative seller metadata. No AI calls or session mutation. Private one-hour success cache; `404`/`IMAGE_UNAVAILABLE` failures are not browser-cached. |
-| POST | `/api/client-events` | Strict, rate-limited technical error metadata; requires app access and CSRF verification. Logs `client.error`, returns `204`. No messages, stacks, full URLs, or arbitrary console logs. See [Client diagnostics](CLIENT_DIAGNOSTICS.md). |
+| POST | `/api/client-events` | Strict, rate-limited technical error metadata; requires app access and CSRF verification. Accepts an optional UUID `traceId` (generated if omitted for compatibility). Search/product references are checked against the owner. Enqueues PostgreSQL diagnostics (retention managed externally; no app TTL), logs `client.error`, returns `204` and `X-Trace-Id`. No messages, stacks, full URLs, or arbitrary console logs. See [Client diagnostics](CLIENT_DIAGNOSTICS.md). |
 | POST | `/api/sessions` | Create an owned search, optionally seeded with `{location: {country, city, currency}}`; returns `201`. Location alone never marks a brief ready. |
 | GET | `/api/sessions/:id` | Complete owned state, or `404`. Poll only while queued/running. |
 | DELETE | `/api/sessions/:id` | Close the owned search by appending an archive version; `204`. Does not delete history, jobs or usage. Closed searches return `404` to owner requests. |
@@ -40,6 +40,17 @@ automatically; physical deletion is a separate backoffice maintenance command.
 `ShoppingSession`, `ShoppingConfig`, `DiscoveryRound`, product/offer evidence and runtime validators are in [`packages/core/src/`](../packages/core/src/). `version` increases on every committed mutation and allows clients to ignore out-of-order poll responses.
 
 The separately authenticated administrator API, including immutable history and confirmed deletion maintenance, is documented in [Backoffice](BACKOFFICE.md). It uses `/api/admin` routes and is not part of the anonymous shopping-session API described below.
+
+Image requests accept an optional UUID `traceId` query parameter and return it as
+`X-Trace-Id` (also in image error JSON). Use the same ID for the initial URL proxy,
+owned-product recovery and final browser report. The proxy optionally accepts a
+paired `sessionId` and `productId`, validates ownership and checks that the URL is
+that product's stored image before attaching those references to diagnostics.
+Trace IDs are correlation identifiers, never access credentials. Without a supplied
+ID the server generates one; malformed IDs return `400`. The browser keeps a trace
+stable for the same product/evidence during a page visit, including the Buy view;
+a fresh page visit creates a new attempt. This adds a per-visit cache key; shared
+server byte caching still avoids repeated upstream downloads.
 
 Discovery is progressive: a `running` round can already contain grounded `products`, `sources` and a current `ranking`. Render eligible products immediately and continue polling until `complete` or `failed`; do not wait for four cards to render the first one. Mutations remain blocked while searching. Already-persisted products remain available if a later provider request fails. Live searches target at least four distinct eligible models, with up to three complementary search/extraction passes; insufficient evidence is disclosed rather than replaced with invented offers.
 

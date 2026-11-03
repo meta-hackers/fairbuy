@@ -62,7 +62,11 @@ async function shutdown(signal: string) {
       new Promise<void>(resolve => server.close(() => resolve())),
       new Promise<void>(resolve => setTimeout(resolve, 10000)),
     ]);
-    await Promise.race([Promise.allSettled([stopWorker(), store.close()]), new Promise(resolve => setTimeout(resolve, 8000))]);
+    await Promise.race([(async () => {
+      await stopWorker();
+      await service.diagnostics.flush();
+      await store.close();
+    })(), new Promise(resolve => setTimeout(resolve, 8000))]);
     logger.info('server.shutdown.completed', { signal });
   } finally { clearTimeout(deadline); process.exit(0); }
 }

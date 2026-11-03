@@ -12,6 +12,7 @@ import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_P
 import { streamObjectArray } from './json-stream';
 import { recordUsage } from '../usage';
 import { findSellerImage } from '../product-images';
+import { traceProductImage } from '../diagnostics';
 
 export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
@@ -198,7 +199,7 @@ export class LiveAIProvider implements AIProvider {
     };
     const startImage = (product: Product) => {
       if (images.has(product.id)) return;
-      const pending = this.imageFinder(product, product.imageUrl, controller.signal).then(image => {
+      const pending = traceProductImage(product.id, () => this.imageFinder(product, product.imageUrl, controller.signal)).then(image => {
         if (image) {
           resolvedImages.set(product.id, image);
           if (applyImages()) void emit();

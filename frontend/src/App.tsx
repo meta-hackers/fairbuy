@@ -11,6 +11,7 @@ import LearnModal from './components/LearnModal';
 import Buy from './components/Buy';
 import LocationBar from './components/LocationBar';
 import { useGeolocation } from './useGeolocation';
+import { setDiagnosticSession } from './telemetry';
 
 type Stage = ShoppingSession['stage'];
 const titles: Record<Stage, [string, string]> = {
@@ -43,6 +44,10 @@ const emptyTitle = {
 } as const;
 export default function App() {
   const [boot, setBoot] = useState<Bootstrap | null>(null); const [session, setSession] = useState<ShoppingSession | null>(null);
+  useEffect(() => {
+    setDiagnosticSession(session?.id ?? null);
+    return () => setDiagnosticSession(null);
+  }, [session?.id]);
   const [stage, setStage] = useState<Stage>('ask'); const [draft, setDraft] = useState<ShoppingConfig | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [learning, setLearning] = useState<{ product: Product | null } | null>(null); const [accessToken, setAccessToken] = useState('');
@@ -243,7 +248,7 @@ export default function App() {
     <footer className="site-footer"><div className="footer-signoff"><span className="brand">fairbuy<span className="brand-dot">.</span></span><p>Choose the best purchase.<br />Not just the lowest price.</p></div><details><summary>Privacy & how it works</summary>
       <p><strong>How it works.</strong> Tell us what you need, refine your brief, and explore products with sources and trade-offs. Your feedback helps shape the next search. You decide what to buy and complete any purchase with the seller. FairBuy does not certify products or guarantee prices.</p>
       <p><strong>Your searches.</strong> No account is needed. An HttpOnly browser cookie keeps your searches separate from other visitors’ searches. Clearing cookies removes your access, and searches cannot be recovered on another device. “New search” closes your current search but does not erase its history: administrators can still access it. Records do not expire automatically; permanent deletion requires backoffice maintenance.</p>
-      <p><strong>Error diagnostics.</strong> If an image or JavaScript operation fails, the browser sends limited technical metadata to FairBuy’s server logs: error category, search/product identifiers for failed images, or script filename and position. Reports do not include chat text, error messages, full URLs, or console output. Log retention is managed by the hosting provider.</p>
+      <p><strong>Error diagnostics.</strong> If an image or JavaScript operation fails, the browser sends limited technical metadata to FairBuy: error category, search/product identifiers when available, or script filename and position. A random trace ID links related browser and server events. Diagnostics are available only to administrators; retention is managed outside the app, with no automatic expiry or cleanup in the application. Session-linked events are also removed when that search is permanently deleted. Reports do not include chat text, error messages, full URLs, or console output. Hosting logs and database backups have separate retention policies.</p>
       <p><strong>AI and search providers.</strong> Live requests and research are sent to Meta Model API and, when selected, Brave. Provider response storage is disabled, but providers’ own retention policies still apply. Do not enter sensitive personal information or payment details.</p>
       <p><strong>Suggestions while you type.</strong> When Instant classification is enabled, your unsent draft is sent to Cloudflare-hosted Meta Llama after a 600 ms pause. These suggestions do not change your confirmed brief. The classifier does not receive your conversation history or separately stored location. FairBuy temporarily keeps up to 100 previews, isolated by visitor, in memory for five minutes. Provider retention policies still apply.</p>
       <p><strong>Your location.</strong> Location access is optional. With your browser’s permission, rounded coordinates are sent to OpenStreetMap’s Nominatim service to suggest your city and country. FairBuy does not save precise coordinates or street addresses. Only your shopping city, country and chosen currency enter your brief. You can enter or change these yourself.</p>

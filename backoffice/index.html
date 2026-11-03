@@ -7,7 +7,7 @@
   <script src="/backoffice/app.js" defer></script>
 </head>
 <body>
-  <header><a class="brand" href="/backoffice/">FairBuy <span>Backoffice</span></a><nav id="admin-nav" hidden><button id="nav-sessions" class="secondary">Sessions</button><button id="nav-sources" class="secondary">Sources</button></nav><div id="account" hidden><span id="username"></span><button id="logout" class="secondary">Sign out</button></div></header>
+  <header><a class="brand" href="/backoffice/">FairBuy <span>Backoffice</span></a><nav id="admin-nav" hidden><button id="nav-sessions" class="secondary">Sessions</button><button id="nav-sources" class="secondary">Sources</button><button id="nav-diagnostics" class="secondary">Diagnostics</button></nav><div id="account" hidden><span id="username"></span><button id="logout" class="secondary">Sign out</button></div></header>
   <main>
     <div id="notice" role="status" hidden></div>
     <section id="login" class="login" hidden>
@@ -37,6 +37,19 @@
       </form>
       <div class="table-wrap"><table><thead><tr><th>Source</th><th>Roles</th><th>Verticals</th><th>Countries</th><th>Priority</th><th>State</th></tr></thead><tbody id="source-rows"></tbody></table></div>
       <div class="pagination"><span id="source-count"></span></div>
+    </section>
+    <section id="diagnostics" hidden>
+      <div class="heading"><div><span class="eyebrow">OBSERVABILITY</span><h1>Error diagnostics</h1><p>Correlate browser errors with server image attempts using the same trace ID.</p></div><button id="diagnostics-refresh" class="secondary">Refresh diagnostics</button></div>
+      <p id="diagnostics-policy" class="policy"></p>
+      <form id="diagnostic-filters" class="filters">
+        <label>Trace ID<input name="traceId" maxlength="36" placeholder="UUID"></label>
+        <label>Search ID<input name="sessionId" maxlength="36" placeholder="UUID"></label>
+        <label>Origin<select name="source"><option value="">All origins</option><option value="browser">Browser</option><option value="server">Server</option></select></label>
+        <label>Severity<select name="level"><option value="">All severities</option><option value="info">Info</option><option value="warn">Warning</option><option value="error">Error</option></select></label>
+        <button>Filter diagnostics</button>
+      </form>
+      <div class="table-wrap"><table><thead><tr><th>Time / origin</th><th>Event</th><th>Trace / search / product</th><th>Technical details</th></tr></thead><tbody id="diagnostic-rows"></tbody></table></div>
+      <div class="pagination"><span id="diagnostic-count"></span><div><button id="diagnostic-previous" class="secondary">Previous events</button><button id="diagnostic-next" class="secondary">Next events</button></div></div>
     </section>
     <footer>Token tracking begins with instrumented requests. Missing usage is unknown, not zero. Costs are rough budgeting estimates, not invoices; search/tool fees, discounts and taxes may be excluded.</footer>
   </main>

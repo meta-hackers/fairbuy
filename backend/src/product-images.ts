@@ -5,6 +5,7 @@ import { safeUrl } from './links';
 import { publicImagePageAddress } from './public-network';
 import { getPublicImage } from './image-proxy';
 import { logger } from './logger';
+import { recordDiagnostic } from './diagnostics';
 
 export { publicImagePageAddress } from './public-network';
 
@@ -80,19 +81,25 @@ function requestPage(url: string, signal?: AbortSignal): Promise<PageResponse> {
 }
 
 async function readPage(value: string, signal?: AbortSignal): Promise<Page | null> {
+  const started = Date.now();
   let url = safeUrl(value);
   if (!url) return null;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     if (signal?.aborted) return null;
     const result = await requestPage(url, signal);
     if (result.status >= 300 && result.status < 400 && result.location) {
-      try { url = safeUrl(new URL(result.location, url).toString()); } catch { return null; }
-      if (!url) return null;
+      const domain = new URL(url).hostname;
+      try { url = safeUrl(new URL(result.location, url).toString()); } catch { url = null; }
+      if (!url) { recordDiagnostic('image.page.unavailable', 'warn', { domain, reason: 'unsafe_redirect' }); return null; }
       continue;
     }
     if (result.html === null) logger.info('image.page.unavailable', { host: new URL(url).hostname, status: result.status });
+    recordDiagnostic(result.html === null ? 'image.page.unavailable' : 'image.page.completed', result.html === null ? 'warn' : 'info', {
+      domain: new URL(url).hostname, status: result.status, durationMs: Date.now() - started,
+    });
     return result.html !== null ? { html: result.html, url } : null;
   }
+  recordDiagnostic('image.page.unavailable', 'warn', { domain: new URL(url).hostname, reason: 'redirect_limit' });
   return null;
 }
 
@@ -218,7 +225,10 @@ export async function findSellerImage(product: Product, preferredImage: string |
     if (!page) continue;
     // A broken first candidate must not hide other images or other sellers.
     const candidates = sellerImages(page.html, page.url).slice(0, 6);
-    if (!candidates.length) logger.info('image.page.no_candidates', { host: new URL(page.url).hostname });
+    if (!candidates.length) {
+      logger.info('image.page.no_candidates', { host: new URL(page.url).hostname });
+      recordDiagnostic('image.page.no_candidates', 'warn', { domain: new URL(page.url).hostname });
+    }
     for (const image of candidates) {
       if (await usable(image, page.url)) return image;
     }

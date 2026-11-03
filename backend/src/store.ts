@@ -260,6 +260,7 @@ export class PostgresStore implements Store {
       }
       await client.query(await readFile(new URL('../migrations/004_session_versions.sql', import.meta.url), 'utf8'));
       await client.query(await readFile(new URL('../migrations/005_source_catalog.sql', import.meta.url), 'utf8'));
+      await client.query(await readFile(new URL('../migrations/006_diagnostics.sql', import.meta.url), 'utf8'));
       // A single baseline preserves the state available at upgrade time. Earlier
       // revisions cannot be reconstructed from the old mutable tables.
       const baselines = await client.query<{ id: string }>('SELECT id FROM shopping_sessions s WHERE NOT EXISTS (SELECT 1 FROM session_versions v WHERE v.session_id = s.id)');

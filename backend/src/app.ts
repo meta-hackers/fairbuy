@@ -1,11 +1,11 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { ConfigSchema, CoordinatesSchema, InstantClassifierInputSchema, LearnInputSchema, MessageInputSchema, ShoppingLocationSchema, withCurrentRankings } from '@fairbuy/core';
+import { ClientEventSchema, ConfigSchema, CoordinatesSchema, InstantClassifierInputSchema, LearnInputSchema, MessageInputSchema, ShoppingLocationSchema, withCurrentRankings, type DiagnosticScope } from '@fairbuy/core';
 import type { Settings } from './settings';
 import type { ShoppingService } from './shopping-service';
 import { AppError, publicError } from './errors';
@@ -15,8 +15,9 @@ import { logger } from './logger';
 import { adminRouter } from './admin';
 import type { SourceCatalogService } from './source-catalog';
 import { safeUrl } from './links';
-import { getPublicImage } from './image-proxy';
+import { getPublicImage, type PublicImage } from './image-proxy';
 import { ProductImageResolver } from './product-image-resolver';
+import { recordDiagnostic } from './diagnostics';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function equal(a: string, b: string) { return timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b))); }
@@ -26,6 +27,30 @@ function cookies(req: Request) {
 export function createApp(service: ShoppingService, config: Settings, locations = new LocationResolver(), classifier = new InstantClassifier(config), isReady: () => boolean = () => true, catalog?: SourceCatalogService) {
   const app = express();
   const productImages = new ProductImageResolver();
+  const sendImage = async (res: Response, scope: DiagnosticScope, load: () => Promise<PublicImage | null>, maxAge: number, errorsOnly = false) => {
+    res.locals.traceId = scope.traceId;
+    res.setHeader('X-Trace-Id', scope.traceId);
+    return service.diagnostics.capture(scope, async () => {
+      const started = Date.now();
+      const operation = errorsOnly ? 'proxy' : 'recovery';
+      recordDiagnostic('image.request.started', 'info', { operation });
+      try {
+        const image = await load();
+        if (!image) throw new AppError(404, 'Image not available.', 'IMAGE_UNAVAILABLE');
+        recordDiagnostic('image.request.completed', 'info', { operation, available: true, status: 200, durationMs: Date.now() - started });
+        res.setHeader('Content-Type', image.contentType);
+        res.setHeader('Content-Length', String(image.body.length));
+        res.setHeader('Cache-Control', `private, max-age=${maxAge}`);
+        res.send(image.body);
+      } catch (error) {
+        recordDiagnostic('image.request.completed', error instanceof AppError ? 'warn' : 'error', {
+          operation, available: false, status: error instanceof AppError ? error.status : 500,
+          reason: error instanceof AppError ? 'unavailable' : 'unexpected', durationMs: Date.now() - started,
+        });
+        throw error;
+      }
+    }, errorsOnly);
+  };
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
   app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
@@ -116,32 +141,33 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   app.get('/api/sessions/:id', async (req, res) => { res.json(withCurrentRankings(await service.store.get(String(req.params.id), res.locals.owner))); });
   app.get('/api/sessions/:id/products/:productId/image', async (req, res) => {
     const productId = z.string().min(1).max(100).parse(req.params.productId);
+    const traceId = z.uuid().optional().parse(req.query.traceId) ?? randomUUID();
     // Read URLs from an owned search, never from arbitrary recovery query params.
     const session = await service.store.get(String(req.params.id), res.locals.owner);
-    const product = session.rounds.slice().reverse().flatMap(round => round.products).find(p => p.id === productId);
+    const round = session.rounds.slice().reverse().find(r => r.products.some(p => p.id === productId));
+    const product = round?.products.find(p => p.id === productId);
     if (!product) throw new AppError(404, 'Product not found.');
-    const image = await productImages.get(product);
-    if (!image) throw new AppError(404, 'Image not available.', 'IMAGE_UNAVAILABLE');
-    res.setHeader('Content-Type', image.contentType);
-    res.setHeader('Content-Length', String(image.body.length));
-    // Shorter than URL-keyed images: metadata can change when a search is refined.
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.send(image.body);
+    await sendImage(res, { traceId, source: 'server', sessionId: session.id, roundId: round!.id, productId }, () => productImages.get(product), 3600);
   });
-  app.post('/api/client-events', rateLimit({ windowMs: 60000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false }), (req, res) => {
+  app.post('/api/client-events', rateLimit({ windowMs: 60000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
     // Intentionally no free-form messages, stack traces, URLs, or console output:
     // those can contain chat text, credentials, or third-party query parameters.
-    const event = z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('image_unavailable'), sessionId: z.uuid(), productId: z.string().min(1).max(100).regex(/^[\w-]+$/) }).strict(),
-      z.object({
-        kind: z.enum(['runtime_error', 'unhandled_rejection']),
-        errorType: z.enum(['Error', 'TypeError', 'ReferenceError', 'SyntaxError', 'RangeError', 'UnknownError']),
-        asset: z.string().max(150).regex(/^\/assets\/[\w.-]+\.js$/).optional(),
-        line: z.number().int().min(0).max(10000000).optional(),
-        column: z.number().int().min(0).max(10000000).optional(),
-      }).strict(),
-    ]).parse(req.body);
-    logger.warn('client.error', event);
+    const event = ClientEventSchema.parse(req.body);
+    const traceId = event.traceId ?? randomUUID();
+    if (event.kind === 'image_unavailable') {
+      const session = await service.store.get(event.sessionId, res.locals.owner);
+      const round = session.rounds.slice().reverse().find(r => r.products.some(p => p.id === event.productId));
+      if (!round) throw new AppError(404, 'Product not found.');
+      service.diagnostics.record({ traceId, source: 'browser', sessionId: session.id, roundId: round.id, productId: event.productId,
+        event: 'client.image_unavailable', level: 'error', details: {} });
+    } else {
+      const { kind, traceId: _trace, sessionId, ...details } = event;
+      const session = sessionId ? await service.store.get(sessionId, res.locals.owner) : null;
+      service.diagnostics.record({ traceId, source: 'browser', sessionId: session?.id ?? null, roundId: session?.rounds.at(-1)?.id ?? null, productId: null,
+        event: kind === 'runtime_error' ? 'client.runtime_error' : 'client.unhandled_rejection', level: 'error', details });
+    }
+    logger.warn('client.error', { ...event, traceId });
+    res.setHeader('X-Trace-Id', traceId);
     res.status(204).end();
   });
   // Backward-compatible route: closing a search appends an archive revision. Only
@@ -187,14 +213,20 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   // request-dependent referrers. The backend validates public HTTPS targets,
   // pins DNS, limits redirects/type/size and caches the result.
   app.get('/api/image', async (req, res) => {
-    const { url } = z.object({ url: z.string().max(2000) }).strict().parse(req.query);
+    const { url, traceId: suppliedTrace, sessionId, productId } = z.object({
+      url: z.string().max(2000), traceId: z.uuid().optional(), sessionId: z.uuid().optional(),
+      productId: z.string().min(1).max(100).regex(/^[\w-]+$/).optional(),
+    }).strict().refine(value => !!value.sessionId === !!value.productId).parse(req.query);
     if (!safeUrl(url)) throw new AppError(400, 'Invalid image URL.');
-    const image = await getPublicImage(url);
-    if (!image) throw new AppError(404, 'Image not available.', 'IMAGE_UNAVAILABLE');
-    res.setHeader('Content-Type', image.contentType);
-    res.setHeader('Content-Length', String(image.body.length));
-    res.setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800');
-    res.send(image.body);
+    let roundId: string | null = null;
+    if (sessionId) {
+      const session = await service.store.get(sessionId, res.locals.owner);
+      const round = session.rounds.slice().reverse().find(r => r.products.some(p => p.id === productId && p.imageUrl === url));
+      if (!round) throw new AppError(404, 'Product image not found.');
+      roundId = round.id;
+    }
+    await sendImage(res, { traceId: suppliedTrace ?? randomUUID(), source: 'server', sessionId: sessionId ?? null, roundId, productId: productId ?? null },
+      () => getPublicImage(url), 86400, true);
   });
   app.use('/api', (_req, _res, next) => next(new AppError(404, 'API endpoint not found.')));
   const backofficeRoot = fileURLToPath(new URL('../../backoffice/', import.meta.url));
@@ -211,7 +243,7 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     const bodyError = error as { type?: string };
     if (bodyError?.type === 'entity.too.large' || bodyError?.type === 'entity.parse.failed') { res.status(400).json({ error: 'Invalid JSON or request too large.', code: 'INVALID_BODY' }); return; }
     if (!(error instanceof AppError)) logger.error('http.request.unexpected', { path: _req.path, name: error instanceof Error ? error.name : 'unknown' });
-    res.status(error instanceof AppError ? error.status : 500).json({ error: publicError(error), code: error instanceof AppError ? error.code : 'INTERNAL_ERROR' });
+    res.status(error instanceof AppError ? error.status : 500).json({ error: publicError(error), code: error instanceof AppError ? error.code : 'INTERNAL_ERROR', ...(res.locals.traceId ? { traceId: res.locals.traceId } : {}) });
   });
   return app;
 }
