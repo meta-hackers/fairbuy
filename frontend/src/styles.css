@@ -62,6 +62,7 @@
 }
 
 .site-header .progress{padding:0;border-bottom:0;min-width:0}
+.page-heading{padding-top:clamp(20px,2.3vw,32px)}
 .site-header .progress ol{gap:18px}
 .site-header .header-right{gap:20px}
 .site-header .header-tagline{max-width:150px}

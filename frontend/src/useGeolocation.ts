@@ -13,7 +13,7 @@ function detectLocation(): Promise<ShoppingLocation> {
     }, error => {
       window.clearTimeout(timer);
       reject(new Error(error.code === 1
-        ? 'Location access was denied. You can still set your shopping location manually.'
+        ? ''
         : 'Your position is unavailable. Try again or set your location manually.'));
     }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
   }).then(position => api<ShoppingLocation>('/location/reverse', 'POST', {

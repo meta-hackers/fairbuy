@@ -6,6 +6,6 @@ export default defineConfig(({ mode }) => {
   const backend = `http://127.0.0.1:${PORT || 4000}`;
   return {
     plugins: [react()],
-    server: { port: 5173, strictPort: true, proxy: { '/api': backend, '/healthz': backend } },
+    server: { port: 5173, strictPort: true, allowedHosts: ['oc.home.arpa'], proxy: { '/api': backend, '/healthz': backend } },
   };
 });

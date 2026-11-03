@@ -169,11 +169,10 @@ export default function App() {
       }); }}>New search <span aria-hidden="true">↗</span></button></div></header>
     {boot?.mode === 'demo' && <div className="mode-banner" role="note"><strong>Scripted preview</strong><span>Fictional products, prices and sellers. No live AI or current offers.{!boot.persistent && ' Changes are lost when the server restarts.'}</span></div>}
     <main id="main">
-      <div className="page-heading"><div>{stage !== 'ask' && stage !== 'discovery' && <div className="eyebrow">{stage === 'configure' ? 'GOOD DETAILS. BETTER DISCOVERIES.' : 'THE FINAL SAY IS YOURS'}</div>}
+      <div className="page-heading"><div>
         <h1 ref={heading} tabIndex={-1}>{titles[stage][0]}<br /><em>{titles[stage][1]}</em></h1></div>
-        {stage === 'discovery' && boot && !boot.accessRequired ? <LocationBar location={shoppingLocation} pending={geolocation.pending} message={geolocation.message} busy={unavailable}
-          onSave={chooseLocation} onLocate={() => { void geolocation.locate().then(location => { if (location?.currency) void chooseLatestLocation.current(location); }); }} />
-          : stage === 'buy' && <p className="heading-aside">Real information. Clear trade-offs. Your decision.</p>}
+        {boot && !boot.accessRequired && <LocationBar location={shoppingLocation} pending={geolocation.pending} message={geolocation.message} busy={unavailable}
+          onSave={chooseLocation} onLocate={() => { void geolocation.locate().then(location => { if (location?.currency) void chooseLatestLocation.current(location); }); }} />}
       </div>
       {error && <div className="error-banner" role="alert"><span>{error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}>×</button></div>}
       {!boot && <div className="panel loading-state" role="status">{error ? <button className="button secondary" onClick={() => { void load(); }}>Reconnect</button> : <><span className="spinner" />Getting things ready…</>}</div>}
@@ -181,8 +180,6 @@ export default function App() {
         <span className="eyebrow">A PRIVATE SHOPPING SPACE</span><h2>Welcome to FairBuy.</h2><p className="muted">Enter the app password for this deployment to continue.</p><label htmlFor="access-token">App password</label><input type="password" autoComplete="current-password" id="access-token" value={accessToken} onChange={e => setAccessToken(e.target.value)} /><button className="button primary" disabled={busy || !accessToken}>Let’s begin →</button>
       </form>}
       {boot && !boot.accessRequired && <>
-        {stage !== 'discovery' && <LocationBar location={shoppingLocation} pending={geolocation.pending} message={geolocation.message} busy={unavailable}
-          onSave={chooseLocation} onLocate={() => { void geolocation.locate().then(location => { if (location?.currency) void chooseLatestLocation.current(location); }); }} />}
         {!boot.aiConfigured && <div className="notice"><span aria-hidden="true">ⓘ</span><p>The app is ready for setup. Add <code>MODEL_API_KEY</code> in Render to enable Ask, Configure and web discovery. Your key never goes to the browser.</p></div>}
         {stage === 'ask' && <><div className="ask-layout"><div><Chat messages={session?.askMessages ?? []} busy={busy} onSend={message => send('ask', message)} disabled={!boot.aiConfigured} instantClassifier={boot.instantClassifierConfigured} />
           <div className="ask-bottom">{session && (session.ready || askRounds(session) >= ASK_QUESTION_CAP) && <p className="micro">{session.ready ? 'You can keep answering here or continue: everything stays editable in Configure.' : `To continue, add the ${missingForSearch(session.config).join(', ')}.`}</p>}<button className="button primary" disabled={!session?.ready || unavailable} onClick={() => { void navigate('configure'); }}>Continue to Configure <span aria-hidden="true">→</span></button></div></div><Brief session={session} /></div>

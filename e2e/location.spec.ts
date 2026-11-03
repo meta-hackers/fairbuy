@@ -87,7 +87,7 @@ test('denied permission leaves manual country, city and currency available befor
   } }));
   await page.goto('/');
   const location = page.getByRole('region', { name: 'Shopping location' });
-  await expect(location).toContainText('Location access was denied');
+  await expect(location).not.toContainText('Location access was denied');
   await location.getByRole('button', { name: 'Set location' }).click();
   const countrySelect = page.getByLabel('Shopping country');
   await expect(countrySelect.locator('option[value="IT"]')).toContainText('Italy (IT) 🇮🇹');
