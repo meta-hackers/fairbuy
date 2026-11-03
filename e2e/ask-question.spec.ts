@@ -101,6 +101,8 @@ test('Ask renders single- and multi-select question cards and submits one concis
   await expect.poll(() => submitted).toEqual(['New only — must arrive by Friday', 'Two-year warranty, Delivery by Friday']);
   await expect(page.getByRole('log')).toContainText('Thanks — that is everything I need.');
   await expect(page.getByRole('button', { name: 'Send answer' })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Your message' })).toBeEnabled();
+  await expect(page.getByRole('textbox', { name: 'Your message' })).toBeFocused();
 
   // Re-render the mocked transcript on refresh; backend persistence is tested separately.
   await page.reload();

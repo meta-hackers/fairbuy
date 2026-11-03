@@ -51,6 +51,14 @@ export default function Chat({ messages, busy, onSend, compact = false, disabled
   const [composing, setComposing] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
+  const [restoreFocus, setRestoreFocus] = useState(false);
+  useEffect(() => {
+    // Focus only after React has committed the enabled composer. An animation
+    // frame can run before that commit and silently focus a disabled textarea.
+    if (!restoreFocus || busy || disabled) return;
+    composer.current?.focus();
+    setRestoreFocus(false);
+  }, [restoreFocus, busy, disabled]);
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [messages.length, busy]);
   const send = async (event: FormEvent) => {
     event.preventDefault();
@@ -69,7 +77,7 @@ export default function Chat({ messages, busy, onSend, compact = false, disabled
         <span className="message-role">{message.role === 'user' ? 'You' : 'FairBuy'}</span><p>{message.content}</p>
         {message.role === 'assistant' && message.question && <AskQuestionCard question={message.question}
           answered={messages.slice(i + 1).some(later => later.role === 'user')} busy={busy} disabled={disabled}
-          onSend={onSend} onAnswered={() => requestAnimationFrame(() => composer.current?.focus())} />}
+          onSend={onSend} onAnswered={() => setRestoreFocus(true)} />}
       </div>)}
       {busy && <p className="thinking" role="status"><span className="spinner" aria-hidden="true" />Thinking about your request…</p>}
       <div ref={end} />
