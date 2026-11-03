@@ -72,12 +72,16 @@ export type DropReason = keyof typeof DROP_REASONS;
 export interface DroppedOffer { reason: DropReason; product: string; seller: string | null; host: string | null }
 /** Keeps stored diagnostics bounded; the summary still counts every drop. */
 export const MAX_DROPPED = 50;
+export const MAX_DISCOVERY_ACTIVITIES = 50;
+export interface DiscoveryActivity { message: string; at: string }
 export interface DiscoveryRound {
   id: string; number: number; attempt: number; trigger: 'configure' | 'learn' | 'refresh';
   status: 'queued' | 'running' | 'complete' | 'failed';
   createdAt: string; startedAt: string | null; finishedAt: string | null; durationMs: number | null;
   products: Product[]; sources: Source[]; summary: string; error: string | null;
   context: DiscoveryContext; ranking: ComparisonResult | null;
+  /** Actual research milestones, newest last. Absent on older stored rounds. */
+  activities?: DiscoveryActivity[];
   /** Absent on rounds stored before diagnostics existed. */
   dropped?: DroppedOffer[];
   /** "Why isn't it here?" questions asked about this round, newest last. */

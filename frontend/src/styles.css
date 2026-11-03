@@ -20,6 +20,7 @@
 .product-visual .rank-index,.product-visual .top-pick{z-index:2}
 .search-timer{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
 .search-timer span{opacity:.65}
+.research-activity{margin-bottom:20px;min-width:0}.research-current{margin-bottom:12px}.research-current .eyebrow{display:block;margin-bottom:6px}.research-activity summary{font-size:.875rem;color:var(--green)}.research-activity ol{list-style:none;margin:14px 0 0;padding:0;max-height:240px;overflow:auto}.research-activity li{display:flex;align-items:baseline;gap:12px;padding:7px 0;font-size:.875rem}.research-activity time{flex-shrink:0;font-variant-numeric:tabular-nums}.research-activity li>span{min-width:0;overflow-wrap:anywhere}
 .search-completed{display:flex;align-items:center;gap:6px;margin:-6px 0 12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .search-completed span{opacity:.65}
 .buy-intro .product-photo--small{background:#f0f2eb;border-radius:8px;object-fit:contain;padding:6px}

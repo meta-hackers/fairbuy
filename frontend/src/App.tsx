@@ -6,6 +6,7 @@ import Brief from './components/Brief';
 import Configure from './components/Configure';
 import ProductCard from './components/ProductCard';
 import PreviousResults from './components/PreviousResults';
+import DiscoveryActivity from './components/DiscoveryActivity';
 import LearnModal from './components/LearnModal';
 import Buy from './components/Buy';
 import LocationBar from './components/LocationBar';
@@ -185,6 +186,7 @@ export default function App() {
           {notice && <div className="success-banner" role="status">✓ {notice}</div>}
           {stale && !searching && <div className="notice"><p>Your brief changed. These results reflect the previous configuration. Refresh search before choosing a product.</p></div>}
           {searching && <div className="search-progress panel" role="status"><span className="spinner large" /><div><h2>{round?.status === 'queued' ? 'Your research is queued.' : visibleProducts.length ? `${visibleProducts.length} ${visibleProducts.length === 1 ? 'option' : 'options'} ready to explore. More on the way.` : 'Looking beyond the obvious.'}</h2><p className="muted">{round?.status === 'queued' ? 'A fresh discovery session will begin shortly.' : `Searching for at least ${DISCOVERY_MIN_PRODUCTS} distinct products that meet your brief. Grounded matches appear as soon as they’re found; you can read their sources while we keep searching.`}</p><p className="micro search-timer" role="timer"><span aria-hidden="true">◷</span> {round?.status === 'queued' ? `Queued for ${formatDuration(searchTime ?? 0)}` : `Search time ${formatDuration(searchTime ?? 0)}`} · {round?.context.previousProducts.length ?? 0} previous products · {round?.context.discardedProducts.length ?? 0} discarded · {session.feedback.length} feedback entries</p></div></div>}
+          {round && <DiscoveryActivity round={round} />}
           {round?.status === 'failed' && <div className="error-banner" role="alert"><p>{round.error} Your brief and feedback are saved. Use Refresh search to retry.{round.durationMs !== null && ` Search stopped after ${formatDuration(round.durationMs)}.`}</p></div>}
           {round && (round.products.length > 0 || round.status === 'complete') && <>
             {round.summary && <p className="research-summary">{round.summary}</p>}

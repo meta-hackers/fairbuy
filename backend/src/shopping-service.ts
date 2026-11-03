@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, explainMissing, isConfigReady, MAX_MISSING_QUESTIONS, latestRound, rankProducts, withCurrentRankings,
+  ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, explainMissing, isConfigReady, MAX_DISCOVERY_ACTIVITIES, MAX_MISSING_QUESTIONS, latestRound, rankProducts, withCurrentRankings,
   type DiscoveryContext, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
 import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
@@ -69,7 +69,7 @@ export class ShoppingService {
     session.rounds.push({
       id, number: session.rounds.length + 1, attempt: 0, trigger, status: 'queued',
       createdAt: new Date().toISOString(), startedAt: null, finishedAt: null, durationMs: null,
-      products: retained, sources: [], summary: '', error: null,
+      products: retained, sources: [], summary: '', error: null, activities: [],
       context, ranking: retained.length ? rankProducts(retained, context) : null,
     });
     session.stage = 'discovery'; session.selectedProductId = null;
@@ -238,7 +238,16 @@ export class ShoppingService {
           products: result.products.length, sources: result.sources.length,
         });
       };
-      const result = await this.ai.discover(activeContext, save);
+      const activity = async (message: string) => {
+        await this.store.append(job.sessionId, null, session => {
+          const round = session.rounds.find(r => r.id === job.id);
+          if (!round || round.status !== 'running' || round.attempt !== job.attempts) return;
+          const text = message.trim().slice(0, 500);
+          if (!text || round.activities?.at(-1)?.message === text) return;
+          round.activities = [...round.activities ?? [], { message: text, at: new Date().toISOString() }].slice(-MAX_DISCOVERY_ACTIVITIES);
+        });
+      };
+      const result = await this.ai.discover(activeContext, save, activity);
       await save(result, true);
       logger.info('discovery.job.completed', { sessionId: job.sessionId, roundId: job.id, durationMs: Date.now() - jobStarted, products: result.products.length, sources: result.sources.length });
     } catch (error) {

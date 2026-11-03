@@ -1,4 +1,4 @@
-import type { AIProvider, ConversationResult, DiscoveryProgress } from './provider';
+import type { AIProvider, ConversationResult, DiscoveryActivityProgress, DiscoveryProgress } from './provider';
 import { productId } from './provider';
 import { CurrencySchema, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig } from '@fairbuy/core';
 
@@ -31,7 +31,8 @@ export class DemoAIProvider implements AIProvider {
   async learn(_context: DiscoveryContext, reason: string) {
     return { summary: 'Feedback added to the fresh search.', requirements: [{ label: reason.slice(0, 300), hard: false, attribute: null, op: null, value: null, unit: null }] };
   }
-  async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress) {
+  async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress, onActivity?: DiscoveryActivityProgress) {
+    await onActivity?.('Comparing the fictional preview catalog with your requirements. No live websites are searched.');
     const names = ['Aster 14', 'Kite Studio 15', 'Nori Air 13', 'Vale Pro 14', 'Moss Book 14', 'Fern Studio 14'];
     const discarded = new Set(context.discardedProducts.map(p => p.id));
     const products: Product[] = names.map((name, i) => ({

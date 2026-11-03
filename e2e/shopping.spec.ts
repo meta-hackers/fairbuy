@@ -127,6 +127,31 @@ test('discovery shows the first product while searching and preserves partial re
   await expect(page.getByRole('alert')).toContainText('Later research failed.');
 });
 
+test('discovery activity updates live and keeps its history across reloads and completion', { tag: '@mobile-smoke' }, async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  const current = structuredClone(boot.session);
+  const round = current.rounds.at(-1);
+  round.status = 'running'; round.finishedAt = null; round.durationMs = null;
+  round.activities = [{ message: 'Looking for product offers on shop.example.org via web search.', at: new Date().toISOString() }];
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: { ...boot, session: current } }));
+  await page.route(`**/api/sessions/${current.id}`, route => route.fulfill({ json: current }));
+  await page.goto('/');
+  const activity = page.getByRole('region', { name: 'Research activity', exact: true });
+  await expect(activity.getByRole('status')).toHaveText(round.activities[0].message);
+  round.activities.push({ message: 'Checking Aster 14 against your requirements and its source evidence.', at: new Date().toISOString() });
+  current.version++;
+  await expect(activity.getByRole('status')).toHaveText(round.activities[1].message);
+  await page.reload();
+  await expect(activity.getByRole('status')).toHaveText(round.activities[1].message);
+  await activity.getByText('Recent research activity (2)', { exact: true }).click();
+  await expect(activity.getByRole('listitem')).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
+  round.status = 'complete'; current.version++;
+  await expect(activity.getByRole('status')).toHaveCount(0);
+  await expect(activity.getByText('Research activity (2)', { exact: true })).toBeVisible();
+  await expect(activity.getByRole('listitem')).toHaveCount(2);
+});
+
 test('earlier products stay accessible during a fresh search and after failure', async ({ page }) => {
   const boot = await discoveryBootstrap(page.request);
   const session = structuredClone(boot.session);

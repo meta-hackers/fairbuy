@@ -17,6 +17,7 @@ export type ConversationResult = z.infer<typeof ConversationResultSchema>;
 export type LearnedResult = z.infer<typeof LearnedResultSchema>;
 export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string; dropped?: DroppedOffer[] }
 export type DiscoveryProgress = (result: DiscoveryResult) => Promise<void>;
+export type DiscoveryActivityProgress = (message: string) => Promise<void>;
 interface BraveItem { title: string; url: string; description: string; extra_snippets?: string[] }
 
 // Brave plans are rate-limited per second (the free plan allows one request).
@@ -63,7 +64,7 @@ export interface AIProvider {
   ensureConfigured(): void;
   converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig): Promise<ConversationResult>;
   learn(context: DiscoveryContext, reason: string, product: Product | null): Promise<LearnedResult>;
-  discover(context: DiscoveryContext, onProgress?: DiscoveryProgress): Promise<DiscoveryResult>;
+  discover(context: DiscoveryContext, onProgress?: DiscoveryProgress, onActivity?: DiscoveryActivityProgress): Promise<DiscoveryResult>;
 }
 export function mergeDiscoveryResults(current: DiscoveryResult, incoming: DiscoveryResult): DiscoveryResult {
   const products = new Map(current.products.map(p => [p.id, p]));
@@ -173,8 +174,10 @@ export class LiveAIProvider implements AIProvider {
       reasoning: { effort: this.config.CONFIGURE_REASONING_EFFORT },
     });
   }
-  async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress) {
+  async discover(context: DiscoveryContext, onProgress?: DiscoveryProgress, onActivity?: DiscoveryActivityProgress) {
     let result: DiscoveryResult = { products: [], sources: [], summary: '' };
+    // Activity contains only milestones we observe, never model reasoning or invented browsing.
+    const activity = async (message: string) => { await onActivity?.(message); };
     const controller = new AbortController();
     const images = new Map<string, Promise<string | null>>();
     const resolvedImages = new Map<string, string>();
@@ -246,7 +249,8 @@ export class LiveAIProvider implements AIProvider {
         });
         let research: Research;
         try {
-          research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, plan, controller.signal)
+          await activity(pass === 0 ? 'Searching the web for products that match your brief.' : 'Searching for more alternatives while keeping your must-haves.');
+          research = this.config.SEARCH_PROVIDER === 'brave' ? await this.braveResearch(context, result.products, pass, plan, controller.signal, activity)
             : await this.client.research(this.config.DISCOVERY_MODEL, DISCOVERY_PROMPT, input, controller.signal);
         } catch (error) {
           if (controller.signal.aborted || Date.now() >= deadline) { timedOut = true; break; }
@@ -257,9 +261,12 @@ export class LiveAIProvider implements AIProvider {
           sources: research.sources.length, researchChars: research.text.length,
         });
         if (!research.sources.length) {
+          await activity('No sources returned by this search. Trying another search if time allows.');
           logger.warn('discovery.research.empty', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted });
           continue;
         }
+        const hosts = [...new Set(research.sources.map(source => hostOf(source.url)).filter(Boolean))];
+        await activity(`Comparing search evidence from ${hosts.slice(0, 3).join(', ')}${hosts.length > 3 ? ` and ${hosts.length - 3} other sites` : ''} with your requirements.`);
         const accept = async (incoming: DiscoveryResult) => {
           for (const product of incoming.products) startImage(product);
           result = mergeDiscoveryResults(result, incoming);
@@ -271,6 +278,7 @@ export class LiveAIProvider implements AIProvider {
         const onText = streamObjectArray('products', async raw => {
           const parsed = ExtractionSchema.shape.products.element.safeParse(raw);
           if (!parsed.success) return;
+          await activity(`Checking ${parsed.data.name} against your requirements and its source evidence.`);
           const grounded = normalizeExtraction({ summary: '', products: [parsed.data] }, research, context, plan, markets);
           if (grounded.products.length) {
             grounded.products.forEach(p => streamed.add(p.id));
@@ -300,7 +308,10 @@ export class LiveAIProvider implements AIProvider {
           roundId, pass: pass + 1, durationMs: Date.now() - extractionStarted,
           extractedProducts: extracted.products.length, acceptedProducts: grounded.products.length,
         });
-        for (const product of grounded.products) if (!streamed.has(product.id)) await accept({ products: [product], sources: grounded.sources, summary: '' });
+        for (const product of grounded.products) if (!streamed.has(product.id)) {
+          await activity(`Checking ${product.name} against your requirements and its source evidence.`);
+          await accept({ products: [product], sources: grounded.sources, summary: '' });
+        }
         await accept({ products: [], sources: grounded.sources, summary: grounded.summary });
         logger.info('discovery.pass.completed', { roundId, pass: pass + 1, durationMs: Date.now() - passStarted, eligible: eligibleCount(), acceptable: acceptableProductCount(result, context, Date.now() - started) });
       }
@@ -308,6 +319,7 @@ export class LiveAIProvider implements AIProvider {
       // bounded by the discovery signal, so a slow seller cannot extend the
       // round past its hard limit, and resolved images are never discarded.
       applyImages();
+      if ([...images.keys()].some(id => !resolvedImages.has(id))) await activity('Finishing product image checks and preparing your shortlist.');
       await Promise.all([...images.values()]);
       applyImages();
       await emitting;
@@ -319,7 +331,7 @@ export class LiveAIProvider implements AIProvider {
     logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, acceptable: acceptableProductCount(result, context, Date.now() - started), sources: result.sources.length, timedOut, passes, firstEligibleProductMs });
     return result;
   }
-  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, plan: SourcePlan, signal?: AbortSignal): Promise<Research> {
+  private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, plan: SourcePlan, signal?: AbortSignal, onActivity?: DiscoveryActivityProgress): Promise<Research> {
     const configuredAt = Date.now();
     try { this.ensureConfigured(); }
     catch (error) { recordUsage('brave', 'web-search', 'search', 'failed', Date.now() - configuredAt); throw error; }
@@ -331,6 +343,8 @@ export class LiveAIProvider implements AIProvider {
     // must not discard results from the queries that did run.
     for (const query of queries) {
       if (signal?.aborted) break;
+      const domain = query.match(/\bsite:([\w.-]+)/)?.[1];
+      await onActivity?.(domain ? `Looking for product offers on ${domain} via web search.` : 'Searching product offers across the web.');
       try { pages.push({ query, items: (await this.braveSearchTracked(query, signal)).items }); }
       catch (error) { failures.push(error); }
     }

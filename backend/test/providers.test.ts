@@ -109,6 +109,39 @@ describe('Meta Model API REST integration', () => {
   });
 });
 describe('progressive multi-product discovery', () => {
+  it('reports real research and comparison milestones without exposing model text', async () => {
+    const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
+    const activities: string[] = [];
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(async () => {
+        expect(activities).toEqual(['Searching the web for products that match your brief.']);
+        return researchStream(data.research);
+      })
+      .mockImplementationOnce(async () => {
+        expect(activities.at(-1)).toContain('Comparing search evidence from shop.fairbuy-fixture.org');
+        return stream(result(JSON.stringify(data.extracted)));
+      });
+    await new LiveAIProvider(config, fetcher).discover(context, undefined, async message => { activities.push(message); });
+    expect(activities).toContain('Checking Aster against your requirements and its source evidence.');
+    expect(activities.join(' ')).not.toContain(data.research.text);
+  });
+  it('reports targeted Brave sites before searching, without claiming full pages were read', async () => {
+    const brief = { ...context, config: { ...EMPTY_CONFIG, category: 'laptop', country: 'IT' } };
+    const activities: string[] = [];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async url => {
+      if (String(url).startsWith('https://api.search.brave.com/')) {
+        const query = new URL(String(url)).searchParams.get('q')!;
+        const domain = query.match(/site:([\w.-]+)/)?.[1];
+        if (domain) expect(activities.at(-1)).toBe(`Looking for product offers on ${domain} via web search.`);
+        return new Response(JSON.stringify({ web: { results: [{ title: 'Aster', url: research.sources[0].url, description: research.text }] } }));
+      }
+      return stream(result(JSON.stringify(extracted)));
+    });
+    await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher, undefined, { effective: async () => SOURCE_CATALOG_SEED })
+      .discover(brief, undefined, async message => { activities.push(message); });
+    expect(activities.some(message => message.includes('mediaworld.it via web search'))).toBe(true);
+    expect(activities).toContain('Searching for more alternatives while keeping your must-haves.');
+  });
   it('enriches visible products with seller page images without blocking streamed results', async () => {
     const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
     const fetcher = vi.fn<typeof fetch>()

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MemoryStore } from '../src/store';
 import { ShoppingService } from '../src/shopping-service';
 import { DemoAIProvider } from '../src/ai/demo';
-import { EMPTY_CONFIG, roundOutcome, type ShoppingConfig } from '@fairbuy/core';
+import { EMPTY_CONFIG, MAX_DISCOVERY_ACTIVITIES, roundOutcome, type ShoppingConfig } from '@fairbuy/core';
 import type { DiscoveryResult } from '../src/ai/provider';
 import { AppError } from '../src/errors';
 
@@ -127,6 +127,30 @@ describe('real backend shopping orchestration', () => {
     expect(complete.rounds[0].finishedAt).not.toBeNull();
     expect(complete.rounds[0].products).toHaveLength(6);
     expect(complete.rounds[0].products[0].offers).toHaveLength(2);
+  });
+  it('persists bounded activity before products arrive and retains it after failure', async () => {
+    const { service, store, session, ai } = await setup();
+    let lateActivity: ((message: string) => Promise<void>) | undefined;
+    vi.spyOn(ai, 'discover').mockImplementation(async (_context, _onProgress, onActivity) => {
+      lateActivity = onActivity;
+      for (let i = 0; i < MAX_DISCOVERY_ACTIVITIES + 2; i++) await onActivity?.(`Searching site ${i}`);
+      await onActivity?.(`Searching site ${MAX_DISCOVERY_ACTIVITIES + 1}`); // consecutive duplicate
+      const round = (await store.get(session.id, 'alice')).rounds[0];
+      expect(round.status).toBe('running');
+      expect(round.products).toEqual([]);
+      expect(round.activities).toHaveLength(MAX_DISCOVERY_ACTIVITIES);
+      expect(round.activities?.[0].message).toBe('Searching site 2');
+      expect(round.activities?.at(-1)?.at).toEqual(expect.any(String));
+      throw new AppError(502, 'Later research failed');
+    });
+    await service.discover(session.id, 'alice'); await run(service);
+    const failed = (await store.get(session.id)).rounds[0];
+    expect(failed.status).toBe('failed');
+    expect(failed.activities).toHaveLength(MAX_DISCOVERY_ACTIVITIES);
+    await lateActivity?.('Stale update');
+    expect((await store.get(session.id)).rounds[0].activities).toEqual(failed.activities);
+    const fresh = await service.discover(session.id, 'alice');
+    expect(fresh.rounds[1].activities).toEqual([]);
   });
   it('retains grounded partial products and rankings when a later provider request fails', async () => {
     const { service, store, session, ai } = await setup();
