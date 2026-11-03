@@ -14,14 +14,14 @@ export default function LocationBar({ location, pending, message, busy, onLocate
     setCountry(location?.country ?? ''); setCity(location?.city ?? ''); setCurrency(location?.currency ?? 'EUR'); setEditing(true);
   }
   // A currency or country changed in the chat updates the session config. Keep an
-  // open editor in sync with that top-panel value too.
+  // open editor in sync with that value too.
   useEffect(() => {
     if (!editing) return;
     setCountry(location?.country ?? ''); setCity(location?.city ?? ''); setCurrency(location?.currency ?? 'EUR');
   }, [editing, location?.country, location?.city, location?.currency]);
   return <section className="location-panel" aria-label="Shopping location">
     <div className="location-summary"><div><strong>{location
-      ? `Shopping in ${[location.city, countryName(location.country)].filter(Boolean).join(', ')} · ${location.currency ?? 'choose currency'}`
+      ? `Shipping in ${[location.city, countryName(location.country)].filter(Boolean).join(', ')} · ${location.currency ?? 'choose currency'}`
       : 'Where are you shopping?'}</strong>
       <p className="micro" role="status">{pending ? 'Finding your location… You can keep shopping.' : message || (location
         ? location.currency ? '' : 'The local currency is not supported yet. Choose a supported shopping currency manually.'

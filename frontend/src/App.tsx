@@ -189,10 +189,8 @@ export default function App() {
           {round && <DiscoveryActivity round={round} />}
           {round?.status === 'failed' && <div className="error-banner" role="alert"><p>{round.error} Your brief and feedback are saved. Use Refresh search to retry.{round.durationMs !== null && ` Search stopped after ${formatDuration(round.durationMs)}.`}</p></div>}
           {round && (round.products.length > 0 || round.status === 'complete') && <>
-            {round.summary && <p className="research-summary">{round.summary}</p>}
             {round.durationMs !== null && <p className="micro search-completed"><span aria-hidden="true">◷</span> Search took {formatDuration(round.durationMs)} · {round.products.length} {round.products.length === 1 ? 'product' : 'products'} · {round.sources.length} {round.sources.length === 1 ? 'source' : 'sources'}</p>}
-            {boot.mode === 'live' && <p className="evidence-disclaimer">AI-extracted web evidence, not independently verified. Search snippets may be stale; unknown charges are never assumed to be zero.</p>}
-            {(round.ranking?.warnings ?? []).map((w, i) => <p className="micro ranking-warning" key={i}>{w}</p>)}
+            {(round.ranking?.warnings ?? []).filter(w => !/^\d+ preferences? cannot be checked automatically and (?:does|do) not affect scores\.$/.test(w)).map((w, i) => <p className="micro ranking-warning" key={i}>{w}</p>)}
             <div className="product-grid">{visibleProducts.map(({ product, ranked }, i) => <ProductCard key={product.id} product={product} ranked={ranked} index={i} busy={unavailable || stale}
               onLearn={() => setLearning({ product })} onSelect={() => { void perform(async () => accept(await api<ShoppingSession>(`/sessions/${session.id}/select`, 'POST', { productId: product.id }))); }} />)}</div>
             {round.status === 'complete' && visibleProducts.length > 0 && visibleProducts.length < DISCOVERY_MIN_PRODUCTS && <div className="notice"><p>Fewer than {DISCOVERY_MIN_PRODUCTS} grounded options met your brief. Try broadening your budget or requirements to see more; we won’t invent offers to fill the page.</p></div>}

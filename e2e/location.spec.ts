@@ -11,7 +11,7 @@ test('requests location on arrival, seeds Ask and preserves edited locations acr
   });
   await page.goto('/');
   const location = page.getByRole('region', { name: 'Shopping location' });
-  await expect(location).toContainText('Shopping in Zurich, Switzerland · CHF');
+  await expect(location).toContainText('Shipping in Zurich, Switzerland · CHF');
   expect(lookups).toBe(1);
   await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
@@ -34,7 +34,7 @@ test('requests location on arrival, seeds Ask and preserves edited locations acr
   // Reloading straight after the click races that request and restores Configure.
   await expect(page.getByRole('textbox', { name: 'Your message' })).toBeVisible();
   await page.reload();
-  await expect(location).toContainText('Shopping in London, United Kingdom · USD');
+  await expect(location).toContainText('Shipping in London, United Kingdom · USD');
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
   await expect(page.getByLabel('Country', { exact: true })).toHaveValue('GB');
   await expect(page.getByRole('combobox', { name: 'Currency', exact: true })).toHaveValue('USD');
@@ -55,7 +55,7 @@ test('denied permission leaves manual country, city and currency available befor
   await page.getByLabel('Shopping city').fill('Milan');
   await expect(page.getByLabel('Shopping currency')).toHaveValue('EUR');
   await location.getByRole('button', { name: 'Save location' }).click();
-  await expect(location).toContainText('Shopping in Milan, Italy · EUR');
+  await expect(location).toContainText('Shipping in Milan, Italy · EUR');
   await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
@@ -91,14 +91,14 @@ test('a currency changed in chat is reflected in the top location panel', async 
   await page.getByLabel('Shopping country').selectOption('IT');
   await page.getByLabel('Shopping city').fill('Milan');
   await location.getByRole('button', { name: 'Save location' }).click();
-  await expect(location).toContainText('Shopping in Milan, Italy · EUR');
+  await expect(location).toContainText('Shipping in Milan, Italy · EUR');
   const input = page.getByRole('textbox', { name: 'Your message' });
   await input.fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeEnabled();
   await input.fill('Change the currency to JPY');
   await page.getByRole('button', { name: 'Send message' }).click();
-  await expect(location).toContainText('Shopping in Milan, Italy · JPY');
+  await expect(location).toContainText('Shipping in Milan, Italy · JPY');
 });
 
 test('a late location result never replaces a manual selection', async ({ page, context }) => {
@@ -119,7 +119,7 @@ test('a late location result never replaces a manual selection', async ({ page, 
   await page.getByLabel('Shopping city').fill('London');
   await location.getByRole('button', { name: 'Save location' }).click();
   release();
-  await expect(location).toContainText('Shopping in London, United Kingdom · GBP');
+  await expect(location).toContainText('Shipping in London, United Kingdom · GBP');
   await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
@@ -165,7 +165,7 @@ test('an unsupported local currency requires a manual choice instead of assuming
   await page.route('**/api/location/reverse', route => route.fulfill({ json: { country: 'AQ', city: 'Research Station', currency: null } }));
   await page.goto('/');
   const location = page.getByRole('region', { name: 'Shopping location' });
-  await expect(location).toContainText('Shopping in Research Station, Antarctica · choose currency');
+  await expect(location).toContainText('Shipping in Research Station, Antarctica · choose currency');
   await expect(location).toContainText('local currency is not supported');
   await location.getByRole('button', { name: 'Change location' }).click();
   await page.getByLabel('Shopping currency').selectOption('USD');
