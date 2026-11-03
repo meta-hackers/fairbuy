@@ -21,9 +21,9 @@ function detectLocation(): Promise<ShoppingLocation> {
   }));
 }
 
-export function useGeolocation() {
+export function useGeolocation(automatic: boolean) {
   const [location, setLocation] = useState<ShoppingLocation | null>(null);
-  const [pending, setPending] = useState(true); const [message, setMessage] = useState('');
+  const [pending, setPending] = useState(false); const [message, setMessage] = useState('');
   const initial = useRef<Promise<ShoppingLocation> | null>(null); const sequence = useRef(0);
   const run = useCallback(async (request: Promise<ShoppingLocation>) => {
     const id = ++sequence.current;
@@ -38,10 +38,13 @@ export function useGeolocation() {
     } finally { if (id === sequence.current) setPending(false); }
   }, []);
   useEffect(() => {
+    // Wait for the saved brief before asking the browser. A country supplied in
+    // Ask is authoritative and also invalidates any unfinished automatic result.
+    if (!automatic) { setPending(false); setMessage(''); return; }
     // Reuse the first request during React StrictMode's effect replay.
     void run(initial.current ??= detectLocation());
     return () => { sequence.current++; };
-  }, [run]);
+  }, [automatic, run]);
   const locate = () => run(detectLocation());
   const cancel = () => { sequence.current++; setPending(false); setMessage(''); };
   return { location, pending, message, locate, cancel };

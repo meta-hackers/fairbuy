@@ -87,6 +87,7 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   await page.goto('/');
   await expect(page.getByText('Scripted preview', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeDisabled();
+  await expect(page.locator('.heading-aside')).toHaveCount(0);
   await page.getByRole('textbox', { name: 'Your message' }).fill('I need a laptop for coding');
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByRole('log')).toContainText('which country');
@@ -98,6 +99,7 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   await expect(page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Configure/ })).toHaveAttribute('aria-current', 'step');
   await page.reload();
   await expect(page.getByLabel('Budget ceiling')).toHaveValue('700');
+  await expect(page.locator('.heading-aside')).toHaveCount(0);
   await page.getByLabel('My budget is a hard limit').check();
   await page.getByRole('button', { name: 'Find products' }).click();
   await expect(page.getByTestId('product-card')).toHaveCount(5);
@@ -139,6 +141,7 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
 });
 
 test('discovery shows the first product while searching and preserves partial results across reloads', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   const boot = await discoveryBootstrap(page.request);
   const complete = structuredClone(boot.session);
   let current = structuredClone(complete);
@@ -152,6 +155,19 @@ test('discovery shows the first product while searching and preserves partial re
   await expect(page.getByTestId('product-card')).toHaveCount(1);
   await expect(page.getByText('1 option ready to explore. More on the way.')).toBeVisible();
   await expect(page.getByText('Searching for at least 4 distinct products', { exact: false })).toBeVisible();
+  const spinner = page.locator('.search-progress .spinner');
+  await expect(spinner).toBeVisible();
+  // Check actual rotation, not just the presence of an animation declaration.
+  await expect.poll(() => spinner.evaluate(element => {
+    const animation = element.getAnimations()[0];
+    return animation?.playState === 'running' && Number(animation.currentTime) > 0;
+  })).toBe(true);
+  const transform = await spinner.evaluate(element => getComputedStyle(element).transform);
+  await expect.poll(() => spinner.evaluate(element => getComputedStyle(element).transform)).not.toBe(transform);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(spinner).toHaveCSS('animation-name', 'none');
+  await expect(page.getByText('Searching for at least 4 distinct products', { exact: false })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(page.getByRole('button', { name: 'Purchase options' })).toBeDisabled();
   await page.getByLabel('Steer your results').fill('Include Moulinex products too');
   await expect(page.getByRole('button', { name: 'Update results' })).toBeDisabled();
@@ -166,6 +182,7 @@ test('discovery shows the first product while searching and preserves partial re
   await expect(page.getByTestId('product-card')).toHaveCount(2);
   current = structuredClone(complete); current.version += 2;
   await expect(page.getByTestId('product-card')).toHaveCount(6);
+  await expect(spinner).toHaveCount(0);
   await expect(page.getByTestId('product-card').first().getByRole('button', { name: 'Purchase options' })).toBeEnabled();
   await expect(page.getByLabel('Steer your results')).toHaveValue('');
 

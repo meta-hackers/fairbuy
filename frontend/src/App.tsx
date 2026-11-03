@@ -52,12 +52,12 @@ export default function App() {
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [learning, setLearning] = useState<{ product: Product | null } | null>(null); const [accessToken, setAccessToken] = useState('');
   const [refinement, setRefinement] = useState(''); const [missingQuery, setMissingQuery] = useState('');
-  const geolocation = useGeolocation();
   const [manualLocation, setManualLocation] = useState<ShoppingLocation | null>(null);
+  const currentConfig = stage === 'configure' ? draft : session?.config;
+  const geolocation = useGeolocation(!!boot && !boot.accessRequired && stage === 'ask' && !currentConfig?.country && !manualLocation);
   const suggestedLocation = manualLocation ?? geolocation.location;
   const initialLocation = suggestedLocation?.currency ? suggestedLocation : null;
   const locationAttempt = useRef('');
-  const currentConfig = stage === 'configure' ? draft : session?.config;
   const shoppingLocation: ShoppingLocation | null = currentConfig?.country
     ? { country: currentConfig.country, city: currentConfig.city, currency: currentConfig.currency } : suggestedLocation;
   const heading = useRef<HTMLHeadingElement>(null);
@@ -173,7 +173,7 @@ export default function App() {
         <h1 ref={heading} tabIndex={-1}>{titles[stage][0]}<br /><em>{titles[stage][1]}</em></h1></div>
         {stage === 'discovery' && boot && !boot.accessRequired ? <LocationBar location={shoppingLocation} pending={geolocation.pending} message={geolocation.message} busy={unavailable}
           onSave={chooseLocation} onLocate={() => { void geolocation.locate().then(location => { if (location?.currency) void chooseLatestLocation.current(location); }); }} />
-          : stage !== 'discovery' && <p className="heading-aside">{stage === 'ask' ? 'Not a wall of products. A conversation that leads to the right ones.' : stage === 'configure' ? 'Fine-tune what matters. We’ll take it from here.' : 'Real information. Clear trade-offs. Your decision.'}</p>}
+          : stage === 'buy' && <p className="heading-aside">Real information. Clear trade-offs. Your decision.</p>}
       </div>
       {error && <div className="error-banner" role="alert"><span>{error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}>×</button></div>}
       {!boot && <div className="panel loading-state" role="status">{error ? <button className="button secondary" onClick={() => { void load(); }}>Reconnect</button> : <><span className="spinner" />Getting things ready…</>}</div>}

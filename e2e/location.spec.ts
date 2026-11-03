@@ -35,10 +35,50 @@ test('requests location on arrival, seeds Ask and preserves edited locations acr
   await expect(page.getByRole('textbox', { name: 'Your message' })).toBeVisible();
   await page.reload();
   await expect(location).toContainText('Shipping in London, United Kingdom · USD');
+  expect(lookups).toBe(1);
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
   await expect(page.getByLabel('Country', { exact: true })).toHaveValue('GB');
   await expect(page.getByRole('combobox', { name: 'Currency', exact: true })).toHaveValue('USD');
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
+});
+
+test('a location supplied in Ask stops pending detection and is reused after reload', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', { value: {
+      getCurrentPosition() { sessionStorage.setItem('locationRequests', String(Number(sessionStorage.getItem('locationRequests') ?? 0) + 1)); },
+    } });
+  });
+  await page.goto('/');
+  const location = page.getByRole('region', { name: 'Shopping location' });
+  await expect(location).toContainText('Finding your location');
+  await page.getByRole('textbox', { name: 'Your message' }).fill('A laptop for coding in Italy, budget €700');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(location).toContainText('Shipping in Italy · EUR');
+  await expect(location).not.toContainText('Finding your location');
+  await page.reload();
+  await expect(location).toContainText('Shipping in Italy · EUR');
+  await expect(location.getByRole('button', { name: 'Use my location' })).toBeEnabled();
+  expect(await page.evaluate(() => sessionStorage.getItem('locationRequests'))).toBe('1');
+  await location.getByRole('button', { name: 'Use my location' }).click();
+  await expect(location).toContainText('Finding your location');
+  expect(await page.evaluate(() => sessionStorage.getItem('locationRequests'))).toBe('2');
+});
+
+test('a saved Discovery location is used without requesting browser location', async ({ page }) => {
+  const headers = { 'X-Fairbuy-Request': '1' };
+  const created = await page.request.post('/api/sessions', { headers });
+  const session = await created.json();
+  await page.request.post(`/api/sessions/${session.id}/ask`, { headers, data: { message: 'A laptop for coding in Italy, budget €700' } });
+  await page.request.post(`/api/sessions/${session.id}/discovery`, { headers });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', { value: {
+      getCurrentPosition() { sessionStorage.setItem('locationRequested', 'true'); },
+    } });
+  });
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Shopping location' })).toContainText('Shipping in Italy · EUR');
+  await expect(page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Discovery/ })).toHaveAttribute('aria-current', 'step');
+  expect(await page.evaluate(() => sessionStorage.getItem('locationRequested'))).toBeNull();
 });
 
 test('denied permission leaves manual country, city and currency available before chatting', async ({ page }) => {
