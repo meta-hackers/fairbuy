@@ -164,7 +164,7 @@ export default function App() {
       }); }}>New search <span aria-hidden="true">↗</span></button></div></header>
     {boot?.mode === 'demo' && <div className="mode-banner" role="note"><strong>Scripted preview</strong><span>Fictional products, prices and sellers. No live AI or current offers.{!boot.persistent && ' Changes are lost when the server restarts.'}</span></div>}
     <main id="main">
-      <div className="page-heading"><div>{stage !== 'ask' && <div className="eyebrow">{stage === 'configure' ? 'GOOD DETAILS. BETTER DISCOVERIES.' : stage === 'discovery' ? 'CURATED AROUND YOU' : 'THE FINAL SAY IS YOURS'}</div>}
+      <div className="page-heading"><div>{stage !== 'ask' && stage !== 'discovery' && <div className="eyebrow">{stage === 'configure' ? 'GOOD DETAILS. BETTER DISCOVERIES.' : 'THE FINAL SAY IS YOURS'}</div>}
         <h1 ref={heading} tabIndex={-1}>{titles[stage][0]}<br /><em>{titles[stage][1]}</em></h1></div>
         {stage === 'discovery' && boot && !boot.accessRequired ? <LocationBar location={shoppingLocation} pending={geolocation.pending} message={geolocation.message} busy={unavailable}
           onSave={chooseLocation} onLocate={() => { void geolocation.locate().then(location => { if (location?.currency) void chooseLatestLocation.current(location); }); }} />
