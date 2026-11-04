@@ -63,7 +63,10 @@ test('saved products without image URLs recover photos; failures report only saf
   await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   const failedCard = page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: boot.session.rounds.at(-1).products[1].name, exact: true }) });
   await failedCard.scrollIntoViewIfNeeded();
-  await expect(failedCard.locator('.product-glyph')).toBeVisible();
+  await expect(failedCard.locator('.product-illustration')).toBeVisible();
+  await expect(failedCard.getByText('AI illustration · not a product photo')).toBeVisible();
+  const illustration = failedCard.locator('.product-illustration img');
+  await expect.poll(() => illustration.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   await expect.poll(() => reports.some(event => event.kind === 'image_unavailable')).toBe(true);
   const failedProduct = boot.session.rounds.at(-1).products[1];
   const report = reports.find(event => event.kind === 'image_unavailable' && event.productId === failedProduct.id)!;
@@ -79,6 +82,36 @@ test('saved products without image URLs recover photos; failures report only saf
   await expect.poll(() => reports.filter(event => event.kind === 'runtime_error').length).toBe(1);
   expect(reports.find(event => event.kind === 'runtime_error')).toEqual({ kind: 'runtime_error', errorType: 'TypeError', asset: '/assets/test.js', line: 12, column: 3, traceId: expect.any(String), sessionId: boot.session.id });
   expect(JSON.stringify(reports)).not.toContain('secret');
+});
+
+test('static illustration failure retains the SVG fallback and disclosure', async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.route('**/illustrations/*.webp', route => route.fulfill({ status: 404 }));
+  await page.goto('/');
+  const card = page.getByTestId('product-card').first();
+  await expect(card.locator('.product-glyph')).toBeVisible();
+  await expect(card.getByText('AI illustration · not a product photo')).toBeVisible();
+});
+
+test('additional product types use local Meta illustrations without runtime generation', async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  const product = boot.session.rounds.at(-1).products[0];
+  product.name = 'Home security camera';
+  product.imageUrl = null;
+  for (const offer of product.offers) offer.category = 'security camera';
+  const remoteRequests: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).origin !== 'http://127.0.0.1:3001') remoteRequests.push(request.url());
+  });
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.goto('/');
+  const card = page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: product.name, exact: true }) });
+  const illustration = card.locator('.product-illustration img');
+  await expect(illustration).toHaveAttribute('src', '/illustrations/security-camera.webp');
+  await expect.poll(() => illustration.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(384);
+  await expect(card.getByText('AI illustration · not a product photo')).toBeVisible();
+  expect(remoteRequests).toEqual([]);
 });
 
 test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload', { tag: '@mobile-smoke' }, async ({ page }) => {

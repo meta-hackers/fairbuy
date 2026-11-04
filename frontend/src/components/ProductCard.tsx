@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { scorePoints, type Product, type RankedOffer } from '@fairbuy/core';
 import { imageTraceId, reportClientEvent } from '../telemetry';
+import { productIllustration } from '../productIllustrations';
 export function money(cents: number, currency: string) { return new Intl.NumberFormat('en', { style: 'currency', currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100); }
 export function ProductGlyph({ category = '', small = false }: { category?: string; small?: boolean }) {
   const laptop = /laptop|computer|pc|notebook/i.test(category);
@@ -8,6 +9,15 @@ export function ProductGlyph({ category = '', small = false }: { category?: stri
     {laptop ? <><rect x="28" y="16" width="84" height="58" rx="5" stroke="currentColor" strokeWidth="2" /><rect x="34" y="22" width="72" height="45" rx="2" fill="currentColor" opacity=".09" /><path d="m28 74-11 10c-2 2 0 5 4 5h98c4 0 6-3 4-5l-11-10H28Z" stroke="currentColor" strokeWidth="2"/><path d="M61 79h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></>
       : <><path d="m70 12 43 24v42l-43 20-43-20V36l43-24Z" stroke="currentColor" strokeWidth="2"/><path d="m27 36 43 23 43-23M70 59v39M49 24l43 23v18" stroke="currentColor" strokeWidth="2"/><path d="m27 36 43 23v39L27 78V36Z" fill="currentColor" opacity=".08" /></>}
   </svg></div>;
+}
+export function ProductIllustration({ category = '', name = '', small = false }: { category?: string; name?: string; small?: boolean }) {
+  const src = productIllustration(category, name);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  return <div className={`product-illustration ${small ? 'product-illustration--small' : ''}`}>
+    {failedSrc === src ? <ProductGlyph category={category} small={small} />
+      : <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailedSrc(src)} />}
+    <span className="product-illustration-label">AI illustration · not a product photo</span>
+  </div>;
 }
 export function ProductImage({ product, sessionId, category, small = false }: { product: Product; sessionId: string; category?: string; small?: boolean }) {
   const [failedUrls, setFailedUrls] = useState<string[]>([]);
@@ -19,7 +29,7 @@ export function ProductImage({ product, sessionId, category, small = false }: { 
   const preferredSrc = product.imageUrl ? `/api/image?url=${encodeURIComponent(product.imageUrl)}&sessionId=${sessionId}&productId=${encodeURIComponent(product.id)}&traceId=${traceId}` : null;
   // One trace connects the initial proxy load, recovery, and final browser error.
   const src = preferredSrc && !failedUrls.includes(preferredSrc) ? preferredSrc : recoverySrc;
-  if (failedUrls.includes(src) || (!product.imageUrl && !product.offers.some(o => o.mode === 'live'))) return <ProductGlyph category={category ?? product.offers[0]?.category ?? ''} small={small} />;
+  if (failedUrls.includes(src) || (!product.imageUrl && !product.offers.some(o => o.mode === 'live'))) return <ProductIllustration category={category ?? product.offers[0]?.category ?? ''} name={product.name} small={small} />;
   return <img className={`product-photo ${small ? 'product-photo--small' : ''}`} src={src} alt={`${product.name} product image`}
     loading="lazy" decoding="async" onError={() => {
       setFailedUrls(urls => [...urls.slice(-3), src]);

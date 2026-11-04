@@ -1,0 +1,2102 @@
+{
+  "generic": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a plain cardboard parcel. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:35Z",
+    "sha256": "2e8368462560eb226b5250ca6bca06569528d5226a93eb81283c0f9b974b8d81"
+  },
+  "laptop": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a laptop computer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:44Z",
+    "sha256": "e2d8cf917e76a2c2280df9b467d06d095abcb723d04497998110f8664829f808"
+  },
+  "desktop": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop computer tower. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:46Z",
+    "sha256": "34e2c781ab4a2175cdcb78b3294002fd541e3245f3a9cc6bc959b0c9a7f176cc"
+  },
+  "monitor": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer monitor. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:49Z",
+    "sha256": "42ad5aa446edcca6397eac994ea8fa12d85c0e46c73e4531ad92bff6c7a3dcbd"
+  },
+  "keyboard": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer keyboard. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:51Z",
+    "sha256": "3c6ec7bb6f04d361e7d0a3454e2d84ab31a6147353e08f4cb663f3ef98b03a31"
+  },
+  "mouse": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer mouse. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:53Z",
+    "sha256": "46ed9e4bf210e539fc32a8ef8df73383052a767afc792e26529fe23ee3136f41"
+  },
+  "printer": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop printer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:55Z",
+    "sha256": "d2611c4caf2443ece458842172045660593384993b50ae6c8fd76d7b23d49657"
+  },
+  "scanner": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a flatbed document scanner. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:23:58Z",
+    "sha256": "4bee026f8872e357ab474944020c8813a00ba780dd9c644349196bf1f7d723d0"
+  },
+  "router": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a wireless internet router. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:00Z",
+    "sha256": "e28e2ee81ade57aac65f8ac00735b9831e952ac14542d69d6f2432aa288d8091"
+  },
+  "ssd": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable solid state drive. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:02Z",
+    "sha256": "a6b3dd7069a092068ae6043e4c7c4be11889bdb8595cea577ea75874e393ece1"
+  },
+  "hard-drive": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an external hard disk drive. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:05Z",
+    "sha256": "7aecb709ad118d1543268af936e50b5d0632cfd1509e8f19d0557743dd30f460"
+  },
+  "graphics-card": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer graphics card. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:07Z",
+    "sha256": "885ecc2a3b1cda464031eb531b3c870c1bc06f198c0eeacdf15254a642a4081c"
+  },
+  "processor": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer processor chip. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:09Z",
+    "sha256": "9cada010a6191bcc3bcd5d42d9da2b95207ba545dc72548a663c2c951d6bb74c"
+  },
+  "memory": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer memory module. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:11Z",
+    "sha256": "e4fed89cd1e7f0fa828435b496a5ae43b353ec6804fb56ef4a1abfce45dd53be"
+  },
+  "webcam": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a webcam. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:14Z",
+    "sha256": "5910a7c0d738c1b6b361987c2cc66cc088e5cf0845e2e931afc1ce903ba03d9c"
+  },
+  "microphone": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop microphone. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:16Z",
+    "sha256": "d22a4ff749ca33cab588ef345335dae8cfb31dea0c602762635ff39514c99b9d"
+  },
+  "usb-hub": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a USB hub. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:19Z",
+    "sha256": "caaedc7a07a687df49da037a60c751b91f6049a4567f019af76ac605a72d3fc1"
+  },
+  "charger": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a wall charger with cable. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:21Z",
+    "sha256": "808425b3f999c217cc394e9ecf669d220c4803326180e99911a41f3d8a15c9ed"
+  },
+  "power-bank": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable power bank. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:23Z",
+    "sha256": "d43ea9c899d5dd721e2ad7824331f763b1f4954b5d8968ce0319da11f677b6ed"
+  },
+  "tablet": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a tablet computer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:25Z",
+    "sha256": "f734fcbb3e718de7edc1cd7978526fafd7c2a6a131119ed932235a49eda13ef5"
+  },
+  "smartphone": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a smartphone. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:28Z",
+    "sha256": "2a133f8434afcaee110a13c5d44c44a0e83eb61d62285688408f1f02abedb0a3"
+  },
+  "smartwatch": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a smartwatch. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:30Z",
+    "sha256": "94703b2a5ebe9927ae074df03580d40c70565004962cf06aa1d0c40fd2e9afbd"
+  },
+  "watch": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an analog wristwatch. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:32Z",
+    "sha256": "48dc15ad3620559660ff272bd8749c8c068c3b1ed8304d1b6f8c920a9d461c78"
+  },
+  "headphones": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of over ear headphones. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:34Z",
+    "sha256": "a2bf048390aaffe7c2debe331ac06f512d25391d529e39fdb36c929042a3ed64"
+  },
+  "earbuds": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of wireless earbuds in a case. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:36Z",
+    "sha256": "a991eb0a2bb4ab533c8c3733a2bd4fd4e96431937bdeb0b0737fb7a199d2bd61"
+  },
+  "speaker": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable speaker. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:39Z",
+    "sha256": "03fe72de0b93309af5d3fa6a499c9638c73c25e891a6fc10fbe7c5c8601ab109"
+  },
+  "soundbar": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a television soundbar. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:42Z",
+    "sha256": "5c48c020caef3b5c2e185fdecf0149cb8e6619854216ec55fe6dd2b1179d9fd4"
+  },
+  "television": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a flat screen television. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:44Z",
+    "sha256": "faa5e8068f6c751423b8c4022e19f1440e87bfa9109d82c7d631700fc8f9b8d9"
+  },
+  "projector": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a video projector. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:46Z",
+    "sha256": "9e4c3f23c303435496d70b8825b9f4b2d36fbc77b4c697d15fff729b14fcd700"
+  },
+  "camera": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a digital camera. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:24:48Z",
+    "sha256": "00c634ac2df31b29be0ff04adbbd04466833367c82d56a8343767ee20807be7e"
+  },
+  "camera-lens": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a detachable optical zoom lens for a digital camera. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:24Z",
+    "sha256": "e4261b1401b8f0f3810a07f67327240ee2029080ae69362d291b06d6ae594d44"
+  },
+  "tripod": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a camera tripod. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:26Z",
+    "sha256": "f0a4ef124a1320a05d66afeb5b99b9f840f8f5c13bbe2635d27878583d6bce18"
+  },
+  "drone": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a quadcopter drone. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:28Z",
+    "sha256": "5da343ac5b7379c2288178957d9aaafe1be9c35e974d97855f9d12a9cf6a6e08"
+  },
+  "action-camera": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a small action camera. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:31Z",
+    "sha256": "609eb431aaf519d16cba8e356e02f071b607bc7e541210897e1f959a89d7d0f7"
+  },
+  "game-console": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a video game console. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:33Z",
+    "sha256": "9ef7c4ccf4ae93f0b0db7ec65429565c2ae28588c4f26d954563d4c63dc1ca23"
+  },
+  "controller": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a video game controller. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:35Z",
+    "sha256": "e8d5d0d50628acdd091822d99604fd44e59d636e02419dc93f011edcfa908fd6"
+  },
+  "vr-headset": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a virtual reality headset. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:37Z",
+    "sha256": "f153b83e07472105ed7b1c22ddc32380e81f27bf7a9fdf27524ff8efdcac0fa6"
+  },
+  "ereader": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an electronic book reader. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:39Z",
+    "sha256": "9754dcbfb8e00aff9c0a6d1a477886263c60db2fc5cd8a11ad61697c637ef042"
+  },
+  "turntable": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a record player. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:42Z",
+    "sha256": "f915e748bb0f683fe68ec3f6f1ce229f7071dbb79366ab239dd357a041ad6a6f"
+  },
+  "radio": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable radio. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:45Z",
+    "sha256": "40e1d599bbccaf53ead15ab1b0440c11ebb0fce6adbc1c87d82bd5cb0513aaf9"
+  },
+  "car": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a generic compact passenger car. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:47Z",
+    "sha256": "fc84158cfa8a19fd7eb639a2565e80561453ebb67f20da5b81fad8f06a64356a"
+  },
+  "suv": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a generic sport utility vehicle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:49Z",
+    "sha256": "03c1d85ed9076e3f3a0aee45b23ef1055038f616f63172d250022fee357d19f0"
+  },
+  "van": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a cargo van. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:52Z",
+    "sha256": "c8ec67adb2e9467b4889c7ece1ed573f53b918cd8f5a738b43fbfa1c113d548c"
+  },
+  "motorcycle": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a motorcycle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:55Z",
+    "sha256": "3e92e45f3eac928655b8743af0d0298e8c83743410526eb41634493976da5a29"
+  },
+  "scooter": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a motor scooter. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:25:57Z",
+    "sha256": "796a575b1db6f8af9212d2c4b64ffdfc877b4b21625f93759861961707ad474a"
+  },
+  "bicycle": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a bicycle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:02Z",
+    "sha256": "25231d53f59b0ac86ddcab91aab633e1ee91cad404258657b61986e47466799c"
+  },
+  "electric-bike": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric bicycle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:04Z",
+    "sha256": "70f9ccb887ac5ea9fa0e4784a5219837605f64dd6d4001020e5c175acd82cc17"
+  },
+  "electric-scooter": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric kick scooter. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:06Z",
+    "sha256": "d0173acab775a100460e5668e9868a4a39d7c8c224d36578b5453415be1d0070"
+  },
+  "helmet": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a bicycle helmet. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:08Z",
+    "sha256": "2c71cde89ab3dd0975c5ca51c254babf44e0143453b6bcd9d566525e88bd68e2"
+  },
+  "car-seat": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a child car safety seat. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:11Z",
+    "sha256": "610c8c1df7d6249537758d519ce24354980960cda860dd200e8ea71a534ba8d9"
+  },
+  "tire": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a car tire. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:13Z",
+    "sha256": "a33a922ec81443544406dccde6ed1217ecebcb41b0d6d05bf119b5363bb7cab7"
+  },
+  "roof-box": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a car roof cargo box. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:15Z",
+    "sha256": "1b045b6fbcb038bd7b32e66a3e408cc8a362d3f6200b832bacb23bf855ef16a8"
+  },
+  "car-battery": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a car battery. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:17Z",
+    "sha256": "0b9f8c8bf65d7448caa93a262b19f75918d0fc1babde5a93ab6d30c71b1570bd"
+  },
+  "dashcam": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a car dash camera. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:22Z",
+    "sha256": "4a4fc3f0e14a61be32342187b4d7e0353ff5d1be1503092be3b8e8c835ebce69"
+  },
+  "stroller": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a baby stroller. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:24Z",
+    "sha256": "3dd1dea531dd3d24a794cf5bffb3dbeeadf6de61c392327dd0bb5e204fddbf37"
+  },
+  "washing-machine": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a front loading washing machine. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:27Z",
+    "sha256": "c162b039777b07025149140ea4e03cf3c472b643053b12db80c119e8c60ceb47"
+  },
+  "dryer": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a clothes tumble dryer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:30Z",
+    "sha256": "e5283ba732ba4be5040f33b2d52e27f2839bafbe247bb3dfa5574c35f4b212c0"
+  },
+  "dishwasher": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a dishwasher. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:32Z",
+    "sha256": "15d882b2de64babf9d06068bd1474e7550661db47949af1f3cc21fdd12d678fe"
+  },
+  "refrigerator": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a refrigerator. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:34Z",
+    "sha256": "e010e66594aad8d7f3ede1c1e16ddac8c373f55782dbb07973d6c09aacfc396e"
+  },
+  "freezer": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a chest freezer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:37Z",
+    "sha256": "f48f5afed6ec999fda443773d858e38cf502d9f262254d58b0b4e39695d93dc1"
+  },
+  "oven": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen oven. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:39Z",
+    "sha256": "35899d052c4b6a93b8e48f2d80937b5eca6874e868495ae0b898f71c56bfa577"
+  },
+  "microwave": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a microwave oven. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:41Z",
+    "sha256": "0eeedceb67bcc9330cba35975311a026e98d500897818743d38f289c79f9c358"
+  },
+  "cooktop": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an induction cooktop. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:43Z",
+    "sha256": "1183b79ad4e2e31b3bc91fc41a8dcfe6814847cd5be11df08013f948449c20e5"
+  },
+  "air-fryer": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an air fryer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:46Z",
+    "sha256": "461422e9bbc5e43ea98ef3b87b15c6b631c1f07b72caedf8764e74c9b9195c90"
+  },
+  "coffee-machine": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an espresso coffee machine. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:48Z",
+    "sha256": "46916b325149601c14b547a62c3f59ced786239b052de0bb59bd4b3ad52bfd0f"
+  },
+  "coffee-grinder": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a coffee bean grinder. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:51Z",
+    "sha256": "d0655293a66dd9a2b622b69214b7fa3125085b42cb411d8b80a191830e57ddb5"
+  },
+  "kettle": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric kettle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:54Z",
+    "sha256": "048fb2cc8d10f6483dc31b45d2f8f47decd7ea8f4e3e28766522cbea49c1aeca"
+  },
+  "toaster": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a toaster. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:57Z",
+    "sha256": "71f06abab6c23f3b1c779f8a38a2cf3726d578d96969c65dc70f1745c0818b3d"
+  },
+  "blender": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen blender. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:26:59Z",
+    "sha256": "31b13a68fada773780dacd03a90cf899845cea98da2ad8406676e1ce539616bd"
+  },
+  "food-processor": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a food processor. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:01Z",
+    "sha256": "416dfe555c0b30b4ce88b1c6465b51abf490df9a5e965124ad3bcd753bc15ab6"
+  },
+  "stand-mixer": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen stand mixer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:03Z",
+    "sha256": "2d7348359cfd089166d9630e582badf09bfeece94373588712c69e648e45e44b"
+  },
+  "rice-cooker": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a rice cooker. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:05Z",
+    "sha256": "1fe628a1e0d0fdebd932ca10a97516d515eee8d91c146f887f6ca9b229698129"
+  },
+  "vacuum": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a cordless vacuum cleaner. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:07Z",
+    "sha256": "45773d65d64e84dce05156b7386bf9f10fc616cef45ab58e3e76441d3a771753"
+  },
+  "robot-vacuum": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a robot vacuum cleaner. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:10Z",
+    "sha256": "c1daf7701f10e6c0b50add6eaab4453262186323f37017eb42cb4ab30e21d99f"
+  },
+  "iron": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a clothes iron. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:12Z",
+    "sha256": "c7506fd97ab6eb2d2670a4ef9e07df02d275b58426cc3da36ffafa6e808c0d4a"
+  },
+  "sewing-machine": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a sewing machine. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:14Z",
+    "sha256": "def83b34c0857dbca9ec2a8dfad5e0e6e5c1d7c8398b70f37ff00677c79baf0d"
+  },
+  "air-conditioner": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable air conditioner. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:16Z",
+    "sha256": "8481a34f129226855f121834481461f87c63a712764b458837fface75598a1df"
+  },
+  "fan": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric fan. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:19Z",
+    "sha256": "d2ba675ac5bd9b815e9d1ec8976f83cc29ae36e4385a2fdb244c40564869496e"
+  },
+  "heater": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable room heater. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:21Z",
+    "sha256": "759b0652d75f1c5dc62f7aaa13e688af8db382e718a707a69a241f8a3b883d4f"
+  },
+  "air-purifier": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an air purifier. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:23Z",
+    "sha256": "d7fa9bf9109c125332bc7c22af75c02ab2708266e0d9402f6a0c23298c66cb16"
+  },
+  "dehumidifier": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a dehumidifier. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:26Z",
+    "sha256": "edcf91642f15a254ee23cc3a4fde7701f5120dbda03cfd2d5ef59800a24c9821"
+  },
+  "humidifier": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a humidifier. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:29Z",
+    "sha256": "c5a7f084ba36910cdd7dbda82b25ab2f1a41c75efded2cc8f23feb62050f12f6"
+  },
+  "sofa": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a sofa. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:31Z",
+    "sha256": "e5fee4aeb78464787f68e3b00d3d9997dbcc09e098d34c235190f9b76fa7dfb3"
+  },
+  "armchair": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an armchair. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:33Z",
+    "sha256": "0cf42973defb8d062d4589269076f728d4af0943420a4f6c93ea0ad8ce9ebc59"
+  },
+  "office-chair": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an office chair. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:35Z",
+    "sha256": "b3ba1c008bc5c1d6bc05793c7193c94e6e95e16281faff94ae6e7cb8321a0268"
+  },
+  "dining-chair": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a dining chair. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:38Z",
+    "sha256": "656eba3b9e0660c705a2b8f54a32035b98b44d221b50901675320b4dd4969185"
+  },
+  "desk": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a writing desk. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:40Z",
+    "sha256": "92f997dea7654e70459d6ec8731d7b57bfb7e287c297f29ad7c485f42d65dff5"
+  },
+  "dining-table": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a dining table. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:43Z",
+    "sha256": "393f426eac3c051a21ae6b0ec1f38249075f55342d46ea4416ded97235affced"
+  },
+  "coffee-table": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a coffee table. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:45Z",
+    "sha256": "16098697ca7e0f43fe512aa82b8b2b05012db4cc58510b0607961a7ca722ad79"
+  },
+  "bed": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a bed frame. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:48Z",
+    "sha256": "6a0729f550f9420530468b95cb0f3e9e53170ae2dd93e511a66380490d1b694b"
+  },
+  "mattress": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a mattress. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:50Z",
+    "sha256": "3195d0d11a648b6fd4ef97df5db7049883be70d7bb95534fed13e79eff3dd126"
+  },
+  "wardrobe": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a wardrobe. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:52Z",
+    "sha256": "a41298ff615b82c6a3f45b777e3c34beb1a05cff3c301bede2038e876d0bf8ad"
+  },
+  "bookshelf": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a bookshelf. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:54Z",
+    "sha256": "1a090d3def561638682264347ebf0e8bbe091c8c4c3c44f0ae9d8785eef5c8ce"
+  },
+  "dresser": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a chest of drawers. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:57Z",
+    "sha256": "94a06db336c6f51f9e492ced4b0dbc30efa9a6dc31b00d8ecfbc3ae421bec983"
+  },
+  "lamp": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a table lamp. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:27:59Z",
+    "sha256": "4d365d285935e0a8b5a75d7688b0dabe805c36bea846f1cc03a31c1128ec1d87"
+  },
+  "rug": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a rug. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:01Z",
+    "sha256": "d8174eb997730a6426e6d0dc70583303c4ae89a6e7beae4740c8dbb22b66f1e9"
+  },
+  "curtains": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of curtains. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:03Z",
+    "sha256": "14771d0f89a7903e226339f8a1450990f966307e781e148c17b697f99b5c9951"
+  },
+  "mirror": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a wall mirror. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:05Z",
+    "sha256": "ffedf2e15d6e96abb7c2dbfd54bb131ba49d6dedb221a3b5f58cdd46171dde7d"
+  },
+  "suitcase": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a travel suitcase. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:08Z",
+    "sha256": "63c96bde63d24d984c9f24b747a5309e10532ccdf56c9a02f8540ec8aad9f1e0"
+  },
+  "backpack": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a backpack. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:10Z",
+    "sha256": "8d97372851918e580096f970f700717af0b48dd035b7c417292f6972acd4a173"
+  },
+  "handbag": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a handbag. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:12Z",
+    "sha256": "f7145f6db5cd3e85af4b94802c938d2d7c6987751de86402f1a64ce31113b47b"
+  },
+  "wallet": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a wallet. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:14Z",
+    "sha256": "ba75e91f7b2d7a172eb289af12eeeef39e6d606e33524ea4f7d023d5d8fef5fa"
+  },
+  "sneakers": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of sneakers. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:16Z",
+    "sha256": "386c48454fd0fbd449ca980b39bdf8d686e04c83131efbceb26ed2d9062b0565"
+  },
+  "running-shoes": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of running shoes. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:19Z",
+    "sha256": "92b34bf1d5f1ca378bb209264a4586c14330e00a1a832768d8382e399984b0a6"
+  },
+  "boots": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of boots. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:21Z",
+    "sha256": "634447e7c8617610f855531ccd28f18650c00b842a9ec6b0971f34d5ff732d57"
+  },
+  "sandals": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of sandals. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:23Z",
+    "sha256": "6d3fad1f9a9dbf06b0d739b6c80fd2590d7d6e00e3afb22e29a7c6d2adf90d88"
+  },
+  "jacket": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a jacket. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:25Z",
+    "sha256": "a247126cce2ff5c33b8df4fd99e653e35e3cbb0055631d8b38ca7cb405444ef6"
+  },
+  "coat": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a winter coat. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:28Z",
+    "sha256": "ae3fd9b833b79929289b683b5546d9270767320e018e7ee95513cd4eb87cc165"
+  },
+  "shirt": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a button down shirt. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:30Z",
+    "sha256": "176b033af7285030eb65aa187e486a419c4eab909181e5f16929bdcab039d7da"
+  },
+  "t-shirt": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a plain t shirt. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:33Z",
+    "sha256": "d14ef66a97d34effb8cfe34d77f1f1e113981799f312270ad45c07acbcf4e108"
+  },
+  "jeans": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of jeans. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:36Z",
+    "sha256": "487dcac240d57a1a7c82135c210793270b056eb1fc6d3f192588ae0255917838"
+  },
+  "trousers": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of trousers. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:39Z",
+    "sha256": "8cc64de9b5b12ea90cf6bfee238c4812bda5c95ea33aa01039b16b437759f7dc"
+  },
+  "dress": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a dress. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:41Z",
+    "sha256": "6090c971059d0f3d7bbb8c84e46fabbe6860a144b5e31109eaf57ae92d6cc531"
+  },
+  "sweater": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a knitted sweater. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:43Z",
+    "sha256": "e955976d0ca928c094e7381d2e7cd49eb367551359963e25220042cdb351cd03"
+  },
+  "sunglasses": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of sunglasses. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:45Z",
+    "sha256": "b76987d20e6c1928ec170a04197ef0e95cf75d95e2458d9065b558e5ebbc9391"
+  },
+  "ring": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a simple jewelry ring. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:47Z",
+    "sha256": "21028869751c9607ba08a5a12ffb10fa6173f63d1694be9be2101605a52b762c"
+  },
+  "necklace": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a necklace. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:50Z",
+    "sha256": "2ee8e52bb4739817defde32c4be0e588b83e000aaf5440f493e2f315dbf1f6ae"
+  },
+  "earrings": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of earrings. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:52Z",
+    "sha256": "89085a025f26cf625bbc6e2136e146e17fad9853b0c17833f802379e35d8932c"
+  },
+  "tent": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a camping tent. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:54Z",
+    "sha256": "351c8040f9a7afb42253bd5dbe43412b1c7d81c6fe686b14cbf5d911af5efa72"
+  },
+  "sleeping-bag": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a sleeping bag. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:56Z",
+    "sha256": "42104ef4a78b97eef35c97c7be319ebda1389ee2239a0f47b46af5ad3f09ce36"
+  },
+  "hiking-boots": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of hiking boots. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:28:58Z",
+    "sha256": "2a71c817dac69b3cd606d47ae6967a27c3572fdfc4a00f0740fbfc010f425bd2"
+  },
+  "dumbbells": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of dumbbells. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:01Z",
+    "sha256": "55a81369716cbb3d630768eef68f8369e24c67b5eb8e7925f0f430e7240c5938"
+  },
+  "treadmill": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a treadmill. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:03Z",
+    "sha256": "f48dd2c76ff326febc556b44df4025491dcdc84646b447cf38395f5d548f9998"
+  },
+  "exercise-bike": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a stationary exercise bicycle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:05Z",
+    "sha256": "eaec46e0c7973ac0fcd9f567ea28a55d17760ae4311ce526aa3c3996e6dfcef9"
+  },
+  "yoga-mat": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a rolled yoga mat. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:08Z",
+    "sha256": "5003d0021054acabafd347d1da7fab40c1dcf48e012f4c99a9091e9dbac868e7"
+  },
+  "tennis-racket": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a tennis racket. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:10Z",
+    "sha256": "355c9196572edba013cd7d391da8841a645da183a837d01d033d293edcf65356"
+  },
+  "football": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a soccer ball. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:12Z",
+    "sha256": "617473473696da0920e38c29f2ab61dbc68916b909fb4ee881b0ea601a64bf12"
+  },
+  "basketball": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a basketball. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:15Z",
+    "sha256": "46ba5ad9840c05e0e0a2ffb0a89e98cf815cae1da8991b06883aa60865a58058"
+  },
+  "skis": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of skis. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:17Z",
+    "sha256": "a7a3847d8fa7de47acb928b52e24d0a6d1477cf5b5d4e165716b7f123729b11d"
+  },
+  "snowboard": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a snowboard. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:19Z",
+    "sha256": "0c7d6988f0b3bcbb494d8231ecd4f23905a0a9a6b54fb56e64208ece5895e7c3"
+  },
+  "skateboard": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a skateboard. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:21Z",
+    "sha256": "db1d38d6a9955dac0536f9418e5b6298abec2c6302d840afc98c5b60c889ae9b"
+  },
+  "guitar": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an acoustic guitar. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:24Z",
+    "sha256": "b09e1bde6b741805ae888f207a776255488558ec74cddf04b9b3b9fd2ffa280f"
+  },
+  "piano": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a digital piano. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:26Z",
+    "sha256": "49faf2a80599642c3ff4954a392336a95117e8bdc304193cad8e7b8d58cec80d"
+  },
+  "drums": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a drum kit. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:28Z",
+    "sha256": "94c140dda057d4edeba317a5b865a2e068f5c9dd0e973ec9e3ead91adf1429fb"
+  },
+  "violin": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a violin. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:30Z",
+    "sha256": "9eea479b161c4c838da3def16c554f0a2baa1095b2c16ee98b75d0f94d3e2653"
+  },
+  "book": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a hardcover book. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:33Z",
+    "sha256": "72039a662fcde7161ca693148c25501a7c34e48bd0a9b6924e727a72fa69c8d6"
+  },
+  "board-game": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a board game with tokens. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:35Z",
+    "sha256": "3e5b8d3943b70fd64da7bbcc2632ecbe116029d8eee1ecfbcfe232ce478f1515"
+  },
+  "toy": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a wooden toy. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:37Z",
+    "sha256": "8c8296cdc2cf6d292fe04ff8b058511b58656ef975244697575c20b8469a63b4"
+  },
+  "building-blocks": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a set of toy building blocks. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:40Z",
+    "sha256": "906d88b6dadf542699dbbc9a6a29d6a7dacf6d754d2894d62e8c206022990518"
+  },
+  "crib": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a baby crib. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:42Z",
+    "sha256": "9c5b72c1c128ae1eec972214336a87b47a13d01999ff2d7396aef456c4b2d030"
+  },
+  "high-chair": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a baby high chair. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:44Z",
+    "sha256": "ff0cdbab8868ed9aa98c18d06388dd9e5d2cfa4b9327d483d0842cfab0392116"
+  },
+  "pet-bed": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a pet bed. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:46Z",
+    "sha256": "9eb67001d9c5f3c4dff182381e46ac1e6ecbe6f57164afd0ef9ed7eb34c84b5f"
+  },
+  "aquarium": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an aquarium. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:49Z",
+    "sha256": "4746a229bf55a78613167bb580f88fd2da5f7421d5cb044b86428003c3d4f913"
+  },
+  "drill": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a cordless power drill. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:51Z",
+    "sha256": "85b0c4c8036d9119359458b8ebbe55c507de33dde4247accc3b8bc2000cc1da3"
+  },
+  "lawn-mower": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a lawn mower. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:53Z",
+    "sha256": "1b28641eb52b5aa829f4b204fab79944d379c4e83c49097f4cbdfab15201d4d6"
+  },
+  "barbecue": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a barbecue grill. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:55Z",
+    "sha256": "a9e11d71799937f2e50e92f021bcce4b9d48512505ea67b9b5ffd66fa54f210e"
+  },
+  "hair-dryer": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a hair dryer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:29:57Z",
+    "sha256": "c4612f7a16369a839b3abb7d1f082a1f43eb4c503752b98cef561776404298b7"
+  },
+  "toothbrush": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric toothbrush. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:30:00Z",
+    "sha256": "a3dee24c75440030dd41effb431c78f37471a153fd02591c5a97c2758508b2dc"
+  },
+  "perfume": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a perfume bottle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:30:02Z",
+    "sha256": "6f7f3a1413270888b6d1338d50cfc4cae4bcde705d2a07430cdc46896c93226e"
+  },
+  "cookware": {
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Minimal flat vector-style editorial illustration of a cooking pot with a lid. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:30:04Z",
+    "sha256": "67f933d2089f640196c30e53688bfe912f3ee2fca284e11831ad74cb5e64fc9e"
+  },
+  "binoculars": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of binoculars. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:36:04Z",
+    "sha256": "30b99acd02e8cf1b155ee1ba248e93492388f4fb70ef04b47800dd8d4d500dcf"
+  },
+  "walkie-talkie": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld two way radio. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:38:42Z",
+    "sha256": "9b5ea7d55c8d845c2e3cc7f364decf4024c5e8a85b9478d1bae0abc2bb6c38e6"
+  },
+  "microscope": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an optical laboratory microscope. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:38:43Z",
+    "sha256": "832c0282ef087b4c8370e5bcc6cee535f11989d2e8e0e58a01f812f963dd5819"
+  },
+  "telescope": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an astronomical telescope on a tripod. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:38:46Z",
+    "sha256": "85f65e99fbba5b7884cbf397f9b520fb28d1664d767f64b402e5c2a811d208b9"
+  },
+  "satellite-dish": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a satellite television dish. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:38:56Z",
+    "sha256": "c7cb9c830f5537b48423fd10c66ab75bb564a02f887d22f38d2f96c4350b1090"
+  },
+  "metal-detector": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld metal detector with a circular search coil. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:38:56Z",
+    "sha256": "ac9603d898168e53a6533b8b6e2f8b726c179482d7d03b084481c380c7c66699"
+  },
+  "gps": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld GPS navigation device. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:38:57Z",
+    "sha256": "e4998d4e22d1d07e84ea808b64660be1b5b66d72695b0afbb3643e2bf058c9e7"
+  },
+  "dvd-player": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a compact DVD player. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:07Z",
+    "sha256": "df95fe41f938dbfd2992fd6237b34d27616f8e8a318a550ee9beb23952ad3732"
+  },
+  "streaming-stick": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a television streaming stick with a remote. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:08Z",
+    "sha256": "d2c9cb496291525d3dc400ef66c5c78bd041b3c2f6c5a57becab10f4da22f800"
+  },
+  "photo-frame": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a digital photo frame. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:08Z",
+    "sha256": "e212fd21c6dca67df26f142658d4e767927c1ad604479330ab8717309c3e2043"
+  },
+  "video-doorbell": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a smart video doorbell. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:17Z",
+    "sha256": "1d2f1df54549c3c29291ce3614d6adbb1c29183e1dfbce231270a793af08002f"
+  },
+  "security-camera": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a home surveillance camera. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:17Z",
+    "sha256": "53f06cf9540e2e45b73eb7009185c4a4c1185cb1f000009c3e65f5f1b7b983b1"
+  },
+  "smart-lock": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a smart door lock. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:19Z",
+    "sha256": "583ea30954da513d0b4e4c852a730ab458506d8f7bfe2cb88d1f2cc5bc7cae45"
+  },
+  "smart-plug": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a smart electrical wall plug. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:27Z",
+    "sha256": "bbbf24637d7fd3923a2df07a7df9160947b081accfeb5052c82b304ed684f4fb"
+  },
+  "thermostat": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wall thermostat. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:27Z",
+    "sha256": "dafa7a3d867d8af3d43f91f8b7b1acfbe8f746943ca32391a453464d7c7d9c1f"
+  },
+  "smoke-detector": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a round smoke detector. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:29Z",
+    "sha256": "92c3a6ca3e99fdbc040e810bcbcba3adcd416b882fe5f2b32b3d4cac5c7679dd"
+  },
+  "solar-panel": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable solar panel. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:39Z",
+    "sha256": "388d25c869896d450bfbc311e76d83875cd92a2248dc16d8189368a864dca0e7"
+  },
+  "co-detector": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a carbon monoxide detector. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:39Z",
+    "sha256": "b0108e4db5e830f2e47d59d10942ecf49fd8b0d166b42c9524e953ae376fb25e"
+  },
+  "weather-station": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a home weather station with a small outdoor sensor. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:39Z",
+    "sha256": "e26bfbc489cd4715a3548ab7876ff1834ef79aad6f62d3528665cf58395d5c75"
+  },
+  "power-station": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable battery power station with a handle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:46Z",
+    "sha256": "530b367c6ead3f76b336f0d40e6d6e2b362fc8c7265baf5969ce8942cf37b159"
+  },
+  "surge-protector": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an electrical power strip with sockets. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:47Z",
+    "sha256": "82effb64c32c48850f5d31e1da633401ae99c0382f8e44ca9e83fef2583e1658"
+  },
+  "extension-cord": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a coiled electrical extension cord. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:49Z",
+    "sha256": "4e195e98ff633c3a39a20b19c985aaa25b2c13e6f6eaf122ae0410e84b180d78"
+  },
+  "usb-cable": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a coiled USB charging cable. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:58Z",
+    "sha256": "d5f72c942698152ed403c7450499890f45488b72632023a2d4dfa89bb0feae2b"
+  },
+  "network-storage": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a two bay network attached storage enclosure. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:58Z",
+    "sha256": "add76b7b4173ee7ee57701fdb02bdf665774d39e9ba5c54f7e9aaf6e4b11084a"
+  },
+  "network-switch": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an ethernet network switch. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:39:59Z",
+    "sha256": "e63e25c4edb93d34a8149a486ea800d59225981bda78d3326d931514876cba83"
+  },
+  "pc-case": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an empty desktop PC case. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:08Z",
+    "sha256": "238d389e68a7256a79578b9123b7dcede138380fbaabfb9a60c16081ad9c13a7"
+  },
+  "power-supply": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer power supply unit. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:08Z",
+    "sha256": "4c4df3e6d3693c01f97faf2019570353f677df94be9e0ca585171a283ec926bd"
+  },
+  "cpu-cooler": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer processor cooling fan with heatsink. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:09Z",
+    "sha256": "3f114795dc696c4d7b34558df61c82f9b90eab12b06b8df1e5f43e8cc305a418"
+  },
+  "drawing-tablet": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a graphic drawing tablet with a digital pen. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:17Z",
+    "sha256": "1d9c2d89b1f4facf1b5b708e2a331cabfef6b23ebdaeb448b9e9e5bcf2a921f3"
+  },
+  "sound-card": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a computer sound card circuit board. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:19Z",
+    "sha256": "8a16b8f426ffcd9ff4523ec5ae756b6bef7d790c31eb79b225cbc76a4dc917b1"
+  },
+  "capture-card": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a compact external video capture device. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:19Z",
+    "sha256": "66eb65f4142d67d11b876b0941fcc2ab5e3850f4bfceb16ddbf8e462bf505687"
+  },
+  "stylus": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a digital stylus pen. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:27Z",
+    "sha256": "a6b245113934f491c860c1c5532305cc4b317c31e0ed8a19dd7685ee2970e5be"
+  },
+  "label-printer": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a label printer with a roll of blank labels. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:29Z",
+    "sha256": "50e2760cf729a6833b47fa7d14cc76305b2f94aa2a222514e6b213fa53a838e0"
+  },
+  "3d-printer": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop three dimensional printer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:31Z",
+    "sha256": "506093edb481dd89525bb66aca8f17a37cfb03e6fba38beaae34b77ea73d1114"
+  },
+  "shredder": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an office paper shredder. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:40Z",
+    "sha256": "7276205aae186b44e9297fc7779b988af07ac1c33ddcf8964a7126646ac6f261"
+  },
+  "laminator": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop document laminator. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:42Z",
+    "sha256": "1e4c293230aa40caa85b5e2ce0e3c4bf14201bc91159443e1c1a4f859487abdb"
+  },
+  "calculator": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pocket calculator with blank buttons. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:42Z",
+    "sha256": "6178c7dd4a58194e33e919b40fda9925772c28c9e4b79bfcbef7fb56217f070a"
+  },
+  "document-holder": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop document stand. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:50Z",
+    "sha256": "899f7ba40fe06736d7704fdd2965660df4780eeb4cc66107317cdbf0c2117d41"
+  },
+  "paper-notebook": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a paper notebook with a spiral binding. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:52Z",
+    "sha256": "1f9288c053251d06c658b53993546de10c1e5ae506599449416eabd5a863bf40"
+  },
+  "typewriter": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a vintage mechanical typewriter with blank keys. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:40:52Z",
+    "sha256": "62725e1814b7974fd521138017087966d958c26bd2ed685acf4396331498016a"
+  },
+  "fountain-pen": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a fountain pen. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:00Z",
+    "sha256": "4c1e3bc72cc4dd7365cb3203956f41766691151285a6d79c166bbeedd206e59a"
+  },
+  "ballpoint-pen": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a ballpoint writing pen. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:01Z",
+    "sha256": "4c96ede868c21d97baf74a13fdffb1eb07394207c62756a995703062b3d53c20"
+  },
+  "pencil": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a graphite writing pencil. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:02Z",
+    "sha256": "e2c12f045f20a63e49c6eaa47289bb36b2f168c3574e471576e1a724a0e8ca44"
+  },
+  "scissors": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of household scissors. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:09Z",
+    "sha256": "178d4e0cbe397efba84d14bda2b7e2abaffe7eec36d3846453b4ff5e84d382c7"
+  },
+  "markers": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a set of art marker pens. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:11Z",
+    "sha256": "c2af138957c7982aaf57b7475633847a7e82253cd8b1a243bd9285baace16cfc"
+  },
+  "stapler": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an office stapler. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:11Z",
+    "sha256": "3001dfe62efa05c312dc111f99fc239ad338fcd2ffc445482d1f16a526a78643"
+  },
+  "whiteboard": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a blank whiteboard on a stand. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:20Z",
+    "sha256": "6ba151c57253a27862986b96dca29ab1f63df77980e51500ce9ad59a7defb2d8"
+  },
+  "desk-organizer": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop stationery organizer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:21Z",
+    "sha256": "85ae5395142ed29a148de16f30c3eb29203494e187d991d40dc29e09e2a1e93f"
+  },
+  "tape-dispenser": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a desktop adhesive tape dispenser. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:21Z",
+    "sha256": "208744871f8f8532010464a0bce59657f29cd4ca1f5cba2f3bca5a6d8fb173cf"
+  },
+  "chef-knife": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen chef knife. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:30Z",
+    "sha256": "138d7e924906cf91cd8b59bb5e5390980f7e5916651f0ea42d490e13aec65f99"
+  },
+  "cutlery": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a fork knife and spoon cutlery set. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:31Z",
+    "sha256": "a6102110924dfb9c1d7151d20880e40440e734155f0cd5fed2a5d3640df5e430"
+  },
+  "easel": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wooden painting easel. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:33Z",
+    "sha256": "e5aea38bead4cdd3dd74880cfce33a6f69efd34be8ac59247a2435782b3c8472"
+  },
+  "frying-pan": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a frying pan. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:42Z",
+    "sha256": "cf90905c8d379f4820b7394199cb298f18fe5a0d4baec88468adc253a3e79e36"
+  },
+  "cutting-board": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wooden kitchen cutting board. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:43Z",
+    "sha256": "122f2a2e80c3f63f925d582b35df2081de727ec99da4b56ebcff6458ed51077a"
+  },
+  "wok": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wok pan. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:43Z",
+    "sha256": "ad2fc83434a83b9bf134eeeea0c81b9d2f88f45cc1520db2e12d350710c52868"
+  },
+  "dutch-oven": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a lidded cast iron dutch oven. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:52Z",
+    "sha256": "a97bb0b2f05bd97779f803cf7614037d12c61aad7c1c331092b0e07268f19e20"
+  },
+  "pressure-cooker": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a stovetop pressure cooker. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:52Z",
+    "sha256": "525f7d5a2eeee646c258d054e89fea1fee11a1843f8377a26ffe1d7ef3d40bd7"
+  },
+  "slow-cooker": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric slow cooker. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:41:53Z",
+    "sha256": "dc121adb197811a0409a2a50cf6382afc2eda6e56d6fa4b9bfd4a33ddcc9f495"
+  },
+  "bread-maker": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a bread making machine. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:02Z",
+    "sha256": "555544c2b2076c8819fc1d2c4f310601a71c4566674ee8a1e38582a826bcf76e"
+  },
+  "waffle-maker": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric waffle iron. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:03Z",
+    "sha256": "b48a2ec0de51fc3900256c89dfc75ab86e8771526730876909136ce0d24f687d"
+  },
+  "sandwich-maker": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an electric sandwich toaster. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:04Z",
+    "sha256": "79205831c00a4d17e40e891782070a0cae469f34ba4a75aeb1fba904239a9ac2"
+  },
+  "juicer": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a countertop juice extractor. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:11Z",
+    "sha256": "63e3f771666ea0699b41d23dd98c4f423a95704c485134b217dd7e4b5aecf298"
+  },
+  "food-dehydrator": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a stackable food dehydrator. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:14Z",
+    "sha256": "be1e94fe80c26fe6ed817ed2fb787cbdbdbbfe99015990a936e0c6a7516bc9f8"
+  },
+  "ice-cream-maker": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a countertop ice cream machine. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:14Z",
+    "sha256": "cb2ce69f71b9b88f825bd3f454d04217bfe0bc156312a5cbf978cf11279f3dff"
+  },
+  "kitchen-scale": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a digital kitchen scale. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:23Z",
+    "sha256": "48e4d2c328fcc632f426d61f951ae83a6a5bfd2e02cc0a1fad1bf7e67cce8c61"
+  },
+  "food-thermometer": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a digital probe cooking thermometer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:23Z",
+    "sha256": "771284aac4174cd5eafeb9c4c58390d9dcc0cb1009ac563f57c8d831d0e08bdf"
+  },
+  "water-filter": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a water filter pitcher. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:24Z",
+    "sha256": "a8d59d86ba68638ce80ee39b5f54c4d017e746897a242e3f940c6c63a6d4c2d6"
+  },
+  "range-hood": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen extractor hood. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:33Z",
+    "sha256": "f66693e99307a0a9e3c3e30a2eedecab6d8cce5ee009b22a69af6dd1e5aafb0f"
+  },
+  "soda-maker": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a countertop sparkling water maker. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:33Z",
+    "sha256": "a17f23a2ea8170e11952b9561777dff65a859bcd472f74753ccbeedb347c5f33"
+  },
+  "electric-grill": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a tabletop electric contact grill. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:34Z",
+    "sha256": "c8e0673ba6d3426f69deedb48f58c4076a16ce0e87f8680ef446b7de9a5a2322"
+  },
+  "kitchen-sink": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a stainless steel kitchen sink. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:43Z",
+    "sha256": "f5bb7dab6a839017f3ebc6bd998a60ec58334f7df2f48e1bb9a13ac7740c5d48"
+  },
+  "trash-bin": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a lidded household trash bin. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:44Z",
+    "sha256": "87148d64690eb71c15232616bd46ceafabb973dbc0a7b86d3158679cf14dc231"
+  },
+  "faucet": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen water tap. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:44Z",
+    "sha256": "1c92e430b94a2de1b5ddb6c6cdba2a5398a1319a1bf46fa650f973e6a611c29c"
+  },
+  "lunchbox": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a reusable lunch box. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:53Z",
+    "sha256": "6facd95174fb1cc055c7ffcdcda9f32fa0437e72f128e6d3ea5874fcfd6e58b3"
+  },
+  "thermos": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an insulated thermos flask. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:53Z",
+    "sha256": "a7fe0c987b054cad38d910564544d3c70273cbfdb25647f14be35c36d331f379"
+  },
+  "water-bottle": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a reusable drinking water bottle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:42:53Z",
+    "sha256": "e6ab76d6b254114ed2f95490b3463b798506c8ee2c76aa8d8f7a8d01e476b26f"
+  },
+  "mug": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a ceramic coffee mug. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:02Z",
+    "sha256": "a36fa8b6cdcc3a8f3386f281ce8b0ac08818bc21df8b78404d060ff6c353b4f6"
+  },
+  "drinking-glasses": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of drinking glasses. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:03Z",
+    "sha256": "d647d62b658ce5949b03cff3c7003ad4a38bd6be4492be5f0e817f5c9910768e"
+  },
+  "dinner-plates": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a stack of ceramic dinner plates. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:03Z",
+    "sha256": "aa00d52a81e600d0716a17e57432d498a0042623f859f2a7a98ab5afb1eff724"
+  },
+  "baking-dish": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a rectangular ceramic baking dish. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:11Z",
+    "sha256": "179fc61eaf33d71bd691ebb0dc362ca3e9e20b1ce4d9638e4be4a76d610c2bff"
+  },
+  "rolling-pin": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wooden rolling pin. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:12Z",
+    "sha256": "25783604c84adc4f68493f96511e3cabe16ace364ea15f22f5e72b8ed8da1116"
+  },
+  "teapot": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a ceramic teapot. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:12Z",
+    "sha256": "65bb17b1c7ead1328de7a6e13d587d7b149315b1cb14f88dec03089bae7ce31a"
+  },
+  "vegetable-peeler": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a vegetable peeler. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:22Z",
+    "sha256": "5d06633b80fbedcea58a81660ea07c3b0b80f5590252a25c8a7c6c0a2781b793"
+  },
+  "cheese-grater": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a box cheese grater. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:22Z",
+    "sha256": "650d38eeea538c3100e7a140ca339ffae5a51fdfa3b89a5d6326120da2edfd67"
+  },
+  "colander": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen colander. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:23Z",
+    "sha256": "1efd59acac3c242cc9823aa739d5c10495ee1563a47cd9951b95b63c5da29a69"
+  },
+  "corkscrew": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wine bottle corkscrew. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:32Z",
+    "sha256": "0afe8080f346378e5d96cd6c2415ca043d1b8f74e542ff482a0041faf0befd9d"
+  },
+  "food-containers": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a set of lidded food storage containers. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:32Z",
+    "sha256": "b5ee148d44c453168e813d0cb7c743ae6cb2dee9313cca1bc5dbfa75234d95d0"
+  },
+  "bottle-opener": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a simple bottle opener. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:33Z",
+    "sha256": "96ef8b4eb07d9a5155721fcc9792febacc08ac844957edc8190da78eb895093a"
+  },
+  "pillow": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a bed pillow. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:41Z",
+    "sha256": "7bc6aac72c5cef8e8624d186ab8084d376c817166ad4b0220bb54750fcaf3095"
+  },
+  "kitchen-tongs": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of kitchen serving tongs. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:43:42Z",
+    "sha256": "c1fedbbce9c9b2e7339187fe25c53696f03b08ce8ca6bccbf6cee006462e8f3c"
+  },
+  "mixing-bowl": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a kitchen mixing bowl. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:03Z",
+    "sha256": "4ac39b4f73f8933f72127bfff11f80a10ceb62b1509d7f38aa6bdc651715b13d"
+  },
+  "duvet": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a folded bed duvet. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:12Z",
+    "sha256": "e78c485d8d65429709fa8278f98bf7bce2dec8b229de005a7f72996c77e0565d"
+  },
+  "bed-sheets": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a folded set of bed sheets. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:13Z",
+    "sha256": "8a72856cd62af0d34d91b0c1fa455c0a5f78a289d50563259a6c52facd76c97d"
+  },
+  "blanket": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a folded knitted blanket. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:14Z",
+    "sha256": "020ce2d0c4feba7fcc1dcb589cb87af68e0c92f3e23cba053924c0d1d321fdae"
+  },
+  "shower-head": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld shower head. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:21Z",
+    "sha256": "f30af8bf62c9476cbe4ff7a8ce8cd7c0cbca4614452c9e44df00ece0f03617ad"
+  },
+  "towels": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a stack of bath towels. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:23Z",
+    "sha256": "4e761b9b7036c65d6fe4da7532df3e712e1feee635fab040ff307c5173f2350f"
+  },
+  "bath-mat": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a bathroom bath mat. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:26Z",
+    "sha256": "b9e5bcceac5671cd7a9601acb9be1aef636eb360c3f624abf49035878034c3e5"
+  },
+  "bathroom-cabinet": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wall mounted bathroom cabinet. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:34Z",
+    "sha256": "62f4fc3283c254875c194087a99e39777f12720133d561f2376d08e92969b6bf"
+  },
+  "laundry-basket": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a woven laundry basket. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:34Z",
+    "sha256": "75e540049a561466b1b134f4a5c46cc8b3a42a23f461783d3bc957ebd8e408be"
+  },
+  "toilet-seat": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a closed toilet seat. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:34Z",
+    "sha256": "bc6758c4ac79810885280de7ea09a20dff2bba5abb80c9b01088d9c1230b4c5c"
+  },
+  "drying-rack": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a folding clothes drying rack. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:42Z",
+    "sha256": "e3a48211ff00ae10c72455be1e7e399f3ade9e5ce7a83294f3e6ee0aeb9f4d0f"
+  },
+  "mop": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a floor mop. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:44Z",
+    "sha256": "eb26bc02e11b62136c279096b3da7b5a2bb1cb5c430098b0b9fa0f1628cb3938"
+  },
+  "ironing-board": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an ironing board. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:44Z",
+    "sha256": "9731b6cb0a57c66075f5a885b1fdcef1126f50e271399c7c1f05cb7a7b764259"
+  },
+  "bucket": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a household bucket. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:52Z",
+    "sha256": "655748b4368fe4fe36b235ec1e910da32e0c4fe2f51948ebe232fd208e3ce025"
+  },
+  "doormat": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a plain woven doormat. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:53Z",
+    "sha256": "d03a97d407d445be3310af61e309a8103fd3002fb54931757769fe2af20c643d"
+  },
+  "broom": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a household broom. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:44:55Z",
+    "sha256": "0e05b7824628ea6a3d4aa465b1f9d71694e5097ef3c9a270e527cd90dba21593"
+  },
+  "coat-rack": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a freestanding coat rack. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:04Z",
+    "sha256": "429ab5c71774869612e6ddce4c272a1bad2e952d1c54f8754716cec4c4070c4a"
+  },
+  "tv-stand": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a low television stand cabinet. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:07Z",
+    "sha256": "70d482e779fdeb8d9b1968a6d105e3b6f9fe1300a7ac1f54a324d4d130009dd3"
+  },
+  "shoe-rack": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a two shelf shoe rack. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:08Z",
+    "sha256": "f55fb7c2b876d5ddb3a349dc010bb6ae5d29d22c806e11d63d2d887e252b7bef"
+  },
+  "sideboard": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a wooden sideboard cabinet. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:17Z",
+    "sha256": "176ef462c4184c2fb5005fe3b63b149c5c36db7a759971c85fbf74b38032ceca"
+  },
+  "nightstand": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a bedside nightstand. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:17Z",
+    "sha256": "52f55d56bb4a9939ff33920e31c764206fe81e2d528b60d323775d99a9d2ca98"
+  },
+  "folding-table": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a compact folding table. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:18Z",
+    "sha256": "52b3463d6a1e3ec8fb75e891f118db0a21aceb7eb9aced4534922b45f99aa4c7"
+  },
+  "garden-chair": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an outdoor garden chair. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:26Z",
+    "sha256": "bc8930ed1b04e120bc384649d1abcf89e6b64f66d8286f3a29204040b474ced8"
+  },
+  "garden-table": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an outdoor garden table. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:26Z",
+    "sha256": "a1231d34086354e4803da9520ce336c3855d9a25acfc385d26a897c7e3146aa9"
+  },
+  "sun-lounger": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an outdoor reclining sun lounger. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:29Z",
+    "sha256": "fcf3fb342ff103da850881af36c8539f7af6a5d00b000ebde0121cd2186e300c"
+  },
+  "garden-hose": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a coiled garden hose. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:37Z",
+    "sha256": "16d862a0b42a2d856b0a835150be0db25abb4fdaf396246721cea150d8269cb7"
+  },
+  "hammock": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a fabric hammock on a stand. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:37Z",
+    "sha256": "287c9a374e2cfdc30d8e43607b8321ff679f583d05f4ae85cab142723369ed90"
+  },
+  "parasol": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a garden sun parasol. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:39Z",
+    "sha256": "5a18577f2e5df2ebf4ab7c3a2d44de19142ed22222a07335bc38d324aba0b893"
+  },
+  "sprinkler": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a garden water sprinkler. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:47Z",
+    "sha256": "9abe8e700ecedda37e2375911c1c1edddeaadcdc200b35fd28b232d9a9f8c396"
+  },
+  "hedge-trimmer": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a cordless hedge trimmer. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:49Z",
+    "sha256": "ef9bf10ea7412e53c884c4fb104efbcf17913a9be2a4c813167f1d5190811645"
+  },
+  "leaf-blower": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld garden leaf blower. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:49Z",
+    "sha256": "b56aeccaaf2f8d4d0b9d21be63088cb86551ded5208929f460e6b08eb7dd2eca"
+  },
+  "jigsaw": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld electric jigsaw tool. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:57Z",
+    "sha256": "8cebd8bb1b09257797f746372c04721c8d67b0b01e4c1d21e9f250d34fd8aeac"
+  },
+  "circular-saw": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld circular power saw. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:57Z",
+    "sha256": "bd82a96baff6637302f17a8aa274daf1b10d58ca58391bb05e115b9ca09a53cd"
+  },
+  "chainsaw": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a compact chainsaw. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:45:58Z",
+    "sha256": "06dfccb8fdf985a8bac741dba3827f57cedfa5e90a801f42a37f2069dbe0e75f"
+  },
+  "angle-grinder": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an angle grinder. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:07Z",
+    "sha256": "d6e000075ef7bd0f9530230877c2c1eddfcdb87e24270e355fa80b8a306117da"
+  },
+  "soldering-iron": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a soldering iron with a stand. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:07Z",
+    "sha256": "189d5e5ab2c0dfba82089df29c7609c66a655e7b86e15e25b25fab755cfd9b86"
+  },
+  "sander": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a handheld orbital power sander. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:10Z",
+    "sha256": "44b3c8a07b80a409ffe7d3220290f65cf410826349926c9bd803a44a05f20c4c"
+  },
+  "toolbox": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a closed toolbox with a handle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:18Z",
+    "sha256": "93ebd4dba637d77585d99b213f9cb60f515d5ca91de2bf0eee2b4c3be47c631c"
+  },
+  "wrench-set": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a set of three open end wrenches. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:19Z",
+    "sha256": "ef68150d36fb82ecc6add235982dcd6de96a5e11fa43d2851003d10f568e60ec"
+  },
+  "screwdrivers": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a set of three screwdrivers. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:19Z",
+    "sha256": "fb9a1a941ea062fdfc76979045f4fb80e4e85ea1af78bed871d2fa0ab0ea1ea9"
+  },
+  "surfboard": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a surfboard. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:26Z",
+    "sha256": "da5ef8b6795d79518e71abb57edfd99393c5b6cefbc01a91b00c44156820cb89"
+  },
+  "kayak": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a small kayak with a paddle. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:28Z",
+    "sha256": "01949efb1df5fe595e296971f7e4e937a2c886da66c92d7e559aee9beb3b8540"
+  },
+  "paddleboard": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an inflatable stand up paddle board. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:28Z",
+    "sha256": "3ab2925b134eb695fbd0c2dffb5bda669cfbcbf58515af9ada92f0a7236ef247"
+  },
+  "fishing-rod": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a fishing rod with a reel. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:37Z",
+    "sha256": "16ee4f81a7a142f2bae8b0489aab99e2882c54786588c9d86c06b3eeb58be7b2"
+  },
+  "life-jacket": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a life jacket. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:38Z",
+    "sha256": "31e3b7bf34d92cc661e59f78c2817530b485416a965291ab87bdd14471fa318d"
+  },
+  "golf-clubs": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a golf bag with clubs. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:40Z",
+    "sha256": "e84c6be366558ea2dec6ba776fb2df7e13c0e8dec0a7cd570dbe08ba90e677c7"
+  },
+  "table-tennis": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a table tennis paddle with a ball. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:47Z",
+    "sha256": "5f3754e6af28aa8705f2b62c4055a26565c27260b3781c2dcc84227438601b9e"
+  },
+  "punching-bag": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a hanging punching bag. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:48Z",
+    "sha256": "449ded5b9cac77e74f34a78c08fad40d9dfa4cd7ac2d380a3730c3c7ec945c85"
+  },
+  "badminton-racket": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a badminton racket with a shuttlecock. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:50Z",
+    "sha256": "98a49ef6d153c2d3a3abd3fa132432770b41cc4440c6856799a4d2b50a38b451"
+  },
+  "roller-skates": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of roller skates. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:57Z",
+    "sha256": "0576d7f67022857913c6077205ad626137fe96115132ef85cf9aaf00c8f97a94"
+  },
+  "kettlebell": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a kettlebell weight. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:46:58Z",
+    "sha256": "665b7fc3833e78bc092b4a52b21f3e4976bde3282d6a3f1fa2e3de75edab37ed"
+  },
+  "resistance-bands": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a set of exercise resistance bands. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:01Z",
+    "sha256": "bbcd72d3333387c88191d675f6a4c8e4d7aa69ea42457d8121c27e58ac52d399"
+  },
+  "cooler": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of an insulated picnic cooler box. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:08Z",
+    "sha256": "61a6c04cb2bcfac408194699f50de7fbb33d007ee88ea79170b5a3cca0434782"
+  },
+  "ice-skates": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of ice skates. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:09Z",
+    "sha256": "162bcf7aa1e586b334c7e1dd22029544cc221a0379d865386257c44584a0b1ad"
+  },
+  "trekking-poles": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pair of trekking poles. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:10Z",
+    "sha256": "5e8dec8dcde3d829088d2ab7f6b39a34549f2c1288c8eedc65b3e3dd2b2467ab"
+  },
+  "pet-carrier": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pet travel carrier. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:18Z",
+    "sha256": "7c65cabdfdf11dc2f759c42889ae19983b1281a4c5f2dd606d7cab62d21e858d"
+  },
+  "camping-stove": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a portable camping stove. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:20Z",
+    "sha256": "e3e55019df220dc600a58032f70af01fc458d40c1eb12de7061ce44a1e9d5bfd"
+  },
+  "cat-tree": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a cat scratching tree. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:20Z",
+    "sha256": "3496995d8f5142898fb1b9459480a25051cabfe862478c6eae8b8d50d9093525"
+  },
+  "pet-bowl": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a pet food bowl. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:29Z",
+    "sha256": "36e4a8a180e734b4a1455b3e135946d2ba1a4a33a01a9edd3b15a39d890d113b"
+  },
+  "dog-leash": {
+    "provider": "meta",
+    "model": "muse-image-1.0",
+    "prompt": "Minimal flat vector-style editorial illustration of a dog leash with a collar. One isolated object, centered, fully visible with generous empty margins. Muted sage green and dark forest green outlines, warm off-white background, subtle soft ground shadow. Simple clean geometric shapes, elegant consistent shopping app icon artwork. Not a photograph, no people, no text, no lettering, no logos, no brand marks, no border.",
+    "generatedAt": "2026-11-04T00:47:32Z",
+    "sha256": "54c39960374252f2e8db6d87e21902b2fa37ee584ea2598333426d10c88a2411"
+  }
+}

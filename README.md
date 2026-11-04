@@ -37,6 +37,7 @@ AI extraction is not independent verification; prices, stock and seller claims m
 - [Local development, demo and testing](docs/DEVELOPMENT.md)
 - [Render deployment and operations](docs/DEPLOYMENT.md)
 - [Browser errors and image diagnostics](docs/CLIENT_DIAGNOSTICS.md)
+- [Offline fallback illustrations](docs/ILLUSTRATIONS.md)
 - [API routes](docs/API.md)
 - [Discovery policy and stopping rules](docs/DISCOVERY_POLICY.md)
 - [Category-aware source hints](docs/SOURCES.md)

@@ -16,7 +16,7 @@ test('an actual failed image request and browser report appear under the same ba
   const report = page.waitForRequest(request => request.url().endsWith('/api/client-events')
     && request.postDataJSON()?.kind === 'image_unavailable' && request.postDataJSON()?.productId === product.id);
   await page.goto('/');
-  await expect(page.getByTestId('product-card').first().locator('.product-glyph')).toBeVisible();
+  await expect(page.getByTestId('product-card').first().locator('.product-illustration')).toBeVisible();
   const { traceId } = (await report).postDataJSON();
   expect(traceId).toMatch(/^[\da-f-]{36}$/);
   expect((await page.request.post('/api/admin/login', { headers, data: { username: 'TestAdmin', password: 'e2e-only-password' } })).status()).toBe(200);
