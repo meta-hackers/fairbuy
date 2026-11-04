@@ -66,6 +66,12 @@ Amounts are integer minor units. Only the final listed product price is compared
 
 The shopping country is enforced in code, not only in the prompt. Each live offer records its seller's market from the source catalog (the countries an entry serves, or `global`) or else from its country-code domain (`.de` → DE, `.co.uk` → GB); generic domains such as `.com`, `.eu` or `.io` identify nothing. A seller known to serve only other countries is excluded with that reason, whatever its currency. An unidentified market stays a visible "Delivery to … is not verified" check, so the offer is unverified. The price currency is taken from the quoted evidence when it names exactly one ISO code. A currency that is not the country's local one produces a ranking warning, because it excludes every locally priced offer.
 
+Extraction quotes are matched against the research model's own notes, so they cannot prove what a seller page says. The server therefore re-reads each live offer's seller page (`backend/src/offer-verification.ts`, with the same safe fetcher used for product images):
+
+- **Price on a readable page:** a structured price (JSON-LD, meta tags or microdata) equal to the extracted one confirms it, and a single unambiguous structured price replaces it. Otherwise, the extracted amount is kept only if the visible text shows it next to its currency. If none of these apply, the price is removed.
+- **Stock:** `OutOfStock` or `SoldOut` makes the offer sold out, so it is excluded. An *available* claim the page does not confirm becomes *unknown*.
+- **Unreadable page:** many storefronts (for example Digitec, Galaxus, Desertcart) block server requests. In that case the extracted price stays, is marked `priceSource: "unconfirmed"` and is labelled "Price not confirmed on the seller page" on the card and in Buy. Stock becomes *unknown*. In a sample of 40 recent live offers, 32 pages were unreadable.
+
 Ranking version `3.1.0`: **30% final listed price + 50% matched soft constraints + 20% evidence reliability**, on a 0–100 scale.
 
 - **Price:** cheapest known price ÷ this offer's price, so a small price gap stays a small gap. Unknown prices earn no price credit.

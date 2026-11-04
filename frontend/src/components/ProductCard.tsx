@@ -43,6 +43,8 @@ export default function ProductCard({ product, sessionId, ranked, index, onLearn
   const eligible = product.offers.filter(o => ranked.some(r => r.offerId === o.id));
   const prices = eligible.flatMap(o => o.price.amountCents === null ? [] : [o.price.amountCents]);
   const currency = eligible[0]?.price.currency ?? 'EUR';
+  // Prices the server could not read on the seller page are labelled, never presented as confirmed.
+  const unconfirmedPrice = eligible.some(o => o.priceSource === 'unconfirmed');
   const price = prices.length ? `${money(Math.min(...prices), currency)}${Math.max(...prices) > Math.min(...prices) ? ` – ${money(Math.max(...prices), currency)}` : ''}` : 'Final price not listed';
   const unknownPrices = eligible.length - prices.length;
   const sources = [...new Map(eligible.filter(o => /^https:\/\//.test(o.provenanceUrl)).map(o => [o.provenanceUrl, o])).values()];
@@ -58,8 +60,8 @@ export default function ProductCard({ product, sessionId, ranked, index, onLearn
       <div className="product-heading"><div><h2>{product.name}</h2><p className="micro">{[...new Set(eligible.map(o => o.seller))].join(' · ')}</p></div><span className="fit-score" title={scoreTitle}>{points.total}<small>/100 fit</small></span></div>
       <p className="product-summary">{product.summary}</p>
       <div className="why"><span aria-hidden="true">✳</span><p>{product.why}</p></div>
-      <div className="product-tags"><span className="tag">{best.status === 'unverified' ? 'Checks still needed' : 'No known constraint failure'}</span>{!best.price.known && <span className="tag warning-tag">Price not listed</span>}</div>
-      <div className="price-line"><div><strong>{price}</strong><span>{prices.length ? `Final listed price${prices.length === 1 ? '' : 's'} · ${prices.length} ${prices.length === 1 ? 'offer' : 'offers'}${unknownPrices ? ` · ${unknownPrices} not listed` : ''}` : 'The seller has not stated a final price'}</span></div></div>
+      <div className="product-tags"><span className="tag">{best.status === 'unverified' ? 'Checks still needed' : 'No known constraint failure'}</span>{(!best.price.known || unconfirmedPrice) && <span className="tag warning-tag">{unconfirmedPrice ? 'Price not confirmed on the seller page' : 'Price not listed'}</span>}</div>
+      <div className="price-line"><div><strong>{price}</strong><span>{prices.length ? `Final listed price${prices.length === 1 ? '' : 's'} · ${prices.length} ${prices.length === 1 ? 'offer' : 'offers'}${unknownPrices ? ` · ${unknownPrices} not listed` : ''}${unconfirmedPrice ? ' · not confirmed on the seller page' : ''}` : unconfirmedPrice ? 'Price not confirmed on the seller page' : 'The seller has not stated a final price'}</span></div></div>
       {!!sources.length && <div className="inline-sources"><span>Sources:</span>{sources.map((o, i) => <a href={o.provenanceUrl} key={o.id} target="_blank" rel="noopener noreferrer">[{i + 1}] {o.seller} ↗</a>)}</div>}
       <details className="product-details"><summary>Trade-offs & evidence <span aria-hidden="true">+</span></summary>
         <ul>{product.tradeoffs.map((t, i) => <li key={i}>{t}</li>)}{best.constraints.map((r, i) => <li key={`c${i}`}><span className={`outcome outcome--${r.outcome}`}>{r.outcome === 'pass' ? '✓' : r.outcome === 'fail' ? '−' : '?'}</span>{r.reason}{r.constraint.hard && ' · must-have'}</li>)}</ul>

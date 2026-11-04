@@ -153,3 +153,19 @@ describe('seller markets', () => {
     }
   });
 });
+
+describe('electronics accessories (issue #40)', () => {
+  it('classifies batteries, chargers and action cams as electronics, not general', () => {
+    expect(classifyVertical(brief('GoPro batteries', 'CL', 'Batteria di ricambio per GoPro Hero 9 Black'))).toBe('electronics');
+    expect(classifyVertical(brief('cargador', 'CL'))).toBe('electronics');
+    expect(classifyVertical(brief('action cam', 'IT'))).toBe('electronics');
+  });
+  it('plans electronics retailers instead of supermarkets for a Chilean battery search', () => {
+    const catalog = validateSourceCatalog([
+      { domain: 'pcfactory.cl', name: 'PC Factory', roles: ['seller'], verticals: ['computers', 'electronics'], countries: ['CL'], priority: 3 },
+      { domain: 'jumbo.cl', name: 'Jumbo', roles: ['seller'], verticals: ['groceries', 'general'], countries: ['CL'], priority: 3 },
+    ]);
+    expect(sourcePlan(brief('GoPro batteries', 'CL'), catalog).sellers.map(s => s.domain)).toEqual(['pcfactory.cl']);
+  });
+});
+

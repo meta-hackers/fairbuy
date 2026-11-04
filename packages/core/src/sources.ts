@@ -79,6 +79,8 @@ const VERTICAL_KEYWORDS: Record<Exclude<Vertical, 'general'>, string[]> = {
     'washing machine', 'lavatrice', 'fridge', 'frigorifero', 'dishwasher', 'lavastoviglie', 'fernseher',
     'handy', 'kopfhorer', 'staubsauger', 'aspirapolvere', 'elettrodomestico', 'elettronica', 'electronics',
     'food processor', 'robot da cucina', 'kuchenmaschine',
+    'battery', 'batteries', 'batteria', 'batterie', 'bateria', 'baterias', 'akku', 'charger', 'caricatore', 'cargador',
+    'gopro', 'action cam', 'action camera', 'drone', 'power bank', 'powerbank', 'memory card', 'microsd',
   ],
   food_delivery: [
     'food delivery', 'food order', 'food', 'restaurant', 'ristorante', 'pizza', 'pizzeria', 'sushi',
