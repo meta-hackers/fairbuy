@@ -36,6 +36,16 @@ Do not move the web service to Frankfurt/EU for Meta calls: in testing, Meta Mod
 
 Render injects `NODE_ENV=production` during builds too, so `npm ci --include=dev` must install TypeScript/Vite and other build-only dependencies explicitly; prune them after building. Free web services do not support a pre-deploy command. The app listens first, then initializes the schema with retry: `/healthz` is liveness and `/health` is database readiness; neither verifies paid AI access. `npm run db:migrate` remains available for explicit maintenance runs. Without a valid `MODEL_API_KEY`, the app serves setup guidance and never substitutes demo results. `APP_ACCESS_TOKEN` is the fixed app password, not a per-user account.
 
+## Optional third-party image fallback
+
+`IMAGE_PROXY_FALLBACK` defaults to `wsrv`: an image download refused with HTTP
+403 is retried once through the free wsrv.nl service. Public image URLs, including
+query strings, are disclosed to that third party; no app cookies or credentials
+are sent. To disable it, set `IMAGE_PROXY_FALLBACK=disabled` and restart/redeploy.
+The service is best-effort and rate-limited, not guaranteed anti-bot access.
+No API key is required. The browser continues using FairBuy's own `/api` routes;
+no CSP relaxation or external browser embedding is needed.
+
 ## Supabase PostgreSQL
 
 Use a dedicated `fairbuy_app` login, **not** the Supabase administrator password. Run [`scripts/setup-supabase.sql`](../scripts/setup-supabase.sql) once as the Supabase `postgres` administrator. Supply `FAIRBUY_DATABASE_PASSWORD` securely through the environment (a random value of at least 32 characters), together with the administrator connection settings `PGHOST`, `PGUSER` and `PGPASSWORD` from Supabase's Connect dialog:

@@ -17,7 +17,7 @@ export const DiagnosticDetailsSchema = z.object({
   column: z.number().int().min(0).max(10000000).optional(),
 }).strict();
 export const DiagnosticKindSchema = z.enum([
-  'image.request.started', 'image.request.completed', 'image.fetch.completed', 'image.fetch.unavailable', 'image.fetch.shared',
+  'image.request.started', 'image.request.completed', 'image.fetch.completed', 'image.fetch.unavailable', 'image.fetch.shared', 'image.fallback.started',
   'image.page.completed', 'image.page.unavailable', 'image.page.no_candidates', 'image.product.resolved', 'image.recovery.shared',
   'client.image_unavailable', 'client.runtime_error', 'client.unhandled_rejection',
   'offer.verification.confirmed', 'offer.verification.corrected', 'offer.verification.unconfirmed',
