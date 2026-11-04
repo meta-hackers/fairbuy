@@ -13,7 +13,7 @@ const MAX_PAGE_BYTES = 2 * 1024 * 1024;
 const PAGE_TIMEOUT_MS = 6000;
 const MAX_REDIRECTS = 3;
 const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-const GENERIC_IMAGE = /(^|[/_.-])(logo|logos|sprite|sprites|favicon|placeholder|no-image|noimage|coming-soon|default-image|defaultimage|site-icon|brand-logo)([/_.-]|$)/i;
+const GENERIC_IMAGE = /(^|[/_.-])(logo|logos|sprite|sprites|favicon|placeholder|no-image|noimage|coming-soon|default-image|defaultimage|site-icon|brand-logo|mstile|apple-touch|pwa)([/_.-]|$)/i;
 
 interface Page { html: string; url: string }
 interface PageResponse { status: number; location: string | null; html: string | null }
@@ -103,7 +103,7 @@ async function readPage(value: string, signal?: AbortSignal): Promise<Page | nul
   return null;
 }
 
-function decode(value: string) {
+export function decodeHtmlEntities(value: string) {
   return value.replace(/&(?:amp|quot|apos|lt|gt|#\d+|#x[\da-f]+);/gi, entity => {
     const named: Record<string, string> = { '&amp;': '&', '&quot;': '"', '&apos;': "'", '&lt;': '<', '&gt;': '>' };
     if (named[entity.toLowerCase()]) return named[entity.toLowerCase()];
@@ -114,7 +114,7 @@ function decode(value: string) {
 
 function attributes(tag: string): Map<string, string> {
   return new Map([...tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g)]
-    .map(match => [match[1].toLowerCase(), decode(match[2] ?? match[3] ?? match[4])]));
+    .map(match => [match[1].toLowerCase(), decodeHtmlEntities(match[2] ?? match[3] ?? match[4])]));
 }
 
 function srcsetUrls(value: string): string[] {
@@ -200,7 +200,7 @@ export function sellerImage(html: string, pageUrl: string): string | null {
 
 /** True when a candidate image is explicitly referenced by the seller HTML. */
 export function imageMentionedInHtml(html: string, value: string): boolean {
-  return decode(html).includes(value);
+  return decodeHtmlEntities(html).includes(value);
 }
 
 export async function findSellerImage(product: Product, preferredImage: string | null = product.imageUrl, signal?: AbortSignal): Promise<string | null> {

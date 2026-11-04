@@ -20,7 +20,12 @@ const ResponseSchema = z.object({
     }).passthrough()).nullish(),
   }).passthrough()),
 });
-export interface Research { text: string; sources: Source[] }
+export interface Research {
+  text: string;
+  sources: Source[];
+  /** Product image candidates from search results, keyed by the result URL. */
+  images?: Record<string, string>;
+}
 export class MetaClient {
   constructor(private config: Settings, private fetcher: typeof fetch = fetch) {}
   ensureConfigured() {

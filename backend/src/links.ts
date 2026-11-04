@@ -31,6 +31,11 @@ const IMAGE_CDNS = [
   'akamaized.net', 'akamaihd.net', 'cloudfront.net', 'fastly.net',
   'alicdn.com', 'pinimg.com', 'twimg.com',
   'vinted.net', 'zalando.net', 'zalando.it', 'zalando.de', 'zalando.co.uk',
+  // Product images for Galaxus/Digitec are served from this shared CDN, which
+  // is a different registrable domain from their storefronts.
+  'galaxus.com',
+  // Search-result thumbnails can be used when a seller blocks direct scraping.
+  'search.brave.com',
 ];
 function isImageCdn(hostname: string) {
   const host = hostname.toLowerCase().replace(/\.$/, '');

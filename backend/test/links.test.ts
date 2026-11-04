@@ -7,6 +7,14 @@ describe('product image URL checks', () => {
       .toBe('https://cdn.shop.fairbuy-fixture.org/aster.png');
     expect(safeImageUrl('https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/macbook.jpg', ['https://www.apple.com/it/shop/buy-mac/macbook-air']))
       .toBe('https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/macbook.jpg');
+    // Galaxus and Digitec share an image CDN on a different registrable domain.
+    expect(safeImageUrl('https://static01.galaxus.com/productimages/a/aster.jpeg', ['https://www.galaxus.ch/en/s1/product/aster']))
+      .toBe('https://static01.galaxus.com/productimages/a/aster.jpeg');
+    expect(safeImageUrl('https://static01.galaxus.com/productimages/a/aster.jpeg', ['https://www.digitec.ch/en/s1/product/aster']))
+      .toBe('https://static01.galaxus.com/productimages/a/aster.jpeg');
+    // Search-result thumbnails are proxied by Brave and remain reachable when a seller page is blocked.
+    expect(safeImageUrl('https://imgs.search.brave.com/abc/rs:fit:200:200:1:0/x', ['https://www.autoscout24.ch/de/d/aster']))
+      .toBe('https://imgs.search.brave.com/abc/rs:fit:200:200:1:0/x');
   });
   it('rejects unrelated hosts, non-HTTPS and private targets', () => {
     expect(safeImageUrl('https://unrelated.example.net/aster.png', ['https://www.apple.com/it/shop/buy-mac/macbook-air'])).toBeNull();

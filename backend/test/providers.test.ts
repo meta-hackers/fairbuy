@@ -9,7 +9,10 @@ import { settings } from '../src/settings';
 import { safeUrl } from '../src/links';
 import { logger } from '../src/logger';
 
-vi.mock('../src/product-images', () => ({ findSellerImage: vi.fn().mockResolvedValue(null) }));
+vi.mock('../src/product-images', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/product-images')>();
+  return { ...actual, findSellerImage: vi.fn().mockResolvedValue(null) };
+});
 
 const config = settings({ MODEL_API_KEY: 'test-not-a-real-key', SEARCH_PROVIDER: 'meta' });
 afterEach(() => vi.restoreAllMocks());
@@ -141,6 +144,27 @@ describe('progressive multi-product discovery', () => {
       .discover(brief, undefined, async message => { activities.push(message); });
     expect(activities.some(message => message.includes('mediaworld.it via web search'))).toBe(true);
     expect(activities).toContain('Searching for more alternatives while keeping your must-haves.');
+  });
+  it('uses a Brave listing thumbnail when the seller page blocks image recovery', async () => {
+    const data = catalog(['Aster']);
+    data.extracted.products[0].imageUrl = null;
+    // Brave returns HTML-escaped query separators in the original URL.
+    const thumbnail = 'https://cdn.shop.fairbuy-fixture.org/aster-thumb.jpg?w=1200&amp;q=90';
+    const decodedThumbnail = 'https://cdn.shop.fairbuy-fixture.org/aster-thumb.jpg?w=1200&q=90';
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async url => {
+      if (String(url).startsWith('https://api.search.brave.com/')) {
+        return new Response(JSON.stringify({ web: { results: [{
+          title: 'Aster', url: data.research.sources[0].url, description: data.research.text,
+          thumbnail: { original: thumbnail, src: 'https://imgs.search.brave.com/abc/rs:fit:200:200:1:0/x', logo: false },
+        }] } }));
+      }
+      return stream(result(JSON.stringify(data.extracted)));
+    });
+    const discovered = await new LiveAIProvider({ ...config, SEARCH_PROVIDER: 'brave', BRAVE_API_KEY: 'test-key', BRAVE_MIN_INTERVAL_MS: 0 }, fetcher).discover(context);
+    expect(discovered.products[0].imageUrl).toBe(decodedThumbnail);
+    // The model prompt receives evidence text only, not the image bookkeeping map.
+    const extraction = fetcher.mock.calls.find(([url]) => !String(url).startsWith('https://api.search.brave.com/'));
+    expect(JSON.parse(extraction![1]!.body as string).input).not.toContain('aster-thumb.jpg');
   });
   it('enriches visible products with seller page images without blocking streamed results', async () => {
     const data = catalog(['Aster', 'Birch', 'Cedar', 'Dune']);
@@ -530,6 +554,23 @@ describe('untrusted search evidence', () => {
     const imageResult = normalizeExtraction(unrelatedImage, research, context);
     expect(imageResult.products[0].imageUrl).toBeNull();
     expect(imageResult.summary).toContain('1 image(s) were rejected');
+  });
+  it('uses a grounded search thumbnail when the model has no official image', () => {
+    const offerUrl = 'https://www.galaxus.ch/en/s1/product/aster-123';
+    const data = {
+      text: 'Aster Laptop costs EUR 590. 16 GB RAM.',
+      sources: [{ url: offerUrl, title: 'Galaxus' }],
+      images: { [offerUrl]: 'https://static01.galaxus.com/productimages/a/aster.jpeg' },
+    };
+    const input = structuredClone(extracted);
+    input.products[0].imageUrl = null;
+    input.products[0].offers[0].url = offerUrl;
+    input.products[0].offers[0].quote = data.text;
+    expect(normalizeExtraction(input, data, context).products[0].imageUrl)
+      .toBe('https://static01.galaxus.com/productimages/a/aster.jpeg');
+    // A thumbnail on an unrelated host is not trusted.
+    const unrelated = { ...data, images: { [offerUrl]: 'https://unrelated.example.net/aster.jpeg' } };
+    expect(normalizeExtraction(input, unrelated, context).products[0].imageUrl).toBeNull();
   });
   it('keeps an unknown final price and stock unknown and never marks extraction verified', () => {
     const missingPrice = structuredClone(extracted); missingPrice.products[0].offers[0].price = null;

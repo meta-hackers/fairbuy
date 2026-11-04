@@ -11,7 +11,7 @@ import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, Seller
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT, SELLER_EXTRACT_PROMPT, SELLER_SEARCH_PROMPT } from './prompts';
 import { streamObjectArray } from './json-stream';
 import { recordUsage } from '../usage';
-import { findSellerImage } from '../product-images';
+import { decodeHtmlEntities, findSellerImage, isGenericImageUrl } from '../product-images';
 import { traceProductImage } from '../diagnostics';
 
 export type ConversationResult = z.infer<typeof ConversationResultSchema>;
@@ -23,7 +23,37 @@ export interface SellerSearchResult { offers: Offer[]; sources: Source[]; summar
 export type SellerSearchProgress = (result: SellerSearchResult) => Promise<void>;
 export const SELLER_SEARCH_TIMEOUT_MS = 2 * 60 * 1000;
 export const MAX_SELLER_OFFERS = 8;
-interface BraveItem { title: string; url: string; description: string; extra_snippets?: string[] }
+interface BraveThumbnail { src?: string | null; original?: string | null; logo?: boolean | null }
+interface BraveItem { title: string; url: string; description: string; extra_snippets?: string[]; thumbnail?: BraveThumbnail | null }
+
+/**
+ * Brave exposes the page's own product thumbnail. Use it when the seller page
+ * blocks our HTML fetch: the seller/CDN image itself is usually still public.
+ * Logos and generic site furniture are ignored.
+ */
+function searchThumbnail(item: BraveItem): string | null {
+  if (item.thumbnail?.logo) return null;
+  if (item.thumbnail?.original) {
+    const image = safeImageUrl(decodeHtmlEntities(item.thumbnail.original), [item.url]);
+    // A generic original is generic whichever proxy serves it; do not retry it.
+    if (image) return isGenericImageUrl(image) ? null : image;
+  }
+  if (item.thumbnail?.src) {
+    const image = safeImageUrl(decodeHtmlEntities(item.thumbnail.src), [item.url]);
+    if (image && !isGenericImageUrl(image)) return image;
+  }
+  return null;
+}
+function thumbnailImages(items: BraveItem[]): Record<string, string> {
+  const images: Record<string, string> = {};
+  for (const item of items) {
+    const image = searchThumbnail(item);
+    if (image) images[item.url] = image;
+  }
+  return images;
+}
+/** Never send image bookkeeping to the model; it only needs the evidence text. */
+const promptResearch = (research: Research) => ({ text: research.text, sources: research.sources });
 
 // Brave plans are rate-limited per second (the free plan allows one request).
 // Serialize calls in-process so concurrent discovery jobs cannot trip the limit,
@@ -167,8 +197,8 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
   const products = extracted.products.flatMap(raw => {
     const id = productId(raw.name);
     if (discarded.has(id)) { drop('previously_discarded', raw.name, null, null); return []; }
-    const imageUrl = safeImageUrl(raw.imageUrl, sourceUrls);
-    if (raw.imageUrl && !imageUrl) rejectedImages++;
+    const extractedImage = safeImageUrl(raw.imageUrl, sourceUrls);
+    if (raw.imageUrl && !extractedImage) rejectedImages++;
     const offers = raw.offers.flatMap(rawOffer => {
       const url = safeUrl(rawOffer.url);
       if (!url || !allowed.has(url)) { rejected++; drop('url_not_in_sources', raw.name, rawOffer.seller, url); return []; }
@@ -201,6 +231,11 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
       });
       return [offer];
     });
+    // When the model has no usable official image, fall back to the thumbnail
+    // Brave returned for one of this product's grounded offer pages. This is
+    // the listing's own image and works even when the page blocks scraping.
+    const fallbackImage = offers.map(offer => research.images?.[offer.provenanceUrl]).find((image): image is string => !!image);
+    const imageUrl = extractedImage ?? safeImageUrl(fallbackImage, sourceUrls);
     return offers.length ? [{ id, name: raw.name, summary: raw.summary, why: raw.why, tradeoffs: raw.tradeoffs, imageUrl, offers }] : [];
   });
   // A duplicated model/offer cannot crowd the shortlist.
@@ -355,7 +390,7 @@ export class LiveAIProvider implements AIProvider {
         const extractionStarted = Date.now();
         let extracted: z.infer<typeof ExtractionSchema>;
         try {
-          extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research }, ExtractionSchema, {
+          extracted = await this.client.structured(this.config.DISCOVERY_MODEL, EXTRACT_PROMPT, { context: input, research: promptResearch(research) }, ExtractionSchema, {
             // Extraction is mechanical: spend fewer tokens reasoning and more on the JSON result.
             max_output_tokens: 16000, reasoning: { effort: 'low' },
           }, onText, controller.signal);
@@ -447,7 +482,7 @@ export class LiveAIProvider implements AIProvider {
         grounded.offers.forEach(offer => streamed.add(offer.id));
         await accept(grounded);
       });
-      const extracted = await this.client.structured(this.config.SELLER_SEARCH_MODEL, SELLER_EXTRACT_PROMPT, { product: input.product, research, knownOffers }, SellerExtractionSchema, {
+      const extracted = await this.client.structured(this.config.SELLER_SEARCH_MODEL, SELLER_EXTRACT_PROMPT, { product: input.product, research: promptResearch(research), knownOffers }, SellerExtractionSchema, {
         max_output_tokens: 8000, reasoning: { effort: 'low' },
       }, onText, controller.signal);
       const grounded = normalizeSellerOffers(extracted.offers, research, context, product, plan, markets);
@@ -536,6 +571,7 @@ export class LiveAIProvider implements AIProvider {
       text: pages.map(page => `Brave search snippets only; full pages not fetched. Query: ${page.query}\n` +
         page.items.map(r => `${r.title}\n${r.url}\n${r.description}\n${r.extra_snippets?.join('\n') ?? ''}`).join('\n\n')).join('\n\n').slice(0, 40000),
       sources: items.map(r => ({ url: r.url, title: r.title })),
+      images: thumbnailImages(items),
     };
   }
   /**
@@ -607,7 +643,10 @@ export class LiveAIProvider implements AIProvider {
       return this.braveSearch(query, 1, signal);
     }
     if (!response.ok) { await response.body?.cancel(); throw new AppError(502, 'Brave search rejected the request. Check your search API key, credit and limits.', 'SEARCH_PROVIDER_ERROR'); }
-    const schema = z.object({ web: z.object({ results: z.array(z.object({ title: z.string(), url: z.string(), description: z.string(), extra_snippets: z.array(z.string()).optional() })) }).optional() });
+    const schema = z.object({ web: z.object({ results: z.array(z.object({
+      title: z.string(), url: z.string(), description: z.string(), extra_snippets: z.array(z.string()).optional(),
+      thumbnail: z.object({ src: z.string().nullish(), original: z.string().nullish(), logo: z.boolean().nullish() }).passthrough().nullish(),
+    })) }).optional() });
     let results: z.infer<typeof schema>;
     try { results = schema.parse(await response.json()); }
     catch { throw new AppError(502, 'Brave returned invalid search data.', 'SEARCH_INVALID_DATA'); }
