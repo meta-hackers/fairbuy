@@ -127,7 +127,7 @@ export function constraintsFor(config: ShoppingConfig): Constraint[] {
     if (PRICE_ATTRIBUTES.has(attribute.toLowerCase()) && typeof r.value === 'number') {
       return { attribute: TOTAL_ATTRIBUTE, op: r.op ?? '=', value: Math.round(r.value * 100), hard: r.hard };
     }
-    return { attribute, op: r.op ?? '=', value: r.value ?? r.label, hard: r.hard };
+    return { attribute, op: r.op ?? '=', value: r.value ?? r.label, hard: r.hard, label: r.label };
   });
   if (config.budgetMax !== null) constraints.unshift({ attribute: TOTAL_ATTRIBUTE, op: '<=', value: Math.round(config.budgetMax * 100), hard: config.budgetHard });
   return constraints;

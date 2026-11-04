@@ -210,3 +210,26 @@ describe('Ask readiness helpers (issue #18)', () => {
     expect(askRounds({ askMessages: [{ role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }, { role: 'user', content: 'c' }] })).toBe(1);
   });
 });
+
+describe('readable check labels (e-reader card)', () => {
+  const ereader = { ...context, config: { ...context.config, category: 'e-reader', country: null, requirements: [
+    { label: 'Warm light', hard: false, attribute: null, op: null, value: null, unit: null },
+    { label: 'Kobo', hard: false, attribute: 'brand', op: '=' as const, value: 'Kobo', unit: null },
+    { label: 'At least 32 GB storage', hard: false, attribute: 'storageGb', op: '>=' as const, value: 32, unit: 'GB' },
+  ] } };
+  const offer = structuredClone(offers[0]); offer.title = 'Kobo Clara Colour'; offer.attributes = {};
+  const reasons = () => rankProducts([{ id: 'k', name: 'Kobo Clara Colour', summary: '', why: '', tradeoffs: [], imageUrl: null, offers: [offer] }], ereader)
+    .ranked[0].constraints.map(c => c.reason);
+  it("names checks with the user's wording, never internal keys", () => {
+    expect(reasons().slice(1)).toEqual([
+      'Warm light: cannot be checked automatically',
+      'Kobo: in the product name',
+      'At least 32 GB storage: not stated by the seller',
+    ]);
+    expect(reasons().join(' ')).not.toMatch(/uninterpreted_|storageGb|\bbrand\b/);
+  });
+  it('falls back to readable attribute words without a label', () => {
+    const result = rankOffers({ offers: [offer], constraints: [{ attribute: 'batteryHours', op: '>=', value: 12, hard: false }], spec: { id: 'x', attributes: [] }, currency: 'EUR' });
+    expect(result.ranked[0].constraints[0].reason).toBe('Battery hours: not stated by the seller');
+  });
+});

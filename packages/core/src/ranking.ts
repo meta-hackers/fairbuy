@@ -58,8 +58,19 @@ export function evaluateMarket(offer: Offer, country: string): ConstraintResult 
   return { constraint, outcome: 'fail', reason: `Seller serves ${market.countries.join(', ')}, not ${country} (${basis})` };
 }
 
+// Readable name for a check: the user's wording, else the attribute key in words.
+function checkName(constraint: Constraint): string {
+  if (constraint.label?.trim()) return constraint.label.trim();
+  const words = constraint.attribute.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function evaluateConstraint(offer: Offer, constraint: Constraint, spec: CategorySpec): ConstraintResult {
   const result = (outcome: ConstraintResult['outcome'], reason: string): ConstraintResult => ({ constraint, outcome, reason });
+  const name = checkName(constraint);
+  if (constraint.attribute.startsWith(UNINTERPRETED_PREFIX)) {
+    return result('unknown', `${constraint.label?.trim() || String(constraint.value)}: cannot be checked automatically`);
+  }
   const compare = (actual: number, expected: number) => constraint.op === '>=' ? actual >= expected : constraint.op === '<=' ? actual <= expected : actual === expected;
   if (constraint.attribute === TOTAL_ATTRIBUTE) {
     if (typeof constraint.value !== 'number' || constraint.op === 'in') return result('unknown', 'Unsupported budget comparison');
@@ -80,23 +91,30 @@ export function evaluateConstraint(offer: Offer, constraint: Constraint, spec: C
       : result('pass', `${display} was not found in the offer metadata`);
   }
   const field = constraint.attribute === 'condition' ? offer.condition : offer.attributes[constraint.attribute];
-  if (!field || field.status === 'unknown') return result('unknown', `${constraint.attribute} is not stated`);
+  // A wanted brand is usually part of the product name even when no brand field was extracted.
+  if (constraint.attribute.toLowerCase() === 'brand' && (!field || field.status === 'unknown')) {
+    const wanted = (Array.isArray(constraint.value) ? constraint.value : [String(constraint.value)]).map(normalizeEnum).filter(Boolean);
+    const title = normalizeEnum(offer.title);
+    const named = wanted.find(brand => ` ${title} `.includes(` ${brand} `));
+    if (named) return result('pass', `${name}: in the product name`);
+  }
+  if (!field || field.status === 'unknown') return result('unknown', `${name}: not stated by the seller`);
   const attr = typeof field.value === 'string' ? { kind: 'enum' as const, value: field.value } : field.value;
   if (attr.kind === 'number' && typeof constraint.value === 'number' && constraint.op !== 'in') {
     const unit = spec.attributes.find(a => a.key === constraint.attribute)?.unit;
-    if (unit && attr.unit !== unit) return result('unknown', `${constraint.attribute}: incompatible units`);
-    return result(compare(attr.value, constraint.value) ? 'pass' : 'fail', `${constraint.attribute}: ${attr.value} ${attr.unit} (wanted ${constraint.op} ${constraint.value})`);
+    if (unit && attr.unit !== unit) return result('unknown', `${name}: stated in ${attr.unit}, not ${unit}`);
+    return result(compare(attr.value, constraint.value) ? 'pass' : 'fail', `${name}: ${attr.value} ${attr.unit} (wanted ${constraint.op === '>=' ? 'at least' : constraint.op === '<=' ? 'at most' : 'exactly'} ${constraint.value} ${attr.unit})`);
   }
   if (constraint.op === 'in' && Array.isArray(constraint.value) && typeof attr.value === 'string') {
     const matches = constraint.value.some(value => typeof value === 'string' && enumMatches(attr.value as string, value));
-    return result(matches ? 'pass' : 'fail', `${constraint.attribute}: ${attr.value}`);
+    return result(matches ? 'pass' : 'fail', `${name}: ${attr.value}`);
   }
   if (constraint.op === '=' && typeof constraint.value === typeof attr.value) {
     const matches = typeof attr.value === 'string' && typeof constraint.value === 'string'
       ? enumMatches(attr.value, constraint.value) : attr.value === constraint.value;
-    return result(matches ? 'pass' : 'fail', `${constraint.attribute}: ${attr.value}`);
+    return result(matches ? 'pass' : 'fail', `${name}: ${attr.value}`);
   }
-  return result('unknown', `${constraint.attribute} cannot be compared reliably`);
+  return result('unknown', `${name}: cannot be compared reliably`);
 }
 type Components = { cost: number; suitability: number; reliability: number };
 export interface RankedOffer {
