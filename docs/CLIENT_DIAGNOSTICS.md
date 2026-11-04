@@ -73,12 +73,20 @@ Events also remain in Render's structured logs for fallback troubleshooting:
 | `image.request.started` / `image.request.completed` | Image endpoint operation and outcome with trace/search/product context. |
 | `image.product.resolved` | Recovery/enrichment outcome, including cached selections and capacity limits. |
 | `image.fetch.shared` / `image.recovery.shared` | In-flight work was shared; follow `relatedTraceId` where available. |
+| `image.fallback.started` | An origin image returned HTTP 403 and the backend is trying wsrv.nl. Following fetch events with domain `wsrv.nl` show the outcome. |
 | `image.page.unavailable` | Seller HTML fetch failed; includes host and HTTP status (`0` for network/timeout/abort). |
 | `image.page.no_candidates` | Seller HTML loaded but had no usable product image metadata. |
 | `image.fetch.unavailable` | Image download failed; includes host, status and reason (`http_status`, `content_type`, `too_large`, `invalid_image`, or `network_or_timeout`). |
 
 No upstream URL query strings or image bytes are logged. Browser reports are
 untrusted diagnostic signals, not evidence that a seller/product is invalid.
+
+This diagnostic redaction is separate from image delivery: unless
+`IMAGE_PROXY_FALLBACK=disabled`, a public image URL (including its query string)
+is sent to wsrv.nl after an origin HTTP 403. wsrv receives no app cookies,
+credentials or seller referrer. Its own logging/cache policies apply; see
+https://wsrv.nl/faq/. Failures on the original host can therefore appear before
+a successful wsrv fetch in the same trace.
 
 For a missing photo, start with `client.error` and its product/search IDs, then
 check `image.product.resolved` and nearby upstream failures. A `403` often means

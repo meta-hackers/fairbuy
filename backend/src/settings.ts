@@ -40,6 +40,8 @@ const Schema = z.object({
   SELLER_SEARCH_REASONING_EFFORT: ReasoningEffortSchema.default('xhigh'),
   SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('meta'),
   BRAVE_API_KEY: z.string().default(''),
+  // Public image URLs are shared with wsrv.nl only after an origin HTTP 403.
+  IMAGE_PROXY_FALLBACK: z.enum(['wsrv', 'disabled']).default('wsrv'),
   // Brave's free plan allows one request per second. Keep a small safety margin
   // and serialize calls across discovery jobs instead of firing them in parallel.
   BRAVE_MIN_INTERVAL_MS: z.preprocess(

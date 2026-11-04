@@ -24,6 +24,18 @@ interface CacheEntry { image: PublicImage; expiresAt: number }
 const cache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, { promise: Promise<PublicImage | null>; traceId?: string }>();
 let cacheBytes = 0;
+let fallback: 'wsrv' | 'disabled' = 'wsrv';
+
+// Process-wide, like the byte cache. Set once from validated startup settings.
+export function configureImageProxy(value: 'wsrv' | 'disabled') {
+  if (fallback !== value) clearPublicImageCache();
+  fallback = value;
+}
+
+function isImageProxy(url: string) {
+  const host = new URL(url).hostname;
+  return host === 'wsrv.nl' || host.endsWith('.wsrv.nl') || host === 'weserv.nl' || host.endsWith('.weserv.nl');
+}
 
 function readCache(key: string): PublicImage | null {
   const entry = cache.get(key);
@@ -134,6 +146,10 @@ function requestImage(url: string, signal?: AbortSignal, referer?: string): Prom
 }
 
 export async function fetchPublicImage(value: string, signal?: AbortSignal, referer?: string): Promise<PublicImage | null> {
+  return fetchImage(value, signal, referer, fallback === 'wsrv');
+}
+
+async function fetchImage(value: string, signal: AbortSignal | undefined, referer: string | undefined, allowFallback: boolean): Promise<PublicImage | null> {
   const started = Date.now();
   let url = safeUrl(value);
   if (!url) return null;
@@ -151,6 +167,21 @@ export async function fetchPublicImage(value: string, signal?: AbortSignal, refe
       domain: new URL(url).hostname, status: response.status, durationMs: Date.now() - started,
       ...(!response.image ? { reason: response.reason ?? 'network_or_timeout' } : {}),
     });
+    // Only an explicit origin refusal is eligible. Unsafe URLs, failed DNS,
+    // redirects, expired resources, oversized data and rate limits must not be
+    // routed around our validation or blindly retried via a third party.
+    if (!response.image && response.status === 403 && allowFallback && !signal?.aborted
+      && !isImageProxy(value) && !isImageProxy(url)) {
+      const proxy = new URL('https://wsrv.nl/');
+      proxy.searchParams.set('url', url);
+      proxy.searchParams.set('w', '600');
+      proxy.searchParams.set('output', 'webp');
+      recordDiagnostic('image.fallback.started', 'info', { domain: 'wsrv.nl' });
+      // Same HTTPS/DNS/redirect/MIME/signature/size checks apply to proxy bytes.
+      // Do not forward a seller referer, cookies or app credentials to wsrv.
+      const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+      return fetchImage(proxy.toString(), signal ? AbortSignal.any([signal, timeout]) : timeout, undefined, false);
+    }
     return response.image?.body.length ? response.image : null;
   }
   recordDiagnostic('image.fetch.unavailable', 'warn', { domain: new URL(url).hostname, reason: 'redirect_limit' });

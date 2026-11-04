@@ -25,6 +25,11 @@ describe('HTTP port binding configuration', () => {
 });
 
 describe('search provider configuration', () => {
+  it('enables wsrv image fallback by default and accepts an explicit privacy opt-out', () => {
+    expect(settings({}).IMAGE_PROXY_FALLBACK).toBe('wsrv');
+    expect(settings({ IMAGE_PROXY_FALLBACK: 'disabled' }).IMAGE_PROXY_FALLBACK).toBe('disabled');
+    expect(() => settings({ IMAGE_PROXY_FALLBACK: 'https://untrusted.org' })).toThrow();
+  });
   it('defaults to Meta search and throttles optional Brave calls', () => {
     expect(settings({}).SEARCH_PROVIDER).toBe('meta');
     expect(settings({}).BRAVE_MIN_INTERVAL_MS).toBe(1100);

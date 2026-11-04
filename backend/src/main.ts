@@ -8,8 +8,10 @@ import { createApp } from './app';
 import { startWorker } from './worker';
 import { UsageStore } from './usage';
 import { logger } from './logger';
+import { configureImageProxy } from './image-proxy';
 
 const config = settings();
+configureImageProxy(config.IMAGE_PROXY_FALLBACK);
 if (!config.DATABASE_URL && config.FAIRBUY_MODE !== 'demo') throw new Error('Live mode requires DATABASE_URL. Use FAIRBUY_MODE=demo for an explicitly synthetic, ephemeral preview.');
 const store = config.DATABASE_URL ? new PostgresStore(config.DATABASE_URL) : new MemoryStore();
 // The catalog lives only in the database. A restart reads the last complete sync;

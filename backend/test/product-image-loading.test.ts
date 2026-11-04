@@ -3,8 +3,9 @@ import { lookup } from 'node:dns/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Product } from '@fairbuy/core';
 import { findSellerImage } from '../src/product-images';
-import { clearPublicImageCache, fetchPublicImage, getPublicImage } from '../src/image-proxy';
+import { clearPublicImageCache, configureImageProxy, fetchPublicImage, getPublicImage } from '../src/image-proxy';
 import { ProductImageResolver } from '../src/product-image-resolver';
+import { DiagnosticStore } from '../src/diagnostics';
 
 const network = vi.hoisted(() => ({
   responses: new Map<string, { status?: number; headers?: Record<string, string>; body?: string | Buffer; hang?: boolean }>(),
@@ -43,15 +44,123 @@ function product(sources = [shop], imageUrl: string | null = null): Product {
   };
 }
 function image(url: string) { network.responses.set(url, { headers: { 'content-type': 'image/png' }, body: png }); }
+function wsrv(url: string) {
+  const proxy = new URL('https://wsrv.nl/');
+  proxy.searchParams.set('url', url);
+  proxy.searchParams.set('w', '600');
+  proxy.searchParams.set('output', 'webp');
+  return proxy.toString();
+}
 
 beforeEach(() => {
   network.requests.length = 0;
   network.responses.clear();
   clearPublicImageCache();
+  configureImageProxy('wsrv');
   vi.mocked(lookup).mockResolvedValue([{ address: '8.8.8.8', family: 4 }] as never);
 });
 
 describe('image recovery end to end (mock public network)', () => {
+  it('recovers blocked image bytes through wsrv and caches them under the original URL', async () => {
+    const url = `${cdn}/blocked.png?width=1200&quality=90`;
+    network.responses.set(url, { status: 403 });
+    image(wsrv(url));
+    const [first, second] = await Promise.all([getPublicImage(url, undefined, shop), getPublicImage(url, undefined, shop)]);
+    expect(first?.body).toEqual(png);
+    expect(second?.body).toEqual(png);
+    expect(network.requests.map(r => r.url)).toEqual([url, wsrv(url)]);
+    expect(network.requests[1].headers.Referer).toBeUndefined();
+    expect(Object.keys(network.requests[1].headers)).not.toContain('Authorization');
+    expect(Object.keys(network.requests[1].headers)).not.toContain('Cookie');
+    expect((await getPublicImage(url))?.body).toEqual(png);
+    expect(network.requests).toHaveLength(2);
+  });
+  it('recovers an extracted image via wsrv before scraping a blocked storefront', async () => {
+    const url = `${cdn}/blocked.png`;
+    network.responses.set(url, { status: 403 });
+    image(wsrv(url));
+    expect(await findSellerImage(product([shop], url))).toBe(url);
+    expect(network.requests.map(r => r.url)).toEqual([url, wsrv(url)]);
+  });
+  it('can opt out of the third-party proxy', async () => {
+    configureImageProxy('disabled');
+    const url = `${cdn}/blocked.png`;
+    network.responses.set(url, { status: 403 });
+    image(wsrv(url));
+    expect(await getPublicImage(url)).toBeNull();
+    expect(network.requests.map(r => r.url)).toEqual([url]);
+  });
+  it.each([404, 429, 500])('does not send HTTP %i failures through wsrv', async status => {
+    const url = `${cdn}/missing.png`;
+    network.responses.set(url, { status });
+    image(wsrv(url));
+    expect(await getPublicImage(url)).toBeNull();
+    expect(network.requests.map(r => r.url)).toEqual([url]);
+  });
+  it('never nests a proxy fallback or retries a failed wsrv response', async () => {
+    const url = `${cdn}/blocked.png`;
+    network.responses.set(url, { status: 403 });
+    network.responses.set(wsrv(url), { status: 403 });
+    expect(await getPublicImage(url)).toBeNull();
+    expect(network.requests.map(r => r.url)).toEqual([url, wsrv(url)]);
+    network.requests.length = 0;
+    expect(await fetchPublicImage(wsrv(url))).toBeNull();
+    expect(network.requests.map(r => r.url)).toEqual([wsrv(url)]);
+  });
+  it('validates proxy responses instead of accepting HTML or oversized images', async () => {
+    const url = `${cdn}/blocked.png`;
+    network.responses.set(url, { status: 403 });
+    network.responses.set(wsrv(url), { headers: { 'content-type': 'image/png' }, body: '<html>blocked</html>' });
+    expect(await getPublicImage(url)).toBeNull();
+    network.responses.set(wsrv(url), { headers: { 'content-type': 'image/png', 'content-length': '6000000' }, body: png });
+    expect(await getPublicImage(url)).toBeNull();
+  });
+  it('rejects unsafe redirects from wsrv without following them', async () => {
+    const url = `${cdn}/blocked.png`;
+    network.responses.set(url, { status: 403 });
+    network.responses.set(wsrv(url), { status: 302, headers: { location: 'https://127.0.0.1/private.png' } });
+    expect(await getPublicImage(url)).toBeNull();
+    expect(network.requests.map(r => r.url)).toEqual([url, wsrv(url)]);
+  });
+  it('bounds a stalled proxy request to eight seconds', async () => {
+    vi.useFakeTimers();
+    try {
+      const url = `${cdn}/blocked.png`;
+      network.responses.set(url, { status: 403 });
+      network.responses.set(wsrv(url), { headers: { 'content-type': 'image/png' }, hang: true });
+      const pending = getPublicImage(url);
+      await vi.advanceTimersByTimeAsync(8001);
+      expect(await pending).toBeNull();
+      expect(network.requests.map(r => r.url)).toEqual([url, wsrv(url)]);
+    } finally { vi.useRealTimers(); }
+  });
+  it('records the origin refusal and proxy recovery together without logging image URLs', async () => {
+    const url = `${cdn}/blocked.png?token=public-image-query`;
+    network.responses.set(url, { status: 403 });
+    image(wsrv(url));
+    const diagnostics = new DiagnosticStore();
+    const traceId = 'a9911234-5555-4444-8888-123456789012';
+    await diagnostics.capture({ traceId, source: 'server', sessionId: null, roundId: null, productId: null }, () => getPublicImage(url));
+    const { events } = await diagnostics.list({ traceId, page: 1 });
+    expect(events.map(event => event.event)).toEqual(['image.fetch.unavailable', 'image.fallback.started', 'image.fetch.completed']);
+    expect(events.at(-1)?.details).toMatchObject({ domain: 'wsrv.nl', status: 200 });
+    expect(JSON.stringify(events)).not.toContain('public-image-query');
+  });
+  it('does not use wsrv to route around private DNS, unsafe redirects or cancellation', async () => {
+    const url = `${cdn}/blocked.png`;
+    network.responses.set(url, { status: 403 });
+    image(wsrv(url));
+    vi.mocked(lookup).mockResolvedValue([{ address: '10.0.0.1', family: 4 }] as never);
+    expect(await getPublicImage(url)).toBeNull();
+    expect(network.requests.map(r => r.url)).toEqual([url]);
+    vi.mocked(lookup).mockResolvedValue([{ address: '8.8.8.8', family: 4 }] as never);
+    network.responses.set(url, { status: 302, headers: { location: 'https://localhost/private.png' } });
+    expect(await getPublicImage(url)).toBeNull();
+    const controller = new AbortController();
+    controller.abort();
+    expect(await getPublicImage(url, controller.signal)).toBeNull();
+    expect(network.requests.map(r => r.url)).toEqual([url, url]);
+  });
   it('tries the next metadata candidate after a dead or fake first image, and warms the proxy cache', async () => {
     network.responses.set(shop, { body: `<script type="application/ld+json">${JSON.stringify({
       '@type': 'Product', image: [`${cdn}/dead.png`, `${cdn}/challenge.png`, `${cdn}/working.png`],
