@@ -11,7 +11,8 @@ import { logger } from '../src/logger';
 
 vi.mock('../src/product-images', async importOriginal => {
   const actual = await importOriginal<typeof import('../src/product-images')>();
-  return { ...actual, findSellerImage: vi.fn().mockResolvedValue(null) };
+  // Seller pages are never fetched in tests; offers whose page is unread stay unconfirmed.
+  return { ...actual, findSellerImage: vi.fn().mockResolvedValue(null), readPage: vi.fn().mockResolvedValue(null) };
 });
 
 const config = settings({ MODEL_API_KEY: 'test-not-a-real-key', SEARCH_PROVIDER: 'meta' });
@@ -631,6 +632,23 @@ describe('untrusted search evidence', () => {
     const noisy = structuredClone(extracted);
     noisy.products[0].tradeoffs = ['No grounded official image URL available, image left null.', 'Colour E-Ink is less sharp for black-and-white novels.'];
     expect(normalizeExtraction(noisy, research, context).products[0].tradeoffs).toEqual(['Colour E-Ink is less sharp for black-and-white novels.']);
+  });
+  it('shows a price only when the seller page confirms it, and reads stock from the page', async () => {
+    const pages: Record<string, string> = {
+      'https://shop.fairbuy-fixture.org/Aster': '<script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer","price":"590.00","priceCurrency":"EUR","availability":"https://schema.org/InStock"}}</script>',
+      'https://shop.fairbuy-fixture.org/Birch': '<script type="application/ld+json">{"@type":"Offer","price":"590","priceCurrency":"EUR","availability":"https://schema.org/OutOfStock"}</script>',
+    };
+    const reader = vi.fn(async (url: string) => pages[url] ? { url, html: pages[url] } : null);
+    const data = catalog(['Aster', 'Birch', 'Cedar']);
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(researchStream(data.research)).mockResolvedValueOnce(stream(result(JSON.stringify(data.extracted))));
+    for (let pass = 0; pass < 2; pass++) fetcher.mockResolvedValueOnce(researchStream({ text: 'Nothing new.', sources: [] }));
+    const found = await new LiveAIProvider(config, fetcher, undefined, undefined, reader).discover(context);
+    const offer = (name: string) => found.products.find(p => p.name === name)!.offers[0];
+    expect(offer('Aster')).toMatchObject({ price: { currency: 'EUR', amountCents: 59000 }, priceSource: 'seller_page', availability: 'available' });
+    expect(offer('Birch').availability).toBe('sold_out');
+    // An unreadable page keeps the price, labelled as unconfirmed.
+    expect(offer('Cedar')).toMatchObject({ price: { currency: 'EUR', amountCents: 59000 }, priceSource: 'unconfirmed', availability: 'unknown' });
+    expect(offer('Cedar').missing).toContain('Price could not be confirmed on the seller page');
   });
   it('rejects unsafe links and never fetches arbitrary seller URLs', () => {
     for (const value of ['http://shop.org/p', 'https://127.0.0.1/x', 'https://2130706433/x', 'https://[::1]/x', 'https://user:pass@shop.org/p', 'javascript:alert(1)', 'https://localhost/x', 'https://localhost./x', 'https://router.home/x', 'https://service.internal/x', 'https://example.com/fake', 'https://shop.org:8443/x']) expect(safeUrl(value)).toBeNull();

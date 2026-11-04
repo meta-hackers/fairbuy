@@ -11,7 +11,8 @@ import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, Seller
 import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT, SELLER_EXTRACT_PROMPT, SELLER_SEARCH_PROMPT } from './prompts';
 import { streamObjectArray } from './json-stream';
 import { recordUsage } from '../usage';
-import { decodeHtmlEntities, findSellerImage, isGenericImageUrl } from '../product-images';
+import { decodeHtmlEntities, findSellerImage, isGenericImageUrl, readPage } from '../product-images';
+import { offerVerifier, type PageReader } from '../offer-verification';
 import { traceProductImage } from '../diagnostics';
 
 export type ConversationResult = z.infer<typeof ConversationResultSchema>;
@@ -260,7 +261,8 @@ export class LiveAIProvider implements AIProvider {
   private client: MetaClient;
   constructor(private config: Settings, private fetcher: typeof fetch = fetch,
     private imageFinder: (product: Product, preferredImage: string | null, signal?: AbortSignal) => Promise<string | null> = findSellerImage,
-    private catalog: SourceCatalogLoader = EMPTY_CATALOG_LOADER) { this.client = new MetaClient(config, fetcher); }
+    private catalog: SourceCatalogLoader = EMPTY_CATALOG_LOADER,
+    private pageReader: PageReader = readPage) { this.client = new MetaClient(config, fetcher); }
   ensureConfigured() { this.client.ensureConfigured(); }
   async converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig) {
     return this.client.structured(
@@ -279,6 +281,7 @@ export class LiveAIProvider implements AIProvider {
     // Activity contains only milestones we observe, never model reasoning or invented browsing.
     const activity = async (message: string) => { await onActivity?.(message); };
     const controller = new AbortController();
+    const verify = offerVerifier(this.pageReader, controller.signal);
     const images = new Map<string, Promise<string | null>>();
     const resolvedImages = new Map<string, string>();
     let emitting: Promise<void> = Promise.resolve();
@@ -368,6 +371,8 @@ export class LiveAIProvider implements AIProvider {
         const hosts = [...new Set(research.sources.map(source => hostOf(source.url)).filter(Boolean))];
         await activity(`Comparing search evidence from ${hosts.slice(0, 3).join(', ')}${hosts.length > 3 ? ` and ${hosts.length - 3} other sites` : ''} with your requirements.`);
         const accept = async (incoming: DiscoveryResult) => {
+          // Price and stock count only when the seller page shows them, not the research notes.
+          incoming = { ...incoming, products: await Promise.all(incoming.products.map(async product => ({ ...product, offers: await Promise.all(product.offers.map(verify)) }))) };
           for (const product of incoming.products) startImage(product);
           result = mergeDiscoveryResults(result, incoming);
           if (firstEligibleProductMs === null && eligibleCount() > 0) firstEligibleProductMs = Date.now() - started;
@@ -473,7 +478,9 @@ export class LiveAIProvider implements AIProvider {
       }
       await onActivity?.(`Checking ${research.sources.length} ${research.sources.length === 1 ? 'page' : 'pages'} for the exact same model.`);
       const streamed = new Set<string>();
+      const verifySeller = offerVerifier(this.pageReader, controller.signal);
       const accept = async (incoming: SellerSearchResult) => {
+        incoming = { ...incoming, offers: await Promise.all(incoming.offers.map(verifySeller)) };
         result = mergeSellerSearchResults(result, incoming);
         await onProgress?.(result);
       };

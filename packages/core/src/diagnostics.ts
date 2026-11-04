@@ -6,7 +6,7 @@ export const DiagnosticDetailsSchema = z.object({
   domain: z.string().max(253).regex(/^[a-zA-Z0-9.-]+$/).optional(),
   status: z.number().int().min(0).max(599).optional(),
   durationMs: z.number().int().min(0).max(3600000).optional(),
-  reason: z.enum(['http_status', 'too_large', 'content_type', 'invalid_image', 'network_or_timeout', 'unsafe_redirect', 'redirect_limit', 'unavailable', 'unexpected', 'capacity']).optional(),
+  reason: z.enum(['http_status', 'too_large', 'content_type', 'invalid_image', 'network_or_timeout', 'unsafe_redirect', 'redirect_limit', 'unavailable', 'unexpected', 'capacity', 'not_on_page']).optional(),
   available: z.boolean().optional(),
   cached: z.boolean().optional(),
   offers: z.number().int().min(0).max(10000).optional(),
@@ -20,6 +20,7 @@ export const DiagnosticKindSchema = z.enum([
   'image.request.started', 'image.request.completed', 'image.fetch.completed', 'image.fetch.unavailable', 'image.fetch.shared',
   'image.page.completed', 'image.page.unavailable', 'image.page.no_candidates', 'image.product.resolved', 'image.recovery.shared',
   'client.image_unavailable', 'client.runtime_error', 'client.unhandled_rejection',
+  'offer.verification.confirmed', 'offer.verification.corrected', 'offer.verification.unconfirmed',
 ]);
 export const DiagnosticScopeSchema = z.object({
   traceId: z.uuid(), source: z.enum(['browser', 'server']),

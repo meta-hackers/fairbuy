@@ -15,7 +15,7 @@ const MAX_REDIRECTS = 3;
 const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const GENERIC_IMAGE = /(^|[/_.-])(logo|logos|sprite|sprites|favicon|placeholder|no-image|noimage|coming-soon|default-image|defaultimage|site-icon|brand-logo|mstile|apple-touch|pwa)([/_.-]|$)/i;
 
-interface Page { html: string; url: string }
+export interface Page { html: string; url: string }
 interface PageResponse { status: number; location: string | null; html: string | null }
 
 function requestPage(url: string, signal?: AbortSignal): Promise<PageResponse> {
@@ -80,7 +80,7 @@ function requestPage(url: string, signal?: AbortSignal): Promise<PageResponse> {
   });
 }
 
-async function readPage(value: string, signal?: AbortSignal): Promise<Page | null> {
+export async function readPage(value: string, signal?: AbortSignal): Promise<Page | null> {
   const started = Date.now();
   let url = safeUrl(value);
   if (!url) return null;

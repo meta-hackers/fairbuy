@@ -75,6 +75,8 @@ export const OfferSchema = z.object({
   evidence: z.array(EvidenceSchema).min(1),
   /** Absent when neither the catalog nor the domain identifies the seller's market. */
   sellerMarket: SellerMarketSchema.optional(),
+  /** Whether the server read the price on the seller page; absent on offers stored before the check. */
+  priceSource: z.enum(['seller_page', 'unconfirmed']).optional(),
 });
 export type Offer = z.infer<typeof OfferSchema>;
 export const ConstraintSchema = z.object({
