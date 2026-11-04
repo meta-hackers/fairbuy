@@ -9,7 +9,7 @@
 
 ## Blueprint sync and direct Discovery configuration
 
-The root `render.yaml` declares infrastructure and synchronized settings. `DISCOVERY_MODEL` uses `sync: false`: set it directly to `muse-spark-1.3-contributor` on the existing Render service. Blueprint syncs preserve this value and all secrets.
+The root `render.yaml` declares infrastructure and synchronized settings. `DISCOVERY_MODEL` uses `sync: false`: set it directly to `muse-spark-1.3-contributor` on the existing Render service. `SELLER_SEARCH_MODEL` is declared as `muse-spark-1.3-contributor` in the Blueprint. The application also retains that default if the variable is missing. Blueprint syncs preserve secret values.
 
 The previous Blueprint `exs-dbjgfmmtlv9c73d5gjng` was disconnected. Restoring YAML alone does not reconnect it. First push the updated YAML: the old repository version pins a different Discovery model and must not be synced. Then use the Render Dashboard to create a Blueprint that **adopts the existing service**, enable Auto Sync, and review its plan before approval. The public API does not expose Blueprint creation/reconnection. Verify the target is `srv-dbjgia67bikc73fd27tg`, not a suffixed duplicate; do not approve new services or databases. Record the new Blueprint ID after adoption.
 
@@ -29,7 +29,7 @@ Do not move the web service to Frankfurt/EU for Meta calls: in testing, Meta Mod
 1. In the Render Dashboard, select **My Workspace → fairbuy → production → fairbuy**, or open the [existing service](https://dashboard.render.com/web/srv-dbjgia67bikc73fd27tg). The separate workspace named `fairbuy` is not the active deployment target.
 2. In **Settings**, preserve repository `https://github.com/meta-hackers/fairbuy`, branch `main`, Node runtime, Virginia, Free plan and one instance. Set auto-deploy to **After CI Checks Pass** (`checksPass`). Do not recreate the service.
 3. Set **Build Command** to `npm ci --include=dev && npm run build && npm prune --omit=dev`, **Start Command** to `node --env-file-if-exists=.env --env-file-if-exists=.env.backoffice backend/dist/main.js`, and **Health Check Path** to `/healthz`. Leave the root directory empty and do not set a pre-deploy command.
-4. In **Environment**, preserve all existing secrets and set `DISCOVERY_MODEL=muse-spark-1.3-contributor`. Other declared values are synchronized from `render.yaml`; manual changes to those values can be overwritten by sync. Update individual keys rather than replacing the whole environment. Never set `PORT` manually; Render injects it.
+4. In **Environment**, preserve all existing secrets and set `DISCOVERY_MODEL=muse-spark-1.3-contributor`. `SELLER_SEARCH_MODEL=muse-spark-1.3-contributor` and the other declared values are synchronized from `render.yaml`; manual changes to those values can be overwritten by sync. Update individual keys rather than replacing the whole environment. Never set `PORT` manually; Render injects it.
 5. Configure Supabase as below if needed. Preserve `DATABASE_URL`, `MODEL_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `BRAVE_API_KEY`, `APP_ACCESS_TOKEN` and `BACKOFFICE_ADMINS` privately in Render, never Git. Recreating a service does **not** copy its secrets. A missing `DATABASE_URL` prevents production startup.
 6. Deploy to apply environment changes. Verify the service still belongs to workspace `tea-db0m51s9v7es73c21lf0`, then check both https://fairbuy.onrender.com/healthz and https://fairbuy.onrender.com/health. Local code changes require a commit/push before Render can deploy them; changing Render settings does not deploy your local worktree.
 7. Smoke-test live Ask → Configure → Discovery → Learn → Buy using a small request. Check clickable citations and the live/preview banner. Confirm that prices/charges/stock not found in evidence remain unknown. Watch API billing/latency.
@@ -69,7 +69,7 @@ Automatic deploys wait for GitHub checks to pass. This repository supplies CI wi
 
 ## Environment
 
-Infrastructure and declared values are synchronized from `render.yaml` once the Blueprint is connected. `DISCOVERY_MODEL` and secrets are managed directly in Render with `sync: false`. For a genuinely new service, supply these values during onboarding; they are not inherited from another service.
+Infrastructure and declared values are synchronized from `render.yaml` once the Blueprint is connected. `DISCOVERY_MODEL` and secrets are managed directly in Render with `sync: false`; `SELLER_SEARCH_MODEL` is declared as `muse-spark-1.3-contributor`. The application also falls back to that model if the variable is absent. For a genuinely new service, supply these values during onboarding; they are not inherited from another service.
 
 | Variable | Default / purpose |
 |---|---|
@@ -78,9 +78,11 @@ Infrastructure and declared values are synchronized from `render.yaml` once the 
 | `ASK_MODEL` | `muse-spark-1.3-contributor`; question-asking and structured brief. |
 | `CONFIGURE_MODEL` | `muse-spark-1.3-contributor`; Configure and Learn interpretation calls. |
 | `DISCOVERY_MODEL` | `muse-spark-1.3-contributor`; discovery research and evidence extraction. |
+| `SELLER_SEARCH_MODEL` | `muse-spark-1.3-contributor`; independent Buy-stage seller search and offer extraction. |
 | `ASK_REASONING_EFFORT` | Render: `minimal` (app default `low`); Ask conversation and structured brief. |
 | `CONFIGURE_REASONING_EFFORT` | `low`; Configure and Learn interpretation calls. |
 | `DISCOVERY_REASONING_EFFORT` | Render: `medium` (app default `xhigh`); Meta discovery research. Mechanical evidence extraction stays at `low`, including with Brave search. |
+| `SELLER_SEARCH_REASONING_EFFORT` | Render: `medium` (app default `xhigh`); one strong same-market seller search. Offer extraction stays at `low`. |
 | `SEARCH_PROVIDER` | `meta` (default; Meta hosted web search, no extra search key) or `brave` (snippet-only; requires `BRAVE_API_KEY`). |
 | `BRAVE_API_KEY` | Required secret only for `SEARCH_PROVIDER=brave`; the Meta key is still required for interpretation/extraction. |
 | `BRAVE_MIN_INTERVAL_MS` | `1100`; serializes Brave calls in-process. Brave Free permits one request/second, so parallel broad/seller queries would otherwise return `429`. Set `0` only on a plan that allows higher concurrency. |
@@ -129,4 +131,4 @@ The default is `SEARCH_PROVIDER=meta`, which uses Meta hosted web search and ret
 
 ## What is not deployed by the code
 
-The Blueprint manages the Render web deployment, not Supabase provisioning, secrets or the Discovery model value. Editing documentation or validating YAML does not reconnect the Blueprint. Verify the workspace, service ID, environment and health checks after configuration changes. No resources, external transactions or paid provider calls are created during the test suite. Account auth, seller inventory integrations, screenshots/audio, arbitrary crawling and payments are not implemented.
+The Blueprint manages the Render web deployment and declares `SELLER_SEARCH_MODEL`, but not Supabase provisioning, secrets or the Discovery model value. Editing documentation or validating YAML does not reconnect the Blueprint. Verify the workspace, service ID, environment and health checks after configuration changes. No resources, external transactions or paid provider calls are created during the test suite. Account auth, seller inventory integrations, screenshots/audio, arbitrary crawling and payments are not implemented.

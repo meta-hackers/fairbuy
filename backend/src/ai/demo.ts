@@ -1,4 +1,4 @@
-import type { AIProvider, ConversationResult, DiscoveryActivityProgress, DiscoveryProgress } from './provider';
+import type { AIProvider, ConversationResult, DiscoveryActivityProgress, DiscoveryProgress, SellerSearchProgress, SellerSearchResult } from './provider';
 import { productId } from './provider';
 import { CurrencySchema, type ChatMessage, type DiscoveryContext, type Product, type ShoppingConfig } from '@fairbuy/core';
 
@@ -55,5 +55,13 @@ export class DemoAIProvider implements AIProvider {
     const summary = `Synthetic catalog, not current offers. Fresh discovery session with ${context.previousProducts.length} previously found products and ${context.feedback.length} feedback entries.`;
     for (let i = 0; i < products.length; i++) await onProgress?.({ products: products.slice(0, i + 1), sources: [], summary });
     return { products, sources: [], summary };
+  }
+  async findSellers(_context: DiscoveryContext, product: Product, onProgress?: SellerSearchProgress, onActivity?: DiscoveryActivityProgress) {
+    await onActivity?.('Checking the fictional preview catalog for other sellers of the same product. No live websites are searched.');
+    // The scripted catalog deliberately has no extra sellers, so the preview
+    // never invents an offer just to fill the spinner slot.
+    const result: SellerSearchResult = { offers: [], sources: [], summary: `No additional fictional sellers of ${product.name} are in the scripted preview.` };
+    await onProgress?.(result);
+    return result;
   }
 }

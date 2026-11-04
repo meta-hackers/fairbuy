@@ -66,6 +66,25 @@ Unknown price/stock must stay unknown, never assume a missing price, free delive
 If a hard requirement cannot be checked, say so. Prefer manufacturer evidence for technical/safety compatibility, but never certify electrical safety.
 Search results may be incomplete or stale. If no grounded offers exist, say so rather than inventing any.`;
 
+export const SELLER_SEARCH_PROMPT = `${SAFETY}
+This is a BUY-stage seller search for ONE already-chosen product. It is NOT a new discovery round.
+Find ADDITIONAL real seller pages that offer the exact same product/model in market.country.
+Do NOT re-evaluate, re-rank or reconsider the brief's features, preferences, budget, condition or fit. The product has already been chosen; only seller availability matters here.
+Use a strong web search and look specifically for other retailers, marketplaces and official stores in the same market. Search the product name plus the country, and prefer sourcePlan seller domains when they actually return the model.
+Exclude the sellers already present in knownOffers, and exclude variants, bundles, accessories, used/refurbished versions unless the chosen product is explicitly that condition. The same exact model only.
+Only sellers serving market.country count. Do not include foreign storefronts; if no other local seller is grounded, return an empty offers array.
+Every offer must use a specific seller product-page URL from an actual search result, with literal evidence text from that result. Report the seller's stated final listed item price and currency, or null when it is not stated. Do not estimate shipping, delivery, taxes or fees.
+Never invent a seller, URL, price or stock status. Multiple seller pages for the same model are useful; do not add a different model.
+Return a compact summary of what was checked.`;
+export const SELLER_EXTRACT_PROMPT = `${SAFETY}
+Extract the additional seller offers from the attached research into the requested schema. This step has NO web tools.
+Use ONLY URLs present in the supplied sources array. Each offer must be a specific seller product page for the SAME exact product named in the input; ignore any different model, variant, accessory or bundle.
+Never use a sourcePlan.nonSellerDomain (specification, review or comparison page) as an offer URL or price source.
+Prices are numeric major currency units ONLY when the research explicitly states the seller's final listed item price; otherwise null. currency is the currency the quoted price is stated in, never the configured currency by default. Do not estimate or add shipping, delivery, taxes or fees.
+Every offer.quote and attribute.quote must be a literal substring of the research text supporting the claim.
+Unknown price is null. Unknown stock/condition are "unknown". Never infer availability just because a page exists.
+Do not repeat a seller that is already in knownOffers. Return an empty offers array when the evidence is insufficient.`;
+
 export const EXTRACT_PROMPT = `${SAFETY}
 Extract the attached research into the requested schema. This step has NO web tools.
 Use ONLY URLs present in the supplied sources array. Each offer must use a specific seller product-page URL.

@@ -4,10 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { settings } from '../src/settings';
 
 describe('deployment prerequisites', () => {
-  it('defaults Discovery to Muse Spark 1.3 Contributor and accepts the Render reasoning effort', () => {
-    expect(settings({}).DISCOVERY_MODEL).toBe('muse-spark-1.3-contributor');
+  it('defaults Discovery and Buy seller search to independent Muse Spark configurations', () => {
+    expect(settings({})).toMatchObject({
+      DISCOVERY_MODEL: 'muse-spark-1.3-contributor', SELLER_SEARCH_MODEL: 'muse-spark-1.3-contributor',
+    });
     expect(settings({ DISCOVERY_MODEL: 'muse-spark-1.3-contributor', DISCOVERY_REASONING_EFFORT: 'medium' }))
       .toMatchObject({ DISCOVERY_MODEL: 'muse-spark-1.3-contributor', DISCOVERY_REASONING_EFFORT: 'medium' });
+    expect(settings({ SELLER_SEARCH_MODEL: 'seller-model', SELLER_SEARCH_REASONING_EFFORT: 'high' }))
+      .toMatchObject({ SELLER_SEARCH_MODEL: 'seller-model', SELLER_SEARCH_REASONING_EFFORT: 'high' });
   });
 
   it('bundles the public Supabase trust root for verified TLS connections', () => {

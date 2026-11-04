@@ -201,6 +201,10 @@ export function createApp(service: ShoppingService, config: Settings, locations 
     const { productId } = z.object({ productId: z.string().min(1).max(100) }).parse(req.body);
     res.json(withCurrentRankings(await service.select(String(req.params.id), res.locals.owner, productId)));
   });
+  app.post('/api/sessions/:id/sellers', dailyLimit, aiLimit, async (req, res) => {
+    const { productId } = z.object({ productId: z.string().min(1).max(100) }).strict().parse(req.body);
+    res.status(202).json(withCurrentRankings(await service.findSellers(String(req.params.id), res.locals.owner, productId)));
+  });
   app.post('/api/sessions/:id/missing', async (req, res) => {
     const { query } = z.object({ query: z.string().trim().min(2).max(120) }).strict().parse(req.body);
     res.json(withCurrentRankings(await service.explainMissing(String(req.params.id), res.locals.owner, query)));

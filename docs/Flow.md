@@ -7,7 +7,7 @@
 - **Configure:** edit the extracted brief, budget, country and soft preferences/must-haves. A separate smaller AI helps incorporate extra requirements.
 - **Discovery:** a new AI session researches products on the web, extracts source-backed offers and explains fit and trade-offs. Compare final listed prices without shipping/delivery estimates, see elapsed search time, and view official-site product images when available. A category- and country-aware [source plan](SOURCES.md) suggests likely sellers and specification references without becoming evidence. Deterministic rules handle hard constraints and numerical ranking.
 - **Learn:** reject a product or add feedback. Every submission starts fresh discovery with the original configuration, current brief, all prior products, discarded products and accumulated feedback. A product-specific rejection removes only that product: the rest of the shortlist is carried into the new round and its fit scores are recomputed against the learned requirements. Undo preserves unrelated edits and starts another search.
-- **Buy:** inspect the chosen product’s seller offers and visit a source page yourself. **No automatic checkout or payment.**
+- **Buy:** inspect the chosen product’s seller offers and visit a source page yourself. On arrival, a strong same-market seller search looks for additional sellers of the exact chosen model and shows a spinner in the next seller slot while it runs. It does not re-rank the shortlist or re-evaluate the brief’s features: it only grounds more seller pages and prices for that product. **No automatic checkout or payment.**
 
 ## Location
 
@@ -142,7 +142,13 @@ sequenceDiagram
     Frontend->>Backend: POST /api/sessions/:id/select
     Backend->>Database: Validate eligibility and persist selection
     Backend-->>Frontend: Buy-stage session with seller offers
-    Frontend-->>User: Show source-backed seller links
+    Frontend-->>User: Show source-backed seller links and a spinner in the next seller slot
+    Frontend->>Backend: POST /api/sessions/:id/sellers
+    Backend->>Database: Queue one same-market seller search for the chosen product
+    Backend->>Meta: Strong web search for other sellers of the exact model
+    Meta-->>Backend: Additional source-backed seller offers
+    Backend->>Database: Validate evidence, keep the discovery ranking unchanged
+    Backend-->>Frontend: Polled additional sellers replace the spinner
     User->>Frontend: Open a seller source page
     Note over User,Frontend: Browser navigation only, no automatic checkout or payment
 ```

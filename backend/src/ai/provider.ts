@@ -1,14 +1,14 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, MAX_DROPPED, UNINTERPRETED_PREFIX, OfferSchema, hostOf, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type DropReason, type DroppedOffer, type Currency, type DiscoveryContext, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
+import { CURRENCIES, DISCOVERY_MIN_PRODUCTS, MAX_DROPPED, UNINTERPRETED_PREFIX, OfferSchema, hostOf, effectiveConfig, rankProducts, sourcePlan, sellerMarketFor, sellerMarkets, isNonSellerHost, isPlannedSellerHost, type ChatMessage, type DropReason, type DroppedOffer, type Currency, type DiscoveryContext, type Offer, type Product, type SellerMarkets, type ShoppingConfig, type Source, type SourcePlan, type AttrValue, type Field } from '@fairbuy/core';
 import type { Settings } from '../settings';
 import { AppError } from '../errors';
 import { safeImageUrl, safeUrl } from '../links';
 import { logger } from '../logger';
 import { EMPTY_CATALOG_LOADER, type SourceCatalogLoader } from '../source-catalog';
 import { MetaClient, type Research } from './meta';
-import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, type Extraction } from './schemas';
-import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT } from './prompts';
+import { ConversationResultSchema, ExtractionSchema, LearnedResultSchema, SellerExtractionSchema, type Extraction } from './schemas';
+import { ASK_PROMPT, CONFIGURE_PROMPT, DISCOVERY_PROMPT, EXTRACT_PROMPT, LEARN_PROMPT, SELLER_EXTRACT_PROMPT, SELLER_SEARCH_PROMPT } from './prompts';
 import { streamObjectArray } from './json-stream';
 import { recordUsage } from '../usage';
 import { findSellerImage } from '../product-images';
@@ -19,6 +19,10 @@ export type LearnedResult = z.infer<typeof LearnedResultSchema>;
 export interface DiscoveryResult { products: Product[]; sources: Source[]; summary: string; dropped?: DroppedOffer[] }
 export type DiscoveryProgress = (result: DiscoveryResult) => Promise<void>;
 export type DiscoveryActivityProgress = (message: string) => Promise<void>;
+export interface SellerSearchResult { offers: Offer[]; sources: Source[]; summary: string; dropped?: DroppedOffer[] }
+export type SellerSearchProgress = (result: SellerSearchResult) => Promise<void>;
+export const SELLER_SEARCH_TIMEOUT_MS = 2 * 60 * 1000;
+export const MAX_SELLER_OFFERS = 8;
 interface BraveItem { title: string; url: string; description: string; extra_snippets?: string[] }
 
 // Brave plans are rate-limited per second (the free plan allows one request).
@@ -66,6 +70,7 @@ export interface AIProvider {
   converse(phase: 'ask' | 'configure', messages: ChatMessage[], config: ShoppingConfig): Promise<ConversationResult>;
   learn(context: DiscoveryContext, reason: string, product: Product | null): Promise<LearnedResult>;
   discover(context: DiscoveryContext, onProgress?: DiscoveryProgress, onActivity?: DiscoveryActivityProgress): Promise<DiscoveryResult>;
+  findSellers(context: DiscoveryContext, product: Product, onProgress?: SellerSearchProgress, onActivity?: DiscoveryActivityProgress): Promise<SellerSearchResult>;
 }
 export function mergeDiscoveryResults(current: DiscoveryResult, incoming: DiscoveryResult): DiscoveryResult {
   const products = new Map(current.products.map(p => [p.id, p]));
@@ -79,6 +84,62 @@ export function mergeDiscoveryResults(current: DiscoveryResult, incoming: Discov
   return {
     products: [...products.values()], sources: [...new Map([...current.sources, ...incoming.sources].map(s => [s.url, s])).values()],
     summary: incoming.summary || current.summary, dropped,
+  };
+}
+export function mergeSellerSearchResults(current: SellerSearchResult, incoming: SellerSearchResult): SellerSearchResult {
+  const offers = new Map(current.offers.map(offer => [offer.id, offer]));
+  for (const offer of incoming.offers) {
+    // Progress may stream the same seller before the final extraction does.
+    // Keep one card per seller, preferring the latest grounded page.
+    const duplicate = [...offers.values()].find(existing => existing.id === offer.id || sellerName(existing.seller) === sellerName(offer.seller));
+    if (duplicate && duplicate.id !== offer.id) offers.delete(duplicate.id);
+    offers.set(offer.id, offer);
+  }
+  const dropped = [...new Map([...current.dropped ?? [], ...incoming.dropped ?? []]
+    .map(drop => [`${drop.reason}|${drop.product}|${drop.seller}|${drop.host}`, drop])).values()].slice(0, MAX_DROPPED);
+  return {
+    offers: [...offers.values()].slice(0, MAX_SELLER_OFFERS),
+    sources: [...new Map([...current.sources, ...incoming.sources].map(source => [source.url, source])).values()],
+    summary: incoming.summary || current.summary,
+    dropped,
+  };
+}
+function sellerName(value: string) {
+  return value.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+/**
+ * Grounds Buy-stage seller offers with the same URL/quote checks as discovery,
+ * then keeps only additional sellers of the chosen model in the same market.
+ * Deliberately does not rank or re-check the brief's preferences.
+ */
+export function normalizeSellerOffers(
+  rawOffers: Extraction['products'][number]['offers'], research: Research, context: DiscoveryContext,
+  product: Product, plan = sourcePlan(effectiveConfig(context)), markets: SellerMarkets = {},
+): SellerSearchResult {
+  const knownIds = new Set(product.offers.map(offer => offer.id));
+  const knownSellers = new Set(product.offers.map(offer => sellerName(offer.seller)));
+  const grounded = normalizeExtraction({
+    summary: '', products: [{
+      name: product.name, summary: '', why: '', tradeoffs: [], imageUrl: null, offers: rawOffers,
+    }],
+  }, research, context, plan, markets);
+  const offers: Offer[] = [];
+  let known = 0, wrongMarket = 0, duplicate = 0;
+  for (const offer of grounded.products.flatMap(item => item.offers)) {
+    if (knownIds.has(offer.id) || knownSellers.has(sellerName(offer.seller))) { known++; continue; }
+    const market = offer.sellerMarket;
+    if (context.config.country && market && market.countries !== 'global' && !market.countries.includes(context.config.country)) {
+      wrongMarket++; continue;
+    }
+    if (offers.some(existing => existing.id === offer.id || sellerName(existing.seller) === sellerName(offer.seller))) { duplicate++; continue; }
+    offers.push(offer);
+  }
+  const skipped = known || wrongMarket || duplicate
+    ? ` Skipped ${[known && `${known} already-listed seller${known === 1 ? '' : 's'}`, wrongMarket && `${wrongMarket} from another market`, duplicate && `${duplicate} duplicate${duplicate === 1 ? '' : 's'}`].filter(Boolean).join(', ')}.`
+    : '';
+  return {
+    offers, sources: research.sources, dropped: grounded.dropped,
+    summary: `${offers.length} additional seller${offers.length === 1 ? '' : 's'} for ${product.name}.${skipped}`,
   };
 }
 export function productId(name: string) {
@@ -331,6 +392,118 @@ export class LiveAIProvider implements AIProvider {
     if (timedOut) result.summary = `${result.summary}${result.summary ? ' ' : ''}Search stopped at the 5-minute limit; the products already found are kept.`;
     logger.info('discovery.run.completed', { roundId, durationMs: Date.now() - started, products: result.products.length, eligible: count, acceptable: acceptableProductCount(result, context, Date.now() - started), sources: result.sources.length, timedOut, passes, firstEligibleProductMs });
     return result;
+  }
+  /**
+   * Buy-stage seller expansion: one strong search for the exact chosen model in
+   * the same market. It intentionally does not rank offers or re-check the
+   * brief's features; it only grounds additional sellers and their evidence.
+   */
+  async findSellers(context: DiscoveryContext, product: Product, onProgress?: SellerSearchProgress, onActivity?: DiscoveryActivityProgress) {
+    this.ensureConfigured();
+    const config = effectiveConfig(context);
+    let plan = sourcePlan(config);
+    let markets: SellerMarkets = {};
+    try { const catalog = await this.catalog.effective(); plan = sourcePlan(config, catalog); markets = sellerMarkets(catalog); }
+    catch (error) { logger.error('seller_search.source_catalog.failed', { sessionId: context.sessionId, error: error instanceof Error ? error.name : 'unknown' }); }
+    const started = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SELLER_SEARCH_TIMEOUT_MS);
+    timeout.unref();
+    let result: SellerSearchResult = { offers: [], sources: [], summary: '' };
+    const knownOffers = product.offers.map(offer => ({ seller: offer.seller, url: offer.provenanceUrl, price: offer.price }));
+    const input = {
+      product: { id: product.id, name: product.name, summary: product.summary, knownOffers },
+      market: { country: config.country, city: config.city, currency: config.currency },
+      sourcePlan: plan, knownOffers,
+    };
+    try {
+      await onActivity?.(`Searching for other ${config.country ?? 'local'} sellers of ${product.name}.`);
+      const research = this.config.SEARCH_PROVIDER === 'brave'
+        ? await this.braveSellerResearch(product, config, plan, controller.signal, onActivity)
+        : await this.client.research(this.config.SELLER_SEARCH_MODEL, SELLER_SEARCH_PROMPT, input, controller.signal, {
+          searchContextSize: 'high', reasoningEffort: this.config.SELLER_SEARCH_REASONING_EFFORT,
+        });
+      logger.info('seller_search.research.completed', {
+        sessionId: context.sessionId, productId: product.id, durationMs: Date.now() - started,
+        sources: research.sources.length, researchChars: research.text.length, provider: this.config.SEARCH_PROVIDER,
+        model: this.config.SELLER_SEARCH_MODEL, effort: this.config.SELLER_SEARCH_REASONING_EFFORT,
+      });
+      if (!research.sources.length) {
+        result = { offers: [], sources: [], summary: `No additional seller pages were returned for ${product.name}.` };
+        await onProgress?.(result);
+        return result;
+      }
+      await onActivity?.(`Checking ${research.sources.length} ${research.sources.length === 1 ? 'page' : 'pages'} for the exact same model.`);
+      const streamed = new Set<string>();
+      const accept = async (incoming: SellerSearchResult) => {
+        result = mergeSellerSearchResults(result, incoming);
+        await onProgress?.(result);
+      };
+      const onText = streamObjectArray('offers', async raw => {
+        const parsed = SellerExtractionSchema.shape.offers.element.safeParse(raw);
+        if (!parsed.success) return;
+        const grounded = normalizeSellerOffers([parsed.data], research, context, product, plan, markets);
+        if (!grounded.offers.length) return;
+        grounded.offers.forEach(offer => streamed.add(offer.id));
+        await accept(grounded);
+      });
+      const extracted = await this.client.structured(this.config.SELLER_SEARCH_MODEL, SELLER_EXTRACT_PROMPT, { product: input.product, research, knownOffers }, SellerExtractionSchema, {
+        max_output_tokens: 8000, reasoning: { effort: 'low' },
+      }, onText, controller.signal);
+      const grounded = normalizeSellerOffers(extracted.offers, research, context, product, plan, markets);
+      const unseen = grounded.offers.filter(offer => !streamed.has(offer.id));
+      await accept({
+        offers: unseen, sources: research.sources,
+        summary: `${extracted.summary}${extracted.summary ? ' ' : ''}${grounded.summary}`,
+        dropped: grounded.dropped,
+      });
+      logger.info('seller_search.completed', {
+        sessionId: context.sessionId, productId: product.id, durationMs: Date.now() - started,
+        offers: result.offers.length, sources: result.sources.length,
+      });
+      return result;
+    } catch (error) {
+      if (controller.signal.aborted) {
+        if (result.offers.length) {
+          result.summary = `${result.summary}${result.summary ? ' ' : ''}Seller search stopped at the 2-minute limit; the offers already found are kept.`;
+          await onProgress?.(result);
+          return result;
+        }
+        throw new AppError(504, 'Seller search reached its time limit. Please retry.', 'SELLER_SEARCH_TIME_LIMIT');
+      }
+      throw error;
+    } finally { clearTimeout(timeout); }
+  }
+  private async braveSellerResearch(product: Product, config: ShoppingConfig, plan: SourcePlan, signal?: AbortSignal, onActivity?: DiscoveryActivityProgress): Promise<Research> {
+    this.ensureConfigured();
+    const known = product.offers.slice(0, 6).map(offer => `-"${offer.seller}"`).join(' ');
+    const base = [product.name, config.country, config.city, config.currency, 'buy price', known]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0).join(' ').slice(0, 300);
+    const targeted = plan.vertical !== 'general' && plan.sellers.length
+      ? plan.sellers.slice(0, 4).map(source => [product.name, config.country, `site:${source.domain}`, 'buy price']
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0).join(' ').slice(0, 300))
+      : [];
+    const queries = [base, ...targeted];
+    const pages: { query: string; items: BraveItem[] }[] = [];
+    const failures: unknown[] = [];
+    for (const query of queries) {
+      if (signal?.aborted) break;
+      const domain = query.match(/\bsite:([\w.-]+)/)?.[1];
+      await onActivity?.(domain ? `Checking ${domain} for another seller of the same model.` : 'Searching the same market for another seller.');
+      try { pages.push({ query, items: (await this.braveSearchTracked(query, signal)).items }); }
+      catch (error) { failures.push(error); }
+    }
+    if (!pages.length) {
+      if (signal?.aborted) throw new AppError(504, 'The seller search reached its time limit.', 'SELLER_SEARCH_TIME_LIMIT');
+      const failure = failures[0];
+      throw failure instanceof Error ? failure : new AppError(502, 'Seller search failed. Please retry.', 'SEARCH_PROVIDER_ERROR');
+    }
+    const items = [...new Map(pages.flatMap(page => page.items).map(item => [item.url, item])).values()];
+    return {
+      text: pages.map(page => `Brave search snippets only; full pages not fetched. Query: ${page.query}\n` +
+        page.items.map(item => `${item.title}\n${item.url}\n${item.description}\n${item.extra_snippets?.join('\n') ?? ''}`).join('\n\n')).join('\n\n').slice(0, 40000),
+      sources: items.map(item => ({ url: item.url, title: item.title })),
+    };
   }
   private async braveResearch(context: DiscoveryContext, alreadyFound: Product[], pass: number, plan: SourcePlan, signal?: AbortSignal, onActivity?: DiscoveryActivityProgress): Promise<Research> {
     const configuredAt = Date.now();

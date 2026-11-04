@@ -10,6 +10,10 @@ export function sessionStartup(config: Settings, mode: 'live' | 'demo' = config.
     configure: { model: config.CONFIGURE_MODEL, effort: config.CONFIGURE_REASONING_EFFORT },
     learn: { model: config.CONFIGURE_MODEL, effort: config.CONFIGURE_REASONING_EFFORT },
     discovery: { model: config.DISCOVERY_MODEL, effort: config.DISCOVERY_REASONING_EFFORT, searchProvider: config.SEARCH_PROVIDER },
+    sellerSearch: {
+      model: config.SELLER_SEARCH_MODEL, effort: config.SELLER_SEARCH_REASONING_EFFORT,
+      extractionEffort: 'low', maxOutputTokens: 8000, searchProvider: config.SEARCH_PROVIDER,
+    },
     extraction: { model: config.DISCOVERY_MODEL, effort: 'low', maxOutputTokens: 16000 },
     instantClassifier: { provider: config.INSTANT_CLASSIFIER_PROVIDER, model: config.INSTANT_CLASSIFIER_MODEL },
   };

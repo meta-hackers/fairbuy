@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { settings } from '../src/settings';
 import { verifyPassword } from '../src/admin';
 
-const effortKeys = ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT'] as const;
+const effortKeys = ['ASK_REASONING_EFFORT', 'CONFIGURE_REASONING_EFFORT', 'DISCOVERY_REASONING_EFFORT', 'SELLER_SEARCH_REASONING_EFFORT'] as const;
 const modelKeyForEffort = {
   ASK_REASONING_EFFORT: 'ASK_MODEL',
   CONFIGURE_REASONING_EFFORT: 'CONFIGURE_MODEL',
   DISCOVERY_REASONING_EFFORT: 'DISCOVERY_MODEL',
+  SELLER_SEARCH_REASONING_EFFORT: 'SELLER_SEARCH_MODEL',
 } as const;
 
 describe('HTTP port binding configuration', () => {
@@ -72,9 +73,11 @@ describe('optional instant classifier settings', () => {
 });
 
 describe('per-stage reasoning effort settings', () => {
-  it('defaults to low for Ask and Configure, and xhigh for Discovery', () => {
+  it('defaults to low for Ask and Configure, and xhigh for Discovery and seller search', () => {
     expect(settings({})).toMatchObject({
-      ASK_REASONING_EFFORT: 'low', CONFIGURE_REASONING_EFFORT: 'low', DISCOVERY_REASONING_EFFORT: 'xhigh',
+      ASK_REASONING_EFFORT: 'low', CONFIGURE_REASONING_EFFORT: 'low',
+      DISCOVERY_REASONING_EFFORT: 'xhigh', SELLER_SEARCH_REASONING_EFFORT: 'xhigh',
+      SELLER_SEARCH_MODEL: 'muse-spark-1.3-contributor',
     });
   });
 

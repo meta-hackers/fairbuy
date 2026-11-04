@@ -19,6 +19,7 @@ const StageModels = [
   ['ASK_MODEL', 'ASK_REASONING_EFFORT'],
   ['CONFIGURE_MODEL', 'CONFIGURE_REASONING_EFFORT'],
   ['DISCOVERY_MODEL', 'DISCOVERY_REASONING_EFFORT'],
+  ['SELLER_SEARCH_MODEL', 'SELLER_SEARCH_REASONING_EFFORT'],
 ] as const;
 const Schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -30,9 +31,13 @@ const Schema = z.object({
   ASK_MODEL: z.string().default('muse-spark-1.3-contributor'),
   CONFIGURE_MODEL: z.string().default('muse-spark-1.3-contributor'),
   DISCOVERY_MODEL: z.string().default('muse-spark-1.3-contributor'),
+  // Buy-stage seller expansion is independently tunable from discovery: it is
+  // one strong same-market search plus a mechanical offer extraction.
+  SELLER_SEARCH_MODEL: z.string().default('muse-spark-1.3-contributor'),
   ASK_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
   CONFIGURE_REASONING_EFFORT: ReasoningEffortSchema.default('low'),
   DISCOVERY_REASONING_EFFORT: ReasoningEffortSchema.default('xhigh'),
+  SELLER_SEARCH_REASONING_EFFORT: ReasoningEffortSchema.default('xhigh'),
   SEARCH_PROVIDER: z.enum(['meta', 'brave']).default('meta'),
   BRAVE_API_KEY: z.string().default(''),
   // Brave's free plan allows one request per second. Keep a small safety margin

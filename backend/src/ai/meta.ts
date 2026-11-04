@@ -137,10 +137,13 @@ export class MetaClient {
     try { return schema.parse(JSON.parse(text)); }
     catch { throw new AppError(502, 'The AI returned data that failed validation. Nothing was changed; please retry.', 'AI_INVALID_DATA'); }
   }
-  async research(model: string, instructions: string, context: unknown, signal?: AbortSignal): Promise<Research> {
+  async research(model: string, instructions: string, context: unknown, signal?: AbortSignal, options: {
+    searchContextSize?: 'low' | 'medium' | 'high';
+    reasoningEffort?: Settings['DISCOVERY_REASONING_EFFORT'];
+  } = {}): Promise<Research> {
     const { data, text, content } = await this.response(model, instructions, context, {
-      reasoning: { effort: this.config.DISCOVERY_REASONING_EFFORT },
-      tools: [{ type: 'web_search', search_context_size: 'medium' }],
+      reasoning: { effort: options.reasoningEffort ?? this.config.DISCOVERY_REASONING_EFFORT },
+      tools: [{ type: 'web_search', search_context_size: options.searchContextSize ?? 'medium' }],
       include: ['web_search_call.results'],
       // Preserve the reasoning budget; latency changes acceptance, not reasoning quality.
       max_output_tokens: 16000,

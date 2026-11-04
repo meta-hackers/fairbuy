@@ -36,3 +36,10 @@ export const ExtractionSchema = z.object({
   })).max(8),
 });
 export type Extraction = z.infer<typeof ExtractionSchema>;
+// Buy-stage seller search extracts offers only: the product and its features
+// have already been chosen, so there is nothing to re-evaluate.
+export const SellerExtractionSchema = z.object({
+  summary: z.string().max(3000),
+  offers: z.array(ExtractionSchema.shape.products.element.shape.offers.element).max(8),
+});
+export type SellerExtraction = z.infer<typeof SellerExtractionSchema>;

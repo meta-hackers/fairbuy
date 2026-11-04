@@ -109,6 +109,27 @@ describe('product image recovery and browser diagnostics', () => {
     } finally { log.mockRestore(); }
   });
 });
+describe('Buy-stage seller search API', () => {
+  it('queues one same-market seller search for the chosen product and validates its request', async () => {
+    const { app, store, service } = setup(); const client = request.agent(app);
+    const send = (path: string, body?: object) => client.post(path).set('X-Fairbuy-Request', '1').send(body);
+    const { body: created } = await send('/api/sessions');
+    await send(`/api/sessions/${created.id}/ask`, { message: 'A laptop for coding in Italy' });
+    await send(`/api/sessions/${created.id}/discovery`).expect(202);
+    await service.runJob((await store.claim())!);
+    const product = (await store.get(created.id)).rounds[0].products[0];
+    await send(`/api/sessions/${created.id}/select`, { productId: product.id }).expect(200);
+    await send(`/api/sessions/${created.id}/sellers`, {}).expect(400);
+    const { body } = await send(`/api/sessions/${created.id}/sellers`, { productId: product.id }).expect(202);
+    expect(body.sellerSearch).toMatchObject({ productId: product.id, status: 'queued', offers: [] });
+    const again = await send(`/api/sessions/${created.id}/sellers`, { productId: product.id }).expect(202);
+    expect(again.body.sellerSearch.id).toBe(body.sellerSearch.id);
+    const job = await store.claim(); expect(job?.kind).toBe('seller_search');
+    await service.runJob(job!);
+    expect((await store.get(created.id)).sellerSearch?.status).toBe('complete');
+  });
+});
+
 describe('missing product questions (issue #23)', () => {
   it('answers from the latest round, keeps the answer and validates the question', async () => {
     const { app, store, service } = setup(); const client = request.agent(app);

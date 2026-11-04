@@ -9,7 +9,9 @@ describe('session startup configuration', () => {
   it('captures independent models and efforts, including Learn and extraction, without secrets', () => {
     const config = settings({
       ASK_MODEL: 'ask-model', CONFIGURE_MODEL: 'configure-model', DISCOVERY_MODEL: 'discovery-model',
+      SELLER_SEARCH_MODEL: 'seller-search-model',
       ASK_REASONING_EFFORT: 'minimal', CONFIGURE_REASONING_EFFORT: 'medium', DISCOVERY_REASONING_EFFORT: 'high',
+      SELLER_SEARCH_REASONING_EFFORT: 'xhigh',
       SEARCH_PROVIDER: 'brave', INSTANT_CLASSIFIER_PROVIDER: 'cloudflare',
       MODEL_API_KEY: 'secret-model', BRAVE_API_KEY: 'secret-brave', CLOUDFLARE_API_TOKEN: 'secret-cloudflare',
       DATABASE_URL: 'secret-database', APP_ACCESS_TOKEN: 'secret-access',
@@ -21,6 +23,9 @@ describe('session startup configuration', () => {
       configure: { model: 'configure-model', effort: 'medium' },
       learn: { model: 'configure-model', effort: 'medium' },
       discovery: { model: 'discovery-model', effort: 'high', searchProvider: 'brave' },
+      sellerSearch: {
+        model: 'seller-search-model', effort: 'xhigh', extractionEffort: 'low', maxOutputTokens: 8000, searchProvider: 'brave',
+      },
       extraction: { model: 'discovery-model', effort: 'low', maxOutputTokens: 16000 },
       instantClassifier: { provider: 'cloudflare', model: config.INSTANT_CLASSIFIER_MODEL },
     });

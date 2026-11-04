@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
   ASK_QUESTION_CAP, EMPTY_CONFIG, activeProducts, allProducts, askRounds, explainMissing, isConfigReady, MAX_DISCOVERY_ACTIVITIES, MAX_MISSING_QUESTIONS, latestRound, rankProducts, withCurrentRankings,
-  type DiscoveryContext, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
+  type DiscoveryContext, type Product, type SellerSearch, type ShoppingConfig, type ShoppingLocation, type ShoppingSession,
 } from '@fairbuy/core';
-import { mergeDiscoveryResults, type AIProvider, type DiscoveryResult } from './ai/provider';
+import { mergeDiscoveryResults, mergeSellerSearchResults, type AIProvider, type DiscoveryResult, type SellerSearchResult } from './ai/provider';
 import { PostgresStore, type Store, type Job } from './store';
 import { AppError, publicError } from './errors';
 import { logger } from './logger';
@@ -24,6 +24,7 @@ export class ShoppingService {
       id: randomUUID(), version: 0, mode: this.mode, createdAt: now, updatedAt: now, stage: 'ask',
       askSessionId: randomUUID(), configureSessionId: randomUUID(), askMessages: [], configureMessages: [],
       config: structuredClone(EMPTY_CONFIG), initialConfig: null, ready: false, missing: [], feedback: [], rounds: [], selectedProductId: null,
+      sellerSearch: null,
     };
     if (location) session.config = { ...session.config, ...location, currency: location.currency ?? session.config.currency };
     await this.store.create(owner, session, this.startup);
@@ -35,7 +36,7 @@ export class ShoppingService {
       this.idle(session);
       if (onlyIfMissing && session.config.country) return;
       session.config = { ...session.config, ...location, currency: location.currency ?? session.config.currency };
-      session.selectedProductId = null;
+      session.selectedProductId = null; session.sellerSearch = null;
       if (session.stage === 'buy') session.stage = 'configure';
     });
     logger.info('session.location.updated', { sessionId: id, country: location.country, currency: location.currency, onlyIfMissing });
@@ -74,7 +75,7 @@ export class ShoppingService {
       products: retained, sources: [], summary: '', error: null, activities: [],
       context, ranking: retained.length ? rankProducts(retained, context) : null,
     });
-    session.stage = 'discovery'; session.selectedProductId = null;
+    session.stage = 'discovery'; session.selectedProductId = null; session.sellerSearch = null;
   }
   async message(id: string, owner: string, phase: 'ask' | 'configure', message: string) {
     return this.usage.capture(id, phase, null, () => this.messageWithUsage(id, owner, phase, message));
@@ -100,7 +101,7 @@ export class ShoppingService {
       // The model decides when the brief is well understood, but it cannot keep the
       // user in Ask: after ASK_QUESTION_CAP replies a searchable brief is enough.
       session.ready = isConfigReady(result.config) && (phase === 'configure' || result.ready || askRounds(session) >= ASK_QUESTION_CAP);
-      session.missing = result.missing; session.selectedProductId = null;
+      session.missing = result.missing; session.selectedProductId = null; session.sellerSearch = null;
       session.stage = phase;
     }, base.version);
     logger.info('session.message.completed', { sessionId: id, phase, durationMs: Date.now() - started, messages: phase === 'ask' ? session.askMessages.length : session.configureMessages.length, ready: session.ready });
@@ -110,7 +111,7 @@ export class ShoppingService {
     const session = await this.store.append(id, owner, session => {
       this.idle(session);
       if (!session.ready) throw new AppError(409, 'Finish Ask before editing the configuration.');
-      session.config = config; session.stage = 'configure'; session.selectedProductId = null;
+      session.config = config; session.stage = 'configure'; session.selectedProductId = null; session.sellerSearch = null;
     });
     logger.info('session.configure.saved', { sessionId: id, requirements: config.requirements.length, budgetMax: config.budgetMax, country: config.country, currency: config.currency });
     return session;
@@ -169,9 +170,35 @@ export class ShoppingService {
       // Judge eligibility by the current ranking, as the user sees it, not a stored snapshot.
       const ranked = latestRound(withCurrentRankings(session))?.ranking?.ranked ?? [];
       if (!activeProducts(session).some(p => p.id === productId && p.offers.some(o => ranked.some(r => r.offerId === o.id)))) throw new AppError(400, 'This product is not eligible in the current shortlist.');
+      if (session.sellerSearch?.productId !== productId) session.sellerSearch = null;
       session.selectedProductId = productId; session.stage = 'buy';
     });
     logger.info('session.product.selected', { sessionId: id, productId });
+    return session;
+  }
+  /**
+   * Starts (or resumes) the Buy-stage search for additional sellers of the
+   * chosen product. A completed search is cached; a failed one can be retried.
+   */
+  async findSellers(id: string, owner: string, productId: string) {
+    this.ai.ensureConfigured();
+    let queued = false;
+    const session = await this.store.append(id, owner, session => {
+      this.idle(session);
+      if (session.stage !== 'buy' || session.selectedProductId !== productId) throw new AppError(409, 'Choose this product in Buy before looking for more sellers.');
+      const product = activeProducts(session).find(item => item.id === productId);
+      if (!product) throw new AppError(400, 'This product is not in the current shortlist.');
+      const existing = session.sellerSearch;
+      if (existing?.productId === productId && existing.status !== 'failed') return;
+      const now = new Date().toISOString();
+      session.sellerSearch = {
+        id: randomUUID(), productId, productName: product.name, attempt: 0, status: 'queued',
+        createdAt: now, startedAt: null, finishedAt: null, durationMs: null,
+        offers: [], sources: [], summary: '', error: null, activities: [],
+      };
+      queued = true;
+    });
+    if (queued) logger.info('seller_search.queued', { sessionId: id, productId, searchId: session.sellerSearch?.id });
     return session;
   }
   /** Answers "why isn't this product here?" from the latest round and keeps the answer for support. */
@@ -197,8 +224,93 @@ export class ShoppingService {
     return session;
   }
   async runJob(job: Job) {
+    const kind = job.kind ?? 'discovery';
     return this.diagnostics.capture({ traceId: randomUUID(), source: 'server', sessionId: job.sessionId, roundId: job.id, productId: null },
-      () => this.usage.capture(job.sessionId, 'discovery', job.id, () => this.runJobWithUsage(job)));
+      () => this.usage.capture(job.sessionId, kind === 'seller_search' ? 'buy' : 'discovery', job.id,
+        () => kind === 'seller_search' ? this.runSellerSearch(job) : this.runJobWithUsage(job)));
+  }
+  private async runSellerSearch(job: Job) {
+    const started = Date.now();
+    let product: Product | null = null;
+    let context: DiscoveryContext | null = null;
+    let startedAt: string | null = null;
+    try {
+      await this.store.append(job.sessionId, null, session => {
+        product = null; context = null; startedAt = null;
+        const search = session.sellerSearch;
+        if (!search || search.id !== job.id || !['queued', 'running'].includes(search.status) || search.attempt > job.attempts) return;
+        if (session.mode !== this.mode || job.attempts > 2) {
+          this.finishSellerSearch(search, 'failed', session.mode !== this.mode ? 'Deployment mode changed. Start a new search.' : 'Seller search interrupted twice. Please retry.');
+          return;
+        }
+        product = allProducts(session).find(item => item.id === search!.productId) ?? null;
+        if (!product) {
+          this.finishSellerSearch(search, 'failed', 'This product is no longer in your shortlist.');
+          return;
+        }
+        search.status = 'running'; search.attempt = job.attempts;
+        search.startedAt ??= new Date().toISOString();
+        startedAt = search.startedAt;
+        context = this.context(session, search.id);
+      });
+      if (!product || !context) {
+        await this.store.finish(job);
+        logger.info('seller_search.job.skipped', { sessionId: job.sessionId, searchId: job.id, attempts: job.attempts });
+        return;
+      }
+      const activeProduct = product as Product;
+      const activeContext = context as DiscoveryContext;
+      logger.info('seller_search.job.started', {
+        sessionId: job.sessionId, searchId: job.id, attempt: job.attempts, startedAt,
+        productId: activeProduct.id, country: activeContext.config.country, knownOffers: activeProduct.offers.length,
+      });
+      const save = async (result: SellerSearchResult, complete = false) => {
+        await this.store.append(job.sessionId, null, session => {
+          const search = session.sellerSearch;
+          if (!search || search.id !== job.id || search.status !== 'running' || search.attempt !== job.attempts) return;
+          const merged = mergeSellerSearchResults(search, result);
+          search.offers = merged.offers; search.sources = merged.sources; search.summary = merged.summary;
+          if (complete) this.finishSellerSearch(search, 'complete');
+        });
+      };
+      const activity = async (message: string) => {
+        await this.store.append(job.sessionId, null, session => {
+          const search = session.sellerSearch;
+          if (!search || search.id !== job.id || search.status !== 'running' || search.attempt !== job.attempts) return;
+          const text = message.trim().slice(0, 500);
+          if (!text || search.activities?.at(-1)?.message === text) return;
+          search.activities = [...search.activities ?? [], { message: text, at: new Date().toISOString() }].slice(-MAX_DISCOVERY_ACTIVITIES);
+        });
+      };
+      const result = await this.ai.findSellers(activeContext, activeProduct, save, activity);
+      await save(result, true);
+      logger.info('seller_search.job.completed', {
+        sessionId: job.sessionId, searchId: job.id, productId: activeProduct.id,
+        durationMs: Date.now() - started, offers: result.offers.length, sources: result.sources.length,
+      });
+    } catch (error) {
+      logger.error('seller_search.job.failed', {
+        sessionId: job.sessionId, searchId: job.id, attempt: job.attempts, durationMs: Date.now() - started,
+        code: error instanceof AppError ? error.code : 'UNEXPECTED', message: publicError(error),
+      });
+      try {
+        await this.store.append(job.sessionId, null, session => {
+          const search = session.sellerSearch;
+          if (search && search.id === job.id && search.attempt === job.attempts && ['queued', 'running'].includes(search.status)) {
+            this.finishSellerSearch(search, 'failed', publicError(error));
+          }
+        });
+      } catch (saveError) {
+        if (!(saveError instanceof AppError && saveError.status === 404)) throw saveError;
+      }
+    }
+    await this.store.finish(job);
+  }
+  private finishSellerSearch(search: SellerSearch, status: 'complete' | 'failed', error: string | null = null) {
+    const now = new Date();
+    search.status = status; search.error = error; search.finishedAt = now.toISOString();
+    const from = search.startedAt ?? search.createdAt;
+    search.durationMs = Math.max(0, now.getTime() - new Date(from).getTime());
   }
   private async runJobWithUsage(job: Job) {
     const jobStarted = Date.now();

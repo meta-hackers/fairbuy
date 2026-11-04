@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ASK_QUESTION_CAP, DISCOVERY_MIN_PRODUCTS, DROP_REASONS, activeProducts, askRounds, latestRound, missingForSearch, roundOutcome, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession } from '@fairbuy/core';
+import { ASK_QUESTION_CAP, DISCOVERY_MIN_PRODUCTS, DROP_REASONS, activeProducts, askRounds, latestRound, missingForSearch, roundOutcome, sellerSearchFor, type Product, type ShoppingConfig, type ShoppingLocation, type ShoppingSession } from '@fairbuy/core';
 import { api, type Bootstrap } from './api';
 import Chat from './components/Chat';
 import Brief from './components/Brief';
@@ -57,7 +57,7 @@ export default function App() {
   const geolocation = useGeolocation(!!boot && !boot.accessRequired && stage === 'ask' && !currentConfig?.country && !manualLocation);
   const suggestedLocation = manualLocation ?? geolocation.location;
   const initialLocation = suggestedLocation?.currency ? suggestedLocation : null;
-  const locationAttempt = useRef('');
+  const locationAttempt = useRef(''); const sellerAttempt = useRef('');
   const shoppingLocation: ShoppingLocation | null = currentConfig?.country
     ? { country: currentConfig.country, city: currentConfig.city, currency: currentConfig.currency } : suggestedLocation;
   const heading = useRef<HTMLHeadingElement>(null);
@@ -72,7 +72,12 @@ export default function App() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [stage]);
   const round = session ? latestRound(session) : undefined;
+  const products = session ? activeProducts(session) : [];
+  const selected = products.find(p => p.id === session?.selectedProductId);
+  const sellerSearch = session ? sellerSearchFor(session, selected?.id) : null;
+  const sellerSearching = !!sellerSearch && ['queued', 'running'].includes(sellerSearch.status);
   const searching = !!round && ['queued', 'running'].includes(round.status);
+  const polling = searching || sellerSearching;
   const clock = useClock(searching);
   const searchStarted = round?.startedAt ?? round?.createdAt;
   const searchTime = round && searchStarted
@@ -80,7 +85,7 @@ export default function App() {
     : null;
   const timingLabel = round?.status === 'queued' ? 'queued' : searching ? 'searching' : 'took';
   useEffect(() => {
-    if (!session || !searching) return;
+    if (!session || !polling) return;
     let cancelled = false;
     const timer = setInterval(async () => {
       try {
@@ -89,7 +94,26 @@ export default function App() {
       } catch (e) { if (!cancelled) setError((e as Error).message); }
     }, 1000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [session?.id, searching]);
+  }, [session?.id, polling]);
+  // Landing in Buy starts one strong, same-market search for other sellers of
+  // the chosen model. The spinner card represents the next seller slot until
+  // the result arrives; a failed search is retried only on explicit request.
+  useEffect(() => {
+    if (stage !== 'buy' || !session || !selected) return;
+    if (sellerSearch && sellerSearch.status !== 'failed') return;
+    const key = `${session.id}:${selected.id}`;
+    if (sellerAttempt.current === key) return;
+    sellerAttempt.current = key;
+    let cancelled = false;
+    void api<ShoppingSession>(`/sessions/${session.id}/sellers`, 'POST', { productId: selected.id })
+      .then(next => { if (!cancelled) { accept(next, false); setError(''); } })
+      .catch(error => {
+        // The POST only queues the job. A failure here is validation, access or
+        // connectivity, so allow the next Buy landing to try again.
+        if (!cancelled) { sellerAttempt.current = ''; setError((error as Error).message); }
+      });
+    return () => { cancelled = true; };
+  }, [stage, session?.id, selected?.id, sellerSearch?.id, sellerSearch?.status, accept]);
   useEffect(() => {
     if (!session || session.config.country || !initialLocation || busy || searching || stage !== 'ask') return;
     const key = `${session.id}:${JSON.stringify(initialLocation)}`;
@@ -138,6 +162,11 @@ export default function App() {
       setNotice('');
     });
   }
+  async function retrySellerSearch() {
+    if (!session || !selected) return;
+    sellerAttempt.current = `${session.id}:${selected.id}`;
+    await perform(async () => accept(await api<ShoppingSession>(`/sessions/${session.id}/sellers`, 'POST', { productId: selected.id }), false));
+  }
   async function navigate(next: Stage) {
     if (busy || searching || next === stage) return;
     if (stage === 'configure' && draft && session && JSON.stringify(draft) !== JSON.stringify(session.config)) {
@@ -147,11 +176,9 @@ export default function App() {
       await perform(async () => { accept(await api<ShoppingSession>(`/sessions/${session.id}/stage`, 'PATCH', { stage: next })); setNotice(''); });
     } else { setStage(next); setNotice(''); }
   }
-  const products = session ? activeProducts(session) : [];
   const visibleProducts = products.map(product => ({
     product, ranked: (round?.ranking?.ranked ?? []).filter(r => product.offers.some(o => o.id === r.offerId)),
   })).filter(p => p.ranked.length).sort((a, b) => a.ranked[0].rank - b.ranked[0].rank);
-  const selected = products.find(p => p.id === session?.selectedProductId);
   const stale = !!round && !!session && JSON.stringify(round.context.config) !== JSON.stringify(session.config);
   const unavailable = busy || searching;
   return <div className="app-shell">
@@ -239,7 +266,7 @@ export default function App() {
             <div className="refinement-actions"><p className="micro">{searching ? 'You can write your next request now. Submit it when this search finishes.' : 'Your request will be saved with your feedback.'}</p><button className="button primary" disabled={unavailable || !refinement.trim()}>Update results <span aria-hidden="true">↗</span></button></div>
           </form>
         </section>}
-        {stage === 'buy' && selected && session && <Buy product={selected} session={session} onBack={() => { void navigate('discovery'); }} />}
+        {stage === 'buy' && selected && session && <Buy product={selected} session={session} sellerSearch={sellerSearch} onRetrySellerSearch={() => { void retrySellerSearch(); }} onBack={() => { void navigate('discovery'); }} />}
       </>}
     </main>
     <footer className="site-footer"><div className="footer-signoff"><span className="brand">fairbuy<span className="brand-dot">.</span></span><p>Choose the best purchase.<br />Not just the lowest price.</p></div><details><summary>Privacy & how it works</summary>

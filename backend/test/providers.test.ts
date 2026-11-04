@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { EMPTY_CONFIG, rankProducts, sellerMarkets, sourcePlan, type DiscoveryContext, type SourceEntry } from '@fairbuy/core';
 import { SOURCE_CATALOG_SEED } from '../../data/source-catalog';
-import { acceptableProductCount, discoveryPolicy, DISCOVERY_TIMEOUT_MS, mergeDiscoveryResults, normalizeExtraction, quotedCurrency, LiveAIProvider } from '../src/ai/provider';
+import { acceptableProductCount, discoveryPolicy, DISCOVERY_TIMEOUT_MS, mergeDiscoveryResults, normalizeExtraction, normalizeSellerOffers, quotedCurrency, LiveAIProvider } from '../src/ai/provider';
 import { MetaClient } from '../src/ai/meta';
-import { ExtractionSchema } from '../src/ai/schemas';
+import { ExtractionSchema, SellerExtractionSchema } from '../src/ai/schemas';
 import { settings } from '../src/settings';
 import { safeUrl } from '../src/links';
 import { logger } from '../src/logger';
@@ -204,6 +204,67 @@ describe('progressive multi-product discovery', () => {
     brief.config.requirements[1].hard = true;
     brief.config.requirements[1].value = 32;
     expect(acceptableProductCount(found, brief, 180000)).toBe(0);
+  });
+  it('keeps only additional same-market sellers for the chosen model without ranking them', () => {
+    expect(SellerExtractionSchema.parse({ summary: 'No others.', offers: [] }).offers).toEqual([]);
+    const brief = structuredClone(context);
+    brief.config = { ...brief.config, category: 'laptop', country: 'IT', currency: 'EUR' };
+    const offer = (url: string, seller: string, quote: string) => ({
+      ...structuredClone(extracted.products[0].offers[0]), url, seller, quote, price: 590, currency: 'EUR' as const,
+    });
+    const raw = [
+      offer('https://known-shop.org/it/aster', 'Known Shop', 'Known Shop sells the Aster for EUR 590.'),
+      offer('https://local.fairbuy-fixture.org/aster', 'Local Shop', 'Local Shop sells the Aster for EUR 610.'),
+      offer('https://local.fairbuy-fixture.org/aster-2', 'Local Shop', 'Local Shop also lists the Aster for EUR 620.'),
+      offer('https://second.fairbuy-fixture.org/aster', 'Second Local', 'Second Local sells the Aster for EUR 630.'),
+      offer('https://shop-de.example.org/aster', 'German Shop', 'German Shop sells the Aster for EUR 600.'),
+    ];
+    const research = {
+      text: raw.map(item => item.quote).join('\n'),
+      sources: raw.map(item => ({ url: item.url, title: item.seller })),
+    };
+    const grounded = normalizeExtraction({
+      summary: '', products: [{ ...structuredClone(extracted.products[0]), offers: [raw[0]] }],
+    }, { text: raw[0].quote, sources: [{ url: raw[0].url, title: raw[0].seller }] }, brief);
+    const product = { ...grounded.products[0], id: 'aster' };
+    const result = normalizeSellerOffers(raw, research, brief, product, sourcePlan(brief.config), {
+      'fairbuy-fixture.org': ['IT'], 'shop-de.example.org': ['DE'],
+    });
+    expect(result.offers.map(item => item.seller)).toEqual(['Local Shop', 'Second Local']);
+    expect(result.offers.every(item => item.sellerMarket?.countries === 'global' || item.sellerMarket?.countries.includes('IT'))).toBe(true);
+    // No brief score or ranking is attached to these offers.
+    expect(result.offers[0]).not.toHaveProperty('score');
+    expect(result.summary).toContain('2 additional sellers');
+  });
+  it('runs one strong same-market seller search with no feature configuration', async () => {
+    const brief = structuredClone(context);
+    brief.config = { ...brief.config, category: 'laptop', country: 'IT', currency: 'EUR' };
+    const base = normalizeExtraction(extracted, research, brief).products[0];
+    const known = base.offers[0];
+    const seller = {
+      ...structuredClone(extracted.products[0].offers[0]),
+      url: 'https://local.fairbuy-fixture.org/aster', seller: 'Local Shop', quote: 'Local Shop sells the Aster for EUR 610.',
+    };
+    const sellerResearch = { text: seller.quote, sources: [{ url: seller.url, title: seller.seller }] };
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(researchStream(sellerResearch))
+      .mockResolvedValueOnce(stream(result(JSON.stringify({ summary: 'Found one more seller.', offers: [seller] }))));
+    const updates: number[] = [];
+    const sellerConfig = { ...config, SELLER_SEARCH_MODEL: 'seller-only-model', SELLER_SEARCH_REASONING_EFFORT: 'medium' as const };
+    const found = await new LiveAIProvider(sellerConfig, fetcher).findSellers(brief, { ...base, id: 'aster', offers: [known] }, async update => { updates.push(update.offers.length); });
+    expect(found.offers.map(offer => offer.seller)).toEqual(['Local Shop']);
+    expect(updates).toContain(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    const payload = JSON.parse(fetcher.mock.calls[0][1]!.body as string);
+    expect(payload.model).toBe('seller-only-model');
+    expect(payload.reasoning).toEqual({ effort: 'medium' });
+    expect(payload.instructions).toContain('BUY-stage seller search');
+    expect(payload.tools[0].search_context_size).toBe('high');
+    const input = JSON.parse(payload.input);
+    expect(input).not.toHaveProperty('effectiveConfig');
+    expect(input.market).toMatchObject({ country: 'IT', currency: 'EUR' });
+    expect(input.product.name).toBe('Aster');
+    expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toMatchObject({ model: 'seller-only-model', reasoning: { effort: 'low' } });
   });
   it('stops after one pass with four grounded products and an uninterpreted preference', async () => {
     const log = vi.spyOn(logger, 'info').mockImplementation(() => undefined);

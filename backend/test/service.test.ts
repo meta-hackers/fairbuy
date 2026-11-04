@@ -178,6 +178,64 @@ describe('real backend shopping orchestration', () => {
     await store.archive(session.id, 'alice'); await expect(store.get(session.id, 'alice')).rejects.toMatchObject({ status: 404 });
     expect(await store.get(session.id)).toBeDefined(); // Retained for administrators.
   });
+  it('adds Buy-stage sellers without changing the discovery ranking or re-running feature checks', async () => {
+    const { service, store, session, ai } = await setup();
+    await service.discover(session.id, 'alice'); await run(service);
+    let current = await store.get(session.id);
+    const product = current.rounds[0].products[0];
+    const rankingBefore = JSON.stringify(current.rounds[0].ranking);
+    const extra = {
+      ...structuredClone(product.offers[0]), id: 'offer-extra-seller',
+      seller: 'Another Local Shop', provenanceUrl: 'https://another-shop.example.org/product',
+    };
+    const find = vi.spyOn(ai, 'findSellers').mockResolvedValue({
+      offers: [extra], sources: [{ url: extra.provenanceUrl, title: 'Another Local Shop' }],
+      summary: '1 additional seller for the chosen model.',
+    });
+    await service.select(session.id, 'alice', product.id);
+    const queued = await service.findSellers(session.id, 'alice', product.id);
+    expect(queued.sellerSearch).toMatchObject({ productId: product.id, status: 'queued', offers: [], attempt: 0 });
+    // A second landing on Buy does not queue another paid call.
+    const same = await service.findSellers(session.id, 'alice', product.id);
+    expect(same.sellerSearch?.id).toBe(queued.sellerSearch?.id);
+    const job = await store.claim(); expect(job).toMatchObject({ kind: 'seller_search', id: queued.sellerSearch?.id });
+    expect((await store.claim())).toBeNull();
+    await service.runJob(job!);
+    current = await store.get(session.id);
+    expect(current.sellerSearch).toMatchObject({ status: 'complete', offers: [extra], error: null });
+    expect(current.selectedProductId).toBe(product.id);
+    expect(JSON.stringify(current.rounds[0].ranking)).toBe(rankingBefore);
+    expect(find).toHaveBeenCalledTimes(1);
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({ config: expect.objectContaining({ country: 'IT', currency: 'EUR' }) }),
+      expect.objectContaining({ id: product.id }), expect.any(Function), expect.any(Function),
+    );
+  });
+  it('keeps a failed seller search retryable and leaves the original seller list intact', async () => {
+    const { service, store, session, ai } = await setup();
+    await service.discover(session.id, 'alice'); await run(service);
+    let current = await store.get(session.id);
+    const product = current.rounds[0].products[0];
+    const offersBefore = structuredClone(product.offers);
+    await service.select(session.id, 'alice', product.id);
+    vi.spyOn(ai, 'findSellers').mockRejectedValueOnce(new AppError(502, 'Seller provider unavailable'));
+    const queued = await service.findSellers(session.id, 'alice', product.id);
+    await run(service);
+    current = await store.get(session.id);
+    expect(current.sellerSearch).toMatchObject({ status: 'failed', error: 'Seller provider unavailable', offers: [] });
+    expect(current.rounds[0].products[0].offers).toEqual(offersBefore);
+    const retried = await service.findSellers(session.id, 'alice', product.id);
+    expect(retried.sellerSearch?.status).toBe('queued');
+    expect(retried.sellerSearch?.id).not.toBe(queued.sellerSearch?.id);
+  });
+  it('refuses a seller search before Buy or for a different product', async () => {
+    const { service, store, session } = await setup();
+    await service.discover(session.id, 'alice'); await run(service);
+    const current = await store.get(session.id);
+    await expect(service.findSellers(session.id, 'alice', current.rounds[0].products[0].id)).rejects.toMatchObject({ status: 409 });
+    await service.select(session.id, 'alice', current.rounds[0].products[0].id);
+    await expect(service.findSellers(session.id, 'alice', current.rounds[0].products[1].id)).rejects.toMatchObject({ status: 409 });
+  });
   it('persists navigation and never mixes demo sessions into live operations', async () => {
     const { service, store, session, ai } = await setup();
     await service.navigate(session.id, 'alice', 'configure');

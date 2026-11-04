@@ -24,6 +24,7 @@ describe('Render Blueprint with externally managed Discovery model', () => {
     for (const key of ['DATABASE_URL', 'MODEL_API_KEY', 'APP_ACCESS_TOKEN', 'BACKOFFICE_ADMINS', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN', 'BRAVE_API_KEY', 'DISCOVERY_MODEL']) {
       expect(service.envVars.filter((env: { key: string }) => env.key === key)).toEqual([{ key, sync: false }]);
     }
+    expect(service.envVars).toContainEqual({ key: 'SELLER_SEARCH_MODEL', value: 'muse-spark-1.3-contributor' });
   });
 
   it('installs build tools explicitly and accepts synchronized application settings', () => {

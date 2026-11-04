@@ -87,6 +87,19 @@ export interface DiscoveryRound {
   /** "Why isn't it here?" questions asked about this round, newest last. */
   missingQuestions?: MissingQuestion[];
 }
+/**
+ * Additional seller offers for the product the user chose in Buy. This is a
+ * narrow, same-market search for the exact same model: it never re-ranks the
+ * shortlist or re-evaluates the brief's preferences.
+ */
+export interface SellerSearch {
+  id: string; productId: string; productName: string; attempt: number;
+  status: 'queued' | 'running' | 'complete' | 'failed';
+  createdAt: string; startedAt: string | null; finishedAt: string | null; durationMs: number | null;
+  offers: Offer[]; sources: Source[]; summary: string; error: string | null;
+  /** Actual search milestones, newest last. */
+  activities?: DiscoveryActivity[];
+}
 export interface ShoppingSession {
   id: string; version: number; mode: 'live' | 'demo'; createdAt: string; updatedAt: string;
   stage: 'ask' | 'configure' | 'discovery' | 'buy';
@@ -94,6 +107,13 @@ export interface ShoppingSession {
   askMessages: ChatMessage[]; configureMessages: ChatMessage[];
   config: ShoppingConfig; initialConfig: ShoppingConfig | null; ready: boolean; missing: string[];
   feedback: Feedback[]; rounds: DiscoveryRound[]; selectedProductId: string | null;
+  /** Present after the Buy stage starts looking for more sellers of the chosen product. */
+  sellerSearch?: SellerSearch | null;
+}
+/** The seller search belonging to a product, if one has been started. */
+export function sellerSearchFor(session: ShoppingSession, productId: string | null | undefined): SellerSearch | null {
+  const search = session.sellerSearch;
+  return search && productId && search.productId === productId ? search : null;
 }
 const PRICE_ATTRIBUTES = new Set(['price', 'budget', 'budgetmax']);
 

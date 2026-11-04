@@ -11,7 +11,8 @@ import { logger } from './logger';
 import type { PersistedSourceCatalog, SourceCatalogRepository } from './source-catalog';
 import type { SessionStartup } from './session-startup';
 
-export interface Job { id: string; sessionId: string; attempts: number }
+export type JobKind = 'discovery' | 'seller_search';
+export interface Job { id: string; sessionId: string; attempts: number; kind?: JobKind }
 export interface SessionRevision {
   version: number; parentVersion: number | null; kind: 'created' | 'migrated' | 'changed' | 'archived';
   archived: boolean; revokedFeedbackIds: string[]; createdAt: string; session: ShoppingSession;
@@ -261,6 +262,7 @@ export class PostgresStore implements Store {
       await client.query(await readFile(new URL('../migrations/004_session_versions.sql', import.meta.url), 'utf8'));
       await client.query(await readFile(new URL('../migrations/005_source_catalog.sql', import.meta.url), 'utf8'));
       await client.query(await readFile(new URL('../migrations/006_diagnostics.sql', import.meta.url), 'utf8'));
+      await client.query(await readFile(new URL('../migrations/007_seller_search.sql', import.meta.url), 'utf8'));
       // A single baseline preserves the state available at upgrade time. Earlier
       // revisions cannot be reconstructed from the old mutable tables.
       const baselines = await client.query<{ id: string }>('SELECT id FROM shopping_sessions s WHERE NOT EXISTS (SELECT 1 FROM session_versions v WHERE v.session_id = s.id)');
@@ -392,9 +394,9 @@ export class PostgresStore implements Store {
         CROSS JOIN LATERAL (SELECT archived FROM session_versions WHERE session_id = j.session_id ORDER BY version DESC LIMIT 1) v
         WHERE NOT v.archived AND (j.state = 'queued' OR (j.state = 'running' AND j.lease_until < now()))
         ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1)
-      RETURNING id, session_id, attempts`);
+      RETURNING id, session_id, attempts, kind`);
     const row = result.rows[0];
-    return row ? { id: row.id, sessionId: row.session_id, attempts: row.attempts } : null;
+    return row ? { id: row.id, sessionId: row.session_id, attempts: row.attempts, kind: row.kind } : null;
   }
   async finish(job: Job) { await this.pool.query("UPDATE discovery_jobs SET state = 'done', lease_until = NULL WHERE id = $1 AND attempts = $2", [job.id, job.attempts]); }
   async health() { await this.pool.query('SELECT 1'); }
@@ -746,7 +748,11 @@ export class PostgresStore implements Store {
 
   private async enqueue(client: PoolClient, session: ShoppingSession) {
     for (const round of session.rounds.filter(r => r.status === 'queued')) {
-      await client.query('INSERT INTO discovery_jobs(id, session_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [round.id, session.id]);
+      await client.query("INSERT INTO discovery_jobs(id, session_id, kind) VALUES ($1, $2, 'discovery') ON CONFLICT DO NOTHING", [round.id, session.id]);
+    }
+    const sellerSearch = session.sellerSearch;
+    if (sellerSearch?.status === 'queued') {
+      await client.query("INSERT INTO discovery_jobs(id, session_id, kind) VALUES ($1, $2, 'seller_search') ON CONFLICT DO NOTHING", [sellerSearch.id, session.id]);
     }
   }
 }
@@ -798,7 +804,11 @@ export class MemoryStore implements Store {
     if (!next) return structuredClone(previous);
     entry.revisions.push(revision(previous, next, 'changed'));
     for (const round of next.rounds.filter(r => r.status === 'queued')) {
-      if (!this.jobs.has(round.id)) this.jobs.set(round.id, { id: round.id, sessionId: id, attempts: 0, state: 'queued' });
+      if (!this.jobs.has(round.id)) this.jobs.set(round.id, { id: round.id, sessionId: id, attempts: 0, state: 'queued', kind: 'discovery' });
+    }
+    const sellerSearch = next.sellerSearch;
+    if (sellerSearch?.status === 'queued' && !this.jobs.has(sellerSearch.id)) {
+      this.jobs.set(sellerSearch.id, { id: sellerSearch.id, sessionId: id, attempts: 0, state: 'queued', kind: 'seller_search' });
     }
     logQueued(previous, next);
     return structuredClone(next);
@@ -818,7 +828,7 @@ export class MemoryStore implements Store {
     const job = [...this.jobs.values()].find(j => j.state === 'queued' && !this.sessions.get(j.sessionId)?.revisions.at(-1)?.archived);
     if (!job) return null;
     job.state = 'running'; job.attempts++;
-    return { id: job.id, sessionId: job.sessionId, attempts: job.attempts };
+    return { id: job.id, sessionId: job.sessionId, attempts: job.attempts, kind: job.kind };
   }
   async finish(job: Job) { const entry = this.jobs.get(job.id); if (entry && entry.attempts === job.attempts) entry.state = 'done'; }
   async loadSourceCatalog() { return this.sourceCatalog ? structuredClone(this.sourceCatalog) : null; }

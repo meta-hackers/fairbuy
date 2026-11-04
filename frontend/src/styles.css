@@ -77,3 +77,14 @@
 @media(max-width:540px){
   .site-header .progress ol{gap:8px}
 }
+
+/* Buy-stage seller expansion: the next seller slot while the same-market search runs. */
+.seller-card--searching{border-style:dashed;background:#f8faf4;align-content:center}
+.seller-search-state{display:flex;align-items:flex-start;gap:18px;min-height:100%;padding:6px 0}
+.seller-search-state .spinner{flex-shrink:0;margin-top:4px}
+.seller-search-state .eyebrow{display:block;margin-bottom:7px}
+.seller-search-state h3{margin-bottom:7px}
+.seller-search-state .micro{color:var(--muted)}
+.seller-search-state .micro + .micro{margin-top:8px}
+.seller-search-summary{margin-top:13px;color:var(--muted)}
+@media(max-width:540px){.seller-search-state{gap:14px}}
