@@ -89,8 +89,10 @@ export default function Chat({ messages, busy, onSend, compact = false, disabled
         disabled={busy || disabled} onChange={event => setText(event.target.value)}
         onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)}
         onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
-      {instantClassifier && <div className="instant-classifier-slot"><InstantClassifier text={text} enabled={!busy && !disabled && !composing} /></div>}
-      <div className="composer-bottom"><button className="button primary" type="submit" disabled={busy || disabled || !text.trim()}>{compact ? 'Update brief' : 'Send message'} <span aria-hidden="true">↗</span></button></div>
+      <div className="composer-bottom">
+        {instantClassifier && <div className="instant-classifier-slot"><InstantClassifier text={text} enabled={!busy && !disabled && !composing} /></div>}
+        <button className="button primary" type="submit" disabled={busy || disabled || !text.trim()}>{compact ? 'Update brief' : 'Send message'} <span aria-hidden="true">↗</span></button>
+      </div>
     </form>
   </section>;
 }
