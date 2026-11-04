@@ -185,6 +185,9 @@ export function quotedCurrency(quote: string): Currency | null {
     .filter(code => CURRENCY_CODES.has(code) && !AMBIGUOUS_CURRENCY_CODES.has(code)));
   return codes.size === 1 ? [...codes][0] as Currency : null;
 }
+// Pipeline notes the model sometimes writes into shopper-facing trade-offs,
+// e.g. "No grounded official image URL available, image left null."
+const INTERNAL_NOTE = /\b(?:image ?url|imageurl|left null|is null|json|schema)\b/i;
 export function normalizeExtraction(extracted: Extraction, research: Research, context: DiscoveryContext, plan = sourcePlan(effectiveConfig(context)), markets: SellerMarkets = {}): DiscoveryResult {
   const allowed = new Set(research.sources.map(s => s.url));
   const sourceUrls = [...allowed];
@@ -236,7 +239,7 @@ export function normalizeExtraction(extracted: Extraction, research: Research, c
     // the listing's own image and works even when the page blocks scraping.
     const fallbackImage = offers.map(offer => research.images?.[offer.provenanceUrl]).find((image): image is string => !!image);
     const imageUrl = extractedImage ?? safeImageUrl(fallbackImage, sourceUrls);
-    return offers.length ? [{ id, name: raw.name, summary: raw.summary, why: raw.why, tradeoffs: raw.tradeoffs, imageUrl, offers }] : [];
+    return offers.length ? [{ id, name: raw.name, summary: raw.summary, why: raw.why, tradeoffs: raw.tradeoffs.filter(t => !INTERNAL_NOTE.test(t)), imageUrl, offers }] : [];
   });
   // A duplicated model/offer cannot crowd the shortlist.
   const unique = new Map<string, Product>();

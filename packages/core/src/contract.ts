@@ -80,6 +80,8 @@ export type Offer = z.infer<typeof OfferSchema>;
 export const ConstraintSchema = z.object({
   attribute: z.string(), op: z.enum(['>=', '<=', '=', 'in']),
   value: z.union([z.number(), z.string(), z.boolean(), z.array(z.string())]), hard: z.boolean(),
+  /** The user's own wording, shown instead of the attribute key. */
+  label: z.string().max(200).optional(),
 });
 export type Constraint = z.infer<typeof ConstraintSchema>;
 export interface CategorySpec { id: string; attributes: { key: string; unit?: string }[] }

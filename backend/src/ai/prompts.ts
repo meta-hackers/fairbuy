@@ -95,6 +95,7 @@ Unknown price is null. Unknown stock/condition are "unknown". Never infer availa
 Every offer.quote and attribute.quote must be a literal substring of the research text supporting the claim.
 Use structured attribute keys, types and units that match the attached requirements; unknown attributes should be omitted.
 No invented proof, no numerical AI match scores. why is a brief explanation grounded in the supplied research/preferences, not an assurance.
+summary, why and tradeoffs are read by shoppers: describe the product and its compromises in plain language. Never mention images, URLs, JSON fields, null values, schemas, extraction or grounding steps there.
 Group the same exact model across sellers into one product, use a stable manufacturer/model name, and do not include discarded models.
 Extract every grounded distinct model in the research, even when only one exists or it misses soft preferences. Do not reject a relevant model for an imperfect soft match; explain the shortfalls in tradeoffs. Preserve hard checks and unknowns. Keep summaries concise, prefer one grounded offer per model, and extract requested attributes only. Put the strongest grounded product first; products are shown as each complete product is validated, without waiting for the rest.
 Return an empty products array when evidence is insufficient.`;

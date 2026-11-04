@@ -627,6 +627,11 @@ describe('untrusted search evidence', () => {
     // A later pass meeting the same pages does not repeat a drop.
     expect(mergeDiscoveryResults(result, result).dropped).toEqual(result.dropped);
   });
+  it('keeps pipeline notes out of shopper-facing trade-offs', () => {
+    const noisy = structuredClone(extracted);
+    noisy.products[0].tradeoffs = ['No grounded official image URL available, image left null.', 'Colour E-Ink is less sharp for black-and-white novels.'];
+    expect(normalizeExtraction(noisy, research, context).products[0].tradeoffs).toEqual(['Colour E-Ink is less sharp for black-and-white novels.']);
+  });
   it('rejects unsafe links and never fetches arbitrary seller URLs', () => {
     for (const value of ['http://shop.org/p', 'https://127.0.0.1/x', 'https://2130706433/x', 'https://[::1]/x', 'https://user:pass@shop.org/p', 'javascript:alert(1)', 'https://localhost/x', 'https://localhost./x', 'https://router.home/x', 'https://service.internal/x', 'https://example.com/fake', 'https://shop.org:8443/x']) expect(safeUrl(value)).toBeNull();
     expect(safeUrl('https://real-shop.org/p#section')).toBe('https://real-shop.org/p');
