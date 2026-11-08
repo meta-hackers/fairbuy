@@ -64,7 +64,7 @@ test('saved products without image URLs recover photos; failures report only saf
   const failedCard = page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: boot.session.rounds.at(-1).products[1].name, exact: true }) });
   await failedCard.scrollIntoViewIfNeeded();
   await expect(failedCard.locator('.product-illustration')).toBeVisible();
-  await expect(failedCard.getByText('AI illustration · not a product photo')).toBeVisible();
+  await expect(failedCard.locator('.product-illustration-label')).toHaveCount(0);
   const illustration = failedCard.locator('.product-illustration img');
   await expect.poll(() => illustration.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   await expect.poll(() => reports.some(event => event.kind === 'image_unavailable')).toBe(true);
@@ -84,14 +84,37 @@ test('saved products without image URLs recover photos; failures report only saf
   expect(JSON.stringify(reports)).not.toContain('secret');
 });
 
-test('static illustration failure retains the SVG fallback and disclosure', async ({ page }) => {
+test('wrist watches use watch artwork, including missing offer categories @mobile-smoke', async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  const round = boot.session.rounds.at(-1);
+  round.context.config.category = 'wrist watches';
+  boot.session.config.category = 'wrist watches';
+  for (const [index, product] of round.products.entries()) {
+    product.name = index === 0 ? 'Omega Speedmaster' : 'Seiko Presage';
+    product.imageUrl = null;
+    for (const offer of product.offers) { offer.category = index === 0 ? 'wrist watches' : ''; offer.mode = 'fixture'; }
+  }
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.goto('/');
+  const cards = page.getByTestId('product-card');
+  await expect(cards.first()).toBeVisible();
+  for (const index of [0, 1]) {
+    const image = cards.nth(index).locator('.product-illustration img');
+    await cards.nth(index).scrollIntoViewIfNeeded();
+    await expect(image).toHaveAttribute('src', '/illustrations/watch.webp');
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  }
+  await expect(page.getByText('AI illustration · not a product photo', { exact: true })).toHaveCount(0);
+});
+
+test('static illustration failure retains the SVG fallback without a caption', async ({ page }) => {
   const boot = await discoveryBootstrap(page.request);
   await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
   await page.route('**/illustrations/*.webp', route => route.fulfill({ status: 404 }));
   await page.goto('/');
   const card = page.getByTestId('product-card').first();
   await expect(card.locator('.product-glyph')).toBeVisible();
-  await expect(card.getByText('AI illustration · not a product photo')).toBeVisible();
+  await expect(card.locator('.product-illustration-label')).toHaveCount(0);
 });
 
 test('additional product types use local Meta illustrations without runtime generation', async ({ page }) => {
@@ -110,7 +133,7 @@ test('additional product types use local Meta illustrations without runtime gene
   const illustration = card.locator('.product-illustration img');
   await expect(illustration).toHaveAttribute('src', '/illustrations/security-camera.webp');
   await expect.poll(() => illustration.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(384);
-  await expect(card.getByText('AI illustration · not a product photo')).toBeVisible();
+  await expect(card.locator('.product-illustration-label')).toHaveCount(0);
   expect(remoteRequests).toEqual([]);
 });
 

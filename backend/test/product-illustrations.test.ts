@@ -30,6 +30,12 @@ describe('offline product illustrations', () => {
   });
   it.each([
     ['cars', 'Used car', 'car'],
+    ['wrist watches', 'Omega Speedmaster', 'watch'],
+    ['wristwatches', 'Seiko Presage', 'watch'],
+    ['watches', 'Tissot PRX', 'watch'],
+    ['wrist-watch', 'Citizen Tsuyosa', 'watch'],
+    ['orologi', '', 'watch'],
+    ['smartwatches', '', 'smartwatch'],
     ['auto', 'VW Golf', 'car'],
     ['electronics', 'Lenovo ThinkPad', 'laptop'],
     ['bicycle', 'Electric bike', 'electric-bike'],

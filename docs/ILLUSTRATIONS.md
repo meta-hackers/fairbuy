@@ -4,8 +4,12 @@ The 300 WebP images in `frontend/public/illustrations/` are AI-generated generic
 product-type artwork, **not photos of listings**. Real seller images and image
 recovery always take precedence. When neither works, the frontend selects local
 art using whole-word product category/name aliases, with a generic parcel as the
-default. Every size displays **AI illustration · not a product photo**. If a
-static asset fails to load, the inline SVG glyph remains the final fallback.
+default. Product cards use the offer category, falling back to the saved search
+category when absent; watch aliases include plural and spaced forms such as
+“watches” and “wrist watches.” The image caption is omitted; the footer’s Product
+images disclosure explains that fallback artwork is not a listing photo. If a
+static asset fails to load, an inline SVG glyph remains the final fallback,
+including a watch-shaped glyph for watches.
 
 No image generation happens at runtime. No product, seller or user data is sent
 for generation. No database schema or `imageUrl` evidence fields are changed.
