@@ -16,6 +16,7 @@ export function sessionStartup(config: Settings, mode: 'live' | 'demo' = config.
     },
     extraction: { model: config.DISCOVERY_MODEL, effort: 'low', maxOutputTokens: 16000 },
     instantClassifier: { provider: config.INSTANT_CLASSIFIER_PROVIDER, model: config.INSTANT_CLASSIFIER_MODEL },
+    illustrationClassifier: { provider: config.ILLUSTRATION_CLASSIFIER_PROVIDER, model: config.ILLUSTRATION_CLASSIFIER_MODEL },
   };
 }
 

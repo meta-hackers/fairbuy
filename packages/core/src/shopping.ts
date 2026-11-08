@@ -54,6 +54,8 @@ export function formatQuestionAnswer(options: AskQuestionOption[], selectedIds: 
 export interface Product {
   id: string; name: string; summary: string; why: string; tradeoffs: string[]; offers: Offer[];
   imageUrl: string | null;
+  /** Optional category artwork choice, never a product photo or evidence. */
+  illustration?: { slug: string; model: string };
 }
 export interface Source { url: string; title: string }
 export interface Feedback { id: string; productId: string | null; productName: string | null; reason: string; at: string; learned: Requirement[] }

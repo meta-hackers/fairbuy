@@ -107,7 +107,7 @@ export function mergeDiscoveryResults(current: DiscoveryResult, incoming: Discov
   const products = new Map(current.products.map(p => [p.id, p]));
   for (const product of incoming.products) {
     const existing = products.get(product.id);
-    products.set(product.id, { ...product, imageUrl: product.imageUrl ?? existing?.imageUrl ?? null, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
+    products.set(product.id, { ...product, illustration: product.illustration ?? existing?.illustration, imageUrl: product.imageUrl ?? existing?.imageUrl ?? null, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
   }
   // Passes report the same drop again when they meet the same page; keep each once.
   const dropped = [...new Map([...current.dropped ?? [], ...incoming.dropped ?? []]

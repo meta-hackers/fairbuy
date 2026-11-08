@@ -11,11 +11,13 @@ import { UsageStore } from './usage';
 import { settings, type Settings } from './settings';
 import { sessionStartup, type SessionStartup } from './session-startup';
 import { DiagnosticStore } from './diagnostics';
+import { IllustrationClassifier } from './illustration-classifier';
 
 export class ShoppingService {
   private readonly startup: SessionStartup;
   constructor(readonly store: Store, readonly ai: AIProvider, readonly mode: 'live' | 'demo', readonly usage = new UsageStore(), config: Settings = settings({}),
-    readonly diagnostics = new DiagnosticStore(store instanceof PostgresStore ? store.pool : undefined)) {
+    readonly diagnostics = new DiagnosticStore(store instanceof PostgresStore ? store.pool : undefined),
+    readonly illustrations = new IllustrationClassifier({ ...config, FAIRBUY_MODE: mode })) {
     this.startup = sessionStartup(config, mode);
   }
   async create(owner: string, location?: ShoppingLocation) {
@@ -338,11 +340,13 @@ export class ShoppingService {
       });
       const save = async (result: DiscoveryResult, complete = false) => {
         const saveStarted = Date.now();
+        // External decoration calls happen outside append's retryable database mutation.
+        const enriched = { ...result, products: await this.illustrations.enrich(job.sessionId, result.products, activeContext.config.category ?? '') };
         await this.store.append(job.sessionId, null, session => {
           const round = session.rounds.find(r => r.id === job.id);
           if (!round || round.status !== 'running' || round.attempt !== job.attempts) return;
           const discarded = new Set(round.context.discardedProducts.map(p => p.id));
-          const merged = mergeDiscoveryResults(round, result);
+          const merged = mergeDiscoveryResults(round, enriched);
           round.products = merged.products.filter(p => !discarded.has(p.id));
           round.sources = merged.sources; round.summary = merged.summary; round.dropped = merged.dropped;
           round.ranking = rankProducts(round.products, round.context);

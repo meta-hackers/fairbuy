@@ -59,6 +59,12 @@ describe('administrator password configuration', () => {
 });
 
 describe('optional instant classifier settings', () => {
+  it('configures artwork selection independently and permits compatible model switches', () => {
+    expect(settings({})).toMatchObject({ ILLUSTRATION_CLASSIFIER_PROVIDER: 'disabled', ILLUSTRATION_CLASSIFIER_MODEL: '@cf/ibm-granite/granite-4.0-h-micro' });
+    expect(settings({ ILLUSTRATION_CLASSIFIER_MODEL: '@cf/another-provider/small-instruct' }).ILLUSTRATION_CLASSIFIER_MODEL).toBe('@cf/another-provider/small-instruct');
+    for (const model of ['', 'https://evil.test/model', '@cf/meta/../secret', '@cf/meta/..', '@cf/meta/.', '@cf/meta/model?token=x']) expect(() => settings({ ILLUSTRATION_CLASSIFIER_MODEL: model })).toThrow();
+    expect(settings({ ILLUSTRATION_CLASSIFIER_PROVIDER: 'cloudflare' }).INSTANT_CLASSIFIER_PROVIDER).toBe('disabled');
+  });
   it('does not require Cloudflare to start or change the main AI models', () => {
     const config = settings({});
     expect(config.INSTANT_CLASSIFIER_PROVIDER).toBe('disabled');

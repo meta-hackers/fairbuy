@@ -21,10 +21,11 @@ describe('Render Blueprint with externally managed Discovery model', () => {
   });
 
   it('preserves secrets and the Discovery model across Blueprint syncs', () => {
-    for (const key of ['DATABASE_URL', 'MODEL_API_KEY', 'APP_ACCESS_TOKEN', 'BACKOFFICE_ADMINS', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN', 'BRAVE_API_KEY', 'DISCOVERY_MODEL']) {
+    for (const key of ['DATABASE_URL', 'MODEL_API_KEY', 'APP_ACCESS_TOKEN', 'BACKOFFICE_ADMINS', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN', 'BRAVE_API_KEY', 'DISCOVERY_MODEL', 'ILLUSTRATION_CLASSIFIER_MODEL']) {
       expect(service.envVars.filter((env: { key: string }) => env.key === key)).toEqual([{ key, sync: false }]);
     }
     expect(service.envVars).toContainEqual({ key: 'SELLER_SEARCH_MODEL', value: 'muse-spark-1.3-contributor' });
+    expect(service.envVars).toContainEqual({ key: 'ILLUSTRATION_CLASSIFIER_PROVIDER', value: 'cloudflare' });
   });
 
   it('installs build tools explicitly and accepts synchronized application settings', () => {

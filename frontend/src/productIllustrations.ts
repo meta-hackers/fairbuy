@@ -1,15 +1,7 @@
-import illustrations from './product-illustrations.json';
+import { illustrationSlug, isIllustrationSlug } from '@fairbuy/core';
 
-// Whole-word matching avoids "car" in "card" and "ring" in "earrings".
-// Longer aliases win so "electric bike" does not become a generic bicycle.
-const normalize = (value: string) => value.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
-  .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-const aliases = illustrations.filter(([slug]) => slug !== 'generic').flatMap(([slug, , words]) =>
-  words.split('|').map(word => ({ slug, word: normalize(word) })))
-  .sort((a, b) => b.word.length - a.word.length);
-
-export function productIllustration(category: string, name = '') {
-  const text = ` ${normalize(`${category} ${name}`)} `;
-  const slug = aliases.find(({ word }) => text.includes(` ${word} `))?.slug ?? 'generic';
+export function productIllustration(category: string, name = '', selected?: string) {
+  const matched = illustrationSlug(category, name);
+  const slug = matched === 'generic' && isIllustrationSlug(selected) ? selected : matched;
   return `/illustrations/${slug}.webp`;
 }

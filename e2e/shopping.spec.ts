@@ -107,6 +107,35 @@ test('wrist watches use watch artwork, including missing offer categories @mobil
   await expect(page.getByText('AI illustration · not a product photo', { exact: true })).toHaveCount(0);
 });
 
+test('saved model artwork is validated, reused after reload and used in Buy @mobile-smoke', async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  const round = boot.session.rounds.at(-1);
+  const model = '@cf/ibm-granite/granite-4.0-h-micro';
+  for (const [index, product] of round.products.entries()) {
+    product.name = index === 0 ? 'Speedmaster' : `Presage ${index}`;
+    product.imageUrl = null;
+    product.illustration = { slug: index === 1 ? '../private' : 'watch', model };
+    for (const offer of product.offers) { offer.category = 'Relojes'; offer.mode = 'fixture'; }
+  }
+  boot.session.config.category = 'Relojes';
+  round.context.config.category = 'Relojes';
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.goto('/');
+  const cards = page.getByTestId('product-card');
+  const chosenCard = cards.filter({ has: page.getByRole('heading', { name: 'Speedmaster', exact: true }) });
+  const invalidCard = cards.filter({ has: page.getByRole('heading', { name: 'Presage 1', exact: true }) });
+  await expect(chosenCard.locator('.product-illustration img')).toHaveAttribute('src', '/illustrations/watch.webp');
+  await expect(invalidCard.locator('.product-illustration img')).toHaveAttribute('src', '/illustrations/generic.webp');
+  await page.reload();
+  await expect(chosenCard.locator('.product-illustration img')).toHaveAttribute('src', '/illustrations/watch.webp');
+  const selected = round.products[0];
+  boot.session.stage = 'buy';
+  boot.session.selectedProductId = selected.id;
+  boot.session.sellerSearch = { id: 'saved-search', productId: selected.id, status: 'complete', offers: [], sources: [], summary: '' };
+  await page.reload();
+  await expect(page.locator('.buy-intro .product-illustration img')).toHaveAttribute('src', '/illustrations/watch.webp');
+});
+
 test('static illustration failure retains the SVG fallback without a caption', async ({ page }) => {
   const boot = await discoveryBootstrap(page.request);
   await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));

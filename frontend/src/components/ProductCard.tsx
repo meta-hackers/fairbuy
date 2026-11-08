@@ -12,11 +12,11 @@ export function ProductGlyph({ category = '', small = false }: { category?: stri
       : <><path d="m70 12 43 24v42l-43 20-43-20V36l43-24Z" stroke="currentColor" strokeWidth="2"/><path d="m27 36 43 23 43-23M70 59v39M49 24l43 23v18" stroke="currentColor" strokeWidth="2"/><path d="m27 36 43 23v39L27 78V36Z" fill="currentColor" opacity=".08" /></>}
   </svg></div>;
 }
-export function ProductIllustration({ category = '', name = '', small = false }: { category?: string; name?: string; small?: boolean }) {
-  const src = productIllustration(category, name);
+export function ProductIllustration({ category = '', name = '', selected, small = false }: { category?: string; name?: string; selected?: string; small?: boolean }) {
+  const src = productIllustration(category, name, selected);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   return <div className={`product-illustration ${small ? 'product-illustration--small' : ''}`}>
-    {failedSrc === src ? <ProductGlyph category={`${category} ${name}`} small={small} />
+    {failedSrc === src ? <ProductGlyph category={`${category} ${name} ${selected ?? ''}`} small={small} />
       : <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailedSrc(src)} />}
   </div>;
 }
@@ -30,7 +30,7 @@ export function ProductImage({ product, sessionId, category, small = false }: { 
   const preferredSrc = product.imageUrl ? `/api/image?url=${encodeURIComponent(product.imageUrl)}&sessionId=${sessionId}&productId=${encodeURIComponent(product.id)}&traceId=${traceId}` : null;
   // One trace connects the initial proxy load, recovery, and final browser error.
   const src = preferredSrc && !failedUrls.includes(preferredSrc) ? preferredSrc : recoverySrc;
-  if (failedUrls.includes(src) || (!product.imageUrl && !product.offers.some(o => o.mode === 'live'))) return <ProductIllustration category={category ?? product.offers[0]?.category ?? ''} name={product.name} small={small} />;
+  if (failedUrls.includes(src) || (!product.imageUrl && !product.offers.some(o => o.mode === 'live'))) return <ProductIllustration category={category || product.offers[0]?.category || ''} name={product.name} selected={product.illustration?.slug} small={small} />;
   return <img className={`product-photo ${small ? 'product-photo--small' : ''}`} src={src} alt={`${product.name} product image`}
     loading="lazy" decoding="async" onError={() => {
       setFailedUrls(urls => [...urls.slice(-3), src]);
