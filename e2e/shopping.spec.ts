@@ -131,7 +131,7 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   // The step is persisted by an async PATCH; wait before reloading so the restored stage is Configure.
   await expect(page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Configure/ })).toHaveAttribute('aria-current', 'step');
   await page.reload();
-  await expect(page.getByLabel('Budget ceiling')).toHaveValue('700');
+  await expect(page.getByLabel('Maximum price amount')).toHaveValue('700');
   await expect(page.locator('.heading-aside')).toHaveCount(0);
   await page.getByLabel('My budget is a hard limit').check();
   await page.getByRole('button', { name: 'Find products' }).click();
@@ -281,12 +281,12 @@ test('configuration helper and unstructured requirements keep manual changes', a
   await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await page.getByLabel('Budget ceiling').fill('650');
+  await page.getByLabel('Maximum price amount').fill('650');
   await page.getByLabel('Add a requirement').fill('A matte screen');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByLabel('Additional requirements').fill('Keep my manually edited budget');
   await page.getByRole('button', { name: 'Update brief' }).click();
-  await expect(page.getByLabel('Budget ceiling')).toHaveValue('650');
+  await expect(page.getByLabel('Maximum price amount')).toHaveValue('650');
   await expect(page.getByText('A matte screen', { exact: true })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
