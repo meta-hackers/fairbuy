@@ -6,3 +6,4 @@ export * from './location';
 export * from './instant-classifier';
 export * from './missing';
 export * from './diagnostics';
+export * from './illustrations';

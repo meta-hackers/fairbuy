@@ -70,7 +70,7 @@ Extraction quotes are matched against the research model's own notes, so they ca
 
 - **Price on a readable page:** a structured price (JSON-LD, meta tags or microdata) equal to the extracted one confirms it, and a single unambiguous structured price replaces it. Otherwise, the extracted amount is kept only if the visible text shows it next to its currency. If none of these apply, the price is removed.
 - **Stock:** `OutOfStock` or `SoldOut` makes the offer sold out, so it is excluded. An *available* claim the page does not confirm becomes *unknown*.
-- **Unreadable page:** many storefronts (for example Digitec, Galaxus, Desertcart) block server requests. In that case the extracted price stays, is marked `priceSource: "unconfirmed"` and is labelled "Price not confirmed on the seller page" on the card and in Buy. Stock becomes *unknown*. In a sample of 40 recent live offers, 32 pages were unreadable.
+- **Unreadable page:** many storefronts (for example Digitec, Galaxus, Desertcart) block server requests. In that case the extracted price stays, is marked `priceSource: "unconfirmed"` and uncertainty remains in the card’s price description and in Buy, without a redundant warning chip. Stock becomes *unknown*. In a sample of 40 recent live offers, 32 pages were unreadable.
 
 Ranking version `3.1.0`: **30% final listed price + 50% matched soft constraints + 20% evidence reliability**, on a 0–100 scale.
 

@@ -3,7 +3,7 @@ export default function Brief({ session }: { session: ShoppingSession | null }) 
   const config = session?.config;
   const entries = [
     ['Looking for', config?.category], ['For', config?.purpose],
-    ['Budget', config?.budgetMax ? `${config.currency} ${config.budgetMax.toLocaleString()}` : null],
+    ['Budget', config && (config.budgetMin != null || config.budgetMax !== null) ? `${config.currency} ${(config.budgetMin ?? 0).toLocaleString()} – ${config.budgetMax?.toLocaleString() ?? 'No maximum'}` : null],
     ['Shopping in', [config?.city, config?.country].filter(Boolean).join(', ')],
   ];
   return <aside className="brief panel">

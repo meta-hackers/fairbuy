@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DemoAIProvider } from '../../../backend/src/ai/demo';
 import { EMPTY_CONFIG, constraintsFor, effectiveConfig, type Constraint, type DiscoveryContext, type Offer } from './index';
 import { finalPrice, rankOffers, scorePoints } from './ranking';
-import { askRounds, missingForSearch, rankProducts, roundOutcome } from './shopping';
+import { ConfigSchema, askRounds, missingForSearch, rankProducts, roundOutcome } from './shopping';
 
 const context: DiscoveryContext = {
   sessionId: 'test', discoverySessionId: 'round-1', initialRequest: 'Laptop', initialConfig: EMPTY_CONFIG,
@@ -11,6 +11,23 @@ const context: DiscoveryContext = {
 const offers = (await new DemoAIProvider().discover(context)).products.flatMap(p => p.offers);
 const rank = (items: Offer[], hard = true) => rankOffers({ offers: items, constraints: [...constraintsFor({ ...context.config, budgetHard: hard }), { attribute: 'ramGb', op: '>=', value: 16, hard }], spec: { id: 'laptop', attributes: [{ key: 'ramGb', unit: 'GB' }] }, currency: 'EUR' });
 describe('deterministic ranking inherited from Alessandro', () => {
+  it('validates optional price bounds while accepting older configurations', () => {
+    const { budgetMin, ...legacy } = EMPTY_CONFIG;
+    expect(ConfigSchema.parse(legacy).budgetMin).toBeNull();
+    expect(ConfigSchema.safeParse({ ...EMPTY_CONFIG, budgetMin: -1 }).success).toBe(false);
+    expect(ConfigSchema.safeParse({ ...EMPTY_CONFIG, budgetMin: 701, budgetMax: 700 }).success).toBe(false);
+    expect(ConfigSchema.safeParse({ ...EMPTY_CONFIG, budgetMin: 700, budgetMax: 700 }).success).toBe(true);
+  });
+  it('applies both price bounds as hard constraints or soft preferences', () => {
+    const config = { ...context.config, budgetMin: 400, budgetMax: 700, budgetHard: true };
+    expect(constraintsFor(config)).toContainEqual({ attribute: 'total', op: '>=', value: 40000, hard: true });
+    const items = [39999, 40000, 70000, 70001].map((cents, i) => ({ ...structuredClone(offers[0]), id: `range-${i}`, price: { ...offers[0].price, amountCents: cents } }));
+    const spec = { id: 'laptop', attributes: [] };
+    const result = rankOffers({ offers: items, constraints: constraintsFor(config), spec, currency: 'EUR' });
+    expect(result.ranked.map(r => r.offerId).sort()).toEqual(['range-1', 'range-2']);
+    expect(result.excluded).toHaveLength(2);
+    expect(rankOffers({ offers: items, constraints: constraintsFor({ ...config, budgetHard: false }), spec, currency: 'EUR' }).ranked).toHaveLength(4);
+  });
   it('excludes failed hard constraints before scoring', () => {
     const result = rank(offers);
     expect(result.excluded).toHaveLength(4);

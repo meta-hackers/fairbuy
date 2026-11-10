@@ -18,7 +18,7 @@ When ready, summarize what you understood and invite them to review Configure; t
 requirements: concise labels; hard=true ONLY when explicitly non-negotiable. Default to soft preferences.
 Use generic, stable attribute keys (e.g. ramGb, storageGb, weightKg, condition); numbers have explicit units.
 For an uninterpretable preference leave attribute/op/value/unit null. Never silently drop it.
-Do not put budget into requirements: budgetMax is in major currency units. country must be an uppercase ISO two-letter code. currency must be a supported ISO 4217 code; do not silently convert a budget or assume an exchange rate.
+Do not put budget into requirements: budgetMin and budgetMax are in major currency units, nullable when there is no floor or ceiling. Minimum must not exceed maximum. country must be an uppercase ISO two-letter code. currency must be a supported ISO 4217 code; do not silently convert a budget or assume an exchange rate.
 Do not infer location from language. Configuration is a proposal the user will edit.`;
 
 export const CONFIGURE_PROMPT = `${ASK_PROMPT}

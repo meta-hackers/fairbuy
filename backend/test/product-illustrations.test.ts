@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import illustrations from '../../frontend/src/product-illustrations.json';
+import illustrations from '../../packages/core/src/product-illustrations.json';
 import { productIllustration } from '../../frontend/src/productIllustrations';
 
 describe('offline product illustrations', () => {
@@ -28,8 +28,20 @@ describe('offline product illustrations', () => {
       }
     }
   });
+  it('uses only valid model artwork IDs and never overrides deterministic aliases', () => {
+    expect(productIllustration('Relojes', 'Speedmaster', 'watch')).toBe('/illustrations/watch.webp');
+    expect(productIllustration('Relojes', 'Speedmaster', '../private')).toBe('/illustrations/generic.webp');
+    expect(productIllustration('Relojes', 'Speedmaster', 'https://evil.test/image')).toBe('/illustrations/generic.webp');
+    expect(productIllustration('laptop', 'ThinkPad', 'watch')).toBe('/illustrations/laptop.webp');
+  });
   it.each([
     ['cars', 'Used car', 'car'],
+    ['wrist watches', 'Omega Speedmaster', 'watch'],
+    ['wristwatches', 'Seiko Presage', 'watch'],
+    ['watches', 'Tissot PRX', 'watch'],
+    ['wrist-watch', 'Citizen Tsuyosa', 'watch'],
+    ['orologi', '', 'watch'],
+    ['smartwatches', '', 'smartwatch'],
     ['auto', 'VW Golf', 'car'],
     ['electronics', 'Lenovo ThinkPad', 'laptop'],
     ['bicycle', 'Electric bike', 'electric-bike'],

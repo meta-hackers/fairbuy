@@ -107,7 +107,7 @@ export function mergeDiscoveryResults(current: DiscoveryResult, incoming: Discov
   const products = new Map(current.products.map(p => [p.id, p]));
   for (const product of incoming.products) {
     const existing = products.get(product.id);
-    products.set(product.id, { ...product, imageUrl: product.imageUrl ?? existing?.imageUrl ?? null, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
+    products.set(product.id, { ...product, illustration: product.illustration ?? existing?.illustration, imageUrl: product.imageUrl ?? existing?.imageUrl ?? null, offers: [...new Map([...(existing?.offers ?? []), ...product.offers].map(o => [o.id, o])).values()] });
   }
   // Passes report the same drop again when they meet the same page; keep each once.
   const dropped = [...new Map([...current.dropped ?? [], ...incoming.dropped ?? []]
@@ -617,7 +617,11 @@ export class LiveAIProvider implements AIProvider {
   private bravePriceHint(config: ShoppingConfig, pass: number): string {
     // Hard budgets always constrain the search. A soft budget is useful on the
     // first pass (to anchor the result) but should not filter later broadening.
-    if (config.budgetMax !== null && (config.budgetHard || pass === 0)) return `under ${config.budgetMax} ${config.currency}`;
+    if (config.budgetHard || pass === 0) {
+      if (config.budgetMin != null && config.budgetMax !== null) return `between ${config.budgetMin} and ${config.budgetMax} ${config.currency}`;
+      if (config.budgetMax !== null) return `under ${config.budgetMax} ${config.currency}`;
+      if (config.budgetMin != null) return `from ${config.budgetMin} ${config.currency}`;
+    }
     const price = config.requirements.find(r => /^(price|total|budget|budgetmax)$/i.test(r.attribute ?? '') || /\b(price|budget)\b/i.test(r.label));
     return price?.label ?? '';
   }

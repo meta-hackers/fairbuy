@@ -137,7 +137,7 @@ const group = <T>(rows: T[], by: (row: T) => string) => {
 function buildConfig(row: ConfigRow | undefined, requirements: RequirementRow[]): ShoppingConfig {
   return {
     category: row?.category ?? null, purpose: row?.purpose ?? null,
-    budgetMax: number(row?.budget_max ?? null), budgetHard: row?.budget_hard ?? false,
+    budgetMin: null, budgetMax: number(row?.budget_max ?? null), budgetHard: row?.budget_hard ?? false,
     currency: (row?.currency ?? 'EUR') as ShoppingConfig['currency'],
     country: row?.country ?? null, city: row?.city ?? null,
     requirements: requirements.map(r => ({

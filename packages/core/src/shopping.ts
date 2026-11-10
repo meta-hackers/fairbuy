@@ -14,12 +14,13 @@ export const RequirementSchema = z.object({
 export type Requirement = z.infer<typeof RequirementSchema>;
 export const ConfigSchema = z.object({
   category: z.string().max(100).nullable(), purpose: z.string().max(500).nullable(),
+  budgetMin: z.number().nonnegative().max(1000000).nullable().default(null),
   budgetMax: z.number().positive().max(1000000).nullable(), budgetHard: z.boolean(),
   currency: CurrencySchema, country: z.string().regex(/^[A-Z]{2}$/).nullable(), city: z.string().max(120).nullable(),
   requirements: z.array(RequirementSchema).max(20),
-});
+}).refine(config => config.budgetMin === null || config.budgetMax === null || config.budgetMin <= config.budgetMax, { message: 'Minimum price must not exceed maximum price', path: ['budgetMin'] });
 export type ShoppingConfig = z.infer<typeof ConfigSchema>;
-export const EMPTY_CONFIG: ShoppingConfig = { category: null, purpose: null, budgetMax: null, budgetHard: false, currency: 'EUR', country: null, city: null, requirements: [] };
+export const EMPTY_CONFIG: ShoppingConfig = { category: null, purpose: null, budgetMin: null, budgetMax: null, budgetHard: false, currency: 'EUR', country: null, city: null, requirements: [] };
 export const MessageInputSchema = z.object({ message: z.string().trim().min(1).max(3000) }).strict();
 export const LearnInputSchema = z.object({ productId: z.string().max(100).nullable(), reason: z.string().trim().min(1).max(2000) }).strict();
 /** A bounded, optional structured question the Ask model may attach to a reply. */
@@ -53,6 +54,8 @@ export function formatQuestionAnswer(options: AskQuestionOption[], selectedIds: 
 export interface Product {
   id: string; name: string; summary: string; why: string; tradeoffs: string[]; offers: Offer[];
   imageUrl: string | null;
+  /** Optional category artwork choice, never a product photo or evidence. */
+  illustration?: { slug: string; model: string };
 }
 export interface Source { url: string; title: string }
 export interface Feedback { id: string; productId: string | null; productName: string | null; reason: string; at: string; learned: Requirement[] }
@@ -130,6 +133,7 @@ export function constraintsFor(config: ShoppingConfig): Constraint[] {
     return { attribute, op: r.op ?? '=', value: r.value ?? r.label, hard: r.hard, label: r.label };
   });
   if (config.budgetMax !== null) constraints.unshift({ attribute: TOTAL_ATTRIBUTE, op: '<=', value: Math.round(config.budgetMax * 100), hard: config.budgetHard });
+  if (config.budgetMin != null) constraints.unshift({ attribute: TOTAL_ATTRIBUTE, op: '>=', value: Math.round(config.budgetMin * 100), hard: config.budgetHard });
   return constraints;
 }
 // Latest explicit feedback about the same attribute refines, rather than contradicts,

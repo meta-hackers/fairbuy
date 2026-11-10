@@ -42,7 +42,7 @@ else:
     account = os.environ["CLOUDFLARE_ACCOUNT_ID"]
     endpoint = f"https://api.cloudflare.com/client/v4/accounts/{account}/ai/run/{model}"
     token = os.environ["CLOUDFLARE_API_TOKEN"]
-entries = json.loads((ROOT / "frontend/src/product-illustrations.json").read_text())
+entries = json.loads((ROOT / "packages/core/src/product-illustrations.json").read_text())
 if args.only:
     selected = set(args.only.split(","))
     if selected - {entry[0] for entry in entries}:

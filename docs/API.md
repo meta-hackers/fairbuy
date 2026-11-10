@@ -73,6 +73,7 @@ Offer `price` is `{currency, amountCents}` with nullable `amountCents`. It repre
 {
   "category": "laptop",
   "purpose": "Programming while travelling",
+  "budgetMin": 400,
   "budgetMax": 700,
   "budgetHard": true,
   "currency": "EUR",
@@ -89,7 +90,7 @@ Offer `price` is `{currency, amountCents}` with nullable `amountCents`. It repre
 }
 ```
 
-Budget values in configuration are major currency units; offer prices and the pseudo-attribute `total` use integer minor units. `total` now means the final listed product price, not a delivered total. Uninterpreted requirements retain `label` and nullable structured fields; they remain part of research but do not pass a deterministic constraint without evidence.
+Budget values in configuration are major currency units; `budgetMin` and `budgetMax` are optional lower and upper price limits (null means unrestricted). Older requests may omit `budgetMin`, which defaults to null. Minimum must not exceed maximum; `budgetHard` applies to both bounds. Offer prices and the pseudo-attribute `total` use integer minor units. `total` now means the final listed product price, not a delivered total. Uninterpreted requirements retain `label` and nullable structured fields; they remain part of research but do not pass a deterministic constraint without evidence.
 
 ## Limits
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { currencyForCountry, type ShoppingConfig } from '@fairbuy/core';
 import CountrySelect from './CountrySelect';
 import CurrencySelect from './CurrencySelect';
+import PriceRange from './PriceRange';
 export default function Configure({ config, onChange, onSearch, busy }: {
   config: ShoppingConfig; onChange: (config: ShoppingConfig) => void; onSearch: () => void; busy: boolean;
 }) {
@@ -14,7 +15,8 @@ export default function Configure({ config, onChange, onSearch, busy }: {
       <div className="field-grid"><label>Product category<input value={config.category ?? ''} maxLength={100} onChange={e => update({ category: e.target.value || null })} placeholder="e.g. laptop" /></label>
         <label>Country<CountrySelect ariaLabel="Country" value={config.country ?? ''} describedBy="country-hint" onChange={country => update({ country: country || null, city: null, currency: currencyForCountry(country) ?? config.currency })} /><span className="micro" id="country-hint">Its local currency is selected when supported.</span></label></div>
       <label>What you’ll use it for<textarea rows={2} maxLength={500} value={config.purpose ?? ''} onChange={e => update({ purpose: e.target.value || null })} /></label>
-      <div className="field-grid budget-fields"><label>Budget ceiling <span className="optional">optional</span><input type="number" min="1" max="1000000" value={config.budgetMax ?? ''} onChange={e => update({ budgetMax: e.target.value ? Number(e.target.value) : null })} placeholder="No ceiling" /></label>
+      <PriceRange config={config} onChange={update} />
+      <div className="field-grid budget-fields">
         <label>Currency<CurrencySelect value={config.currency} onChange={currency => update({ currency })} /></label></div>
       <label className="check-row"><input type="checkbox" checked={config.budgetHard} onChange={e => update({ budgetHard: e.target.checked })} />My budget is a hard limit, not a preference</label>
       <label>City / region <span className="optional">optional, no exact address needed</span><input value={config.city ?? ''} maxLength={120} onChange={e => update({ city: e.target.value || null })} placeholder="e.g. Milan" /></label>

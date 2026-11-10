@@ -99,6 +99,8 @@ Infrastructure and declared values are synchronized from `render.yaml` once the 
 | `CATALOG_URL` | Published discovery catalog JSON. Defaults to `https://meta-hackers.github.io/fairbuy-sources-catalog/sources.json`. Must be HTTPS. |
 | `CATALOG_SYNC_ON_START` | `false` (default) loads the persisted database catalog and waits for an admin sync; `true` also tries one background fetch after startup. A fresh database is empty until the first successful sync. |
 | `INSTANT_CLASSIFIER_PROVIDER` | Render: `cloudflare` (app default `disabled`). Preview still requires both Cloudflare credentials and live mode. |
+| `ILLUSTRATION_CLASSIFIER_PROVIDER` | Render: `cloudflare` (app default `disabled`). Optional existing-artwork classifier for unmatched product categories; requires live mode and Cloudflare credentials. Set `disabled` to opt out. |
+| `ILLUSTRATION_CLASSIFIER_MODEL` | Defaults to `@cf/ibm-granite/granite-4.0-h-micro`. Operator-managed in Render Environment (`sync: false`); switch to a compatible Workers AI JSON-output chat model and save/redeploy. Independent of Instant classifier and main shopping models. |
 | `INSTANT_CLASSIFIER_MODEL` | Render and server default: `@cf/meta/llama-3.1-8b-instruct-fp8-fast`; the fallback is `@cf/meta/llama-3.2-3b-instruct`. The 1B model rejects the required JSON Schema requests. Ordinary Instruct models, no separate thinking phase. See [model choices](INSTANT_CLASSIFIER.md#model-choices). |
 | `CLOUDFLARE_ACCOUNT_ID` | Optional server-only account identifier, 32 hexadecimal characters. Not a Zone ID. |
 | `CLOUDFLARE_API_TOKEN` | Optional server-only Workers AI Read + Edit token restricted to that account. Never use the Global API Key or expose in `VITE_*`. |
@@ -123,6 +125,20 @@ Render never reads a developer's local `.env` automatically. Set these four clas
 Cloudflare currently grants 10,000 neurons/day, not 10,000 requests. On Workers Free, excess usage fails until the quota resets; upgrading to Paid allows charges beyond the allowance. Review [current pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/). FairBuy treats all quota/provider/validation errors as a missing preview and keeps Send available. No automatic fallback spends Meta Model API credits. The application has process-local rate/call caps, not a provider-wide spending guarantee.
 
 The preview disclosure appears before typing. Only the draft is sent, not the conversation or stored location. Cached previews are owner-isolated and expire after five minutes; provider retention policies still apply. Test with a synthetic draft and verify the classifier responds without changing session readiness. The automated suite uses HTTP mocks and never calls Cloudflare.
+
+## Optional Cloudflare artwork classifier
+
+For optional illustration classification, reuse the same Cloudflare credentials
+and set `ILLUSTRATION_CLASSIFIER_PROVIDER=cloudflare` plus
+`ILLUSTRATION_CLASSIFIER_MODEL=@cf/ibm-granite/granite-4.0-h-micro` in the existing
+Render service’s Environment tab. No additional service or Worker is needed.
+The model setting accepts compatible Workers AI IDs rather than a hardcoded
+model allowlist; switching models does not require source changes. The adapter
+does not configure thinking modes for arbitrary reasoning models. Only product
+name/category are sent when local artwork matching fails, and failures retain
+the generic image. See [artwork classification](ILLUSTRATIONS.md#optional-cloudflare-artwork-classifier)
+for limits, privacy and model-switch behavior. No Render environment changes are
+performed by editing this repository; apply these values when deploying.
 
 ## Optional Brave search
 

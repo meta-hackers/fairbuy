@@ -1,0 +1,66 @@
+import { test, expect } from '@playwright/test';
+
+test('two price handles persist, respect each other and clear optional limits @mobile-smoke', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: (_: unknown, fail: (e: { code: number }) => void) => fail({ code: 1 }) } }));
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await page.getByRole('button', { name: 'Continue to Configure' }).click();
+  const minimum = page.getByRole('slider', { name: 'Minimum price', exact: true });
+  const maximum = page.getByRole('slider', { name: 'Maximum price', exact: true });
+  await expect(minimum).toHaveValue('0');
+  await expect(maximum).toHaveValue('700');
+  // Exercise pointer dragging on desktop and touch-capable mobile layouts.
+  await minimum.scrollIntoViewIfNeeded();
+  const bounds = (await minimum.boundingBox())!;
+  await page.mouse.move(bounds.x + 12, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width / 4, bounds.y + bounds.height / 2, { steps: 8 });
+  await page.mouse.up();
+  expect(Number(await minimum.inputValue())).toBeGreaterThan(0);
+  await page.getByLabel('Minimum price amount').fill('400');
+  await minimum.focus();
+  await minimum.press('ArrowRight');
+  await expect(minimum).toHaveValue('401');
+  await maximum.focus();
+  await maximum.press('ArrowLeft');
+  await expect(maximum).toHaveValue('699');
+  await minimum.press('End');
+  await expect(minimum).toHaveValue('699');
+  await maximum.press('Home');
+  await expect(maximum).toHaveValue('699');
+  await page.getByLabel('Minimum price amount').fill('400');
+  await page.getByLabel('Maximum price amount').fill('700');
+  await page.getByLabel('My budget is a hard limit').check();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
+  await page.getByRole('button', { name: 'Find products' }).click();
+  await expect(page.getByTestId('product-card').first()).toBeVisible();
+  await page.reload();
+  const boot = await (await page.request.get('/api/bootstrap')).json();
+  expect(boot.session.config).toMatchObject({ budgetMin: 400, budgetMax: 700, budgetHard: true });
+  expect(boot.session.rounds.at(-1).context.config).toMatchObject({ budgetMin: 400, budgetMax: 700 });
+  await page.getByRole('button', { name: 'Edit brief' }).click();
+  await expect(minimum).toHaveValue('400');
+  await expect(maximum).toHaveValue('700');
+  await page.getByRole('button', { name: 'Clear limits' }).click();
+  await expect(page.getByLabel('Minimum price amount')).toHaveValue('');
+  await expect(page.getByLabel('Maximum price amount')).toHaveValue('');
+});
+
+test('unverified product cards omit the redundant status and price chips', async ({ page }) => {
+  const headers = { 'X-Fairbuy-Request': '1' };
+  const session = await (await page.request.post('/api/sessions', { headers })).json();
+  await page.request.post(`/api/sessions/${session.id}/ask`, { headers, data: { message: 'Laptop for coding in Italy, budget €700' } });
+  await page.request.post(`/api/sessions/${session.id}/discovery`, { headers });
+  await expect.poll(async () => (await (await page.request.get(`/api/sessions/${session.id}`)).json()).rounds.at(-1)?.status).toBe('complete');
+  const boot = await (await page.request.get('/api/bootstrap')).json();
+  const round = boot.session.rounds.at(-1);
+  for (const product of round.products) for (const offer of product.offers) offer.priceSource = 'unconfirmed';
+  for (const ranked of round.ranking.ranked) ranked.status = 'unverified';
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.goto('/');
+  await expect(page.getByTestId('product-card').first()).toBeVisible();
+  await expect(page.locator('.product-tags .tag').filter({ hasText: 'Checks still needed' })).toHaveCount(0);
+  await expect(page.locator('.product-tags .tag').filter({ hasText: 'Price not confirmed on the seller page' })).toHaveCount(0);
+  await expect(page.getByTestId('product-card').first().locator('.price-line')).toContainText('not confirmed on the seller page');
+});

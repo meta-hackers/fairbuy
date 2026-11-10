@@ -51,6 +51,8 @@ const Schema = z.object({
   CATALOG_URL: z.union([z.literal(''), z.string().trim().url()]).default(DEFAULT_CATALOG_URL),
   CATALOG_SYNC_ON_START: BooleanStringSchema,
   INSTANT_CLASSIFIER_PROVIDER: z.enum(['disabled', 'cloudflare']).default('disabled'),
+  ILLUSTRATION_CLASSIFIER_PROVIDER: z.enum(['disabled', 'cloudflare']).default('disabled'),
+  ILLUSTRATION_CLASSIFIER_MODEL: z.string().max(200).regex(/^@(cf|hf)\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/).default('@cf/ibm-granite/granite-4.0-h-micro'),
   INSTANT_CLASSIFIER_MODEL: z.enum(['@cf/meta/llama-3.1-8b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct-fp8', '@cf/meta/llama-3.2-3b-instruct']).default('@cf/meta/llama-3.1-8b-instruct-fp8-fast'),
   CLOUDFLARE_ACCOUNT_ID: z.union([z.literal(''), z.string().regex(/^[a-f0-9]{32}$/i)]).default(''),
   CLOUDFLARE_API_TOKEN: z.string().default(''),

@@ -64,7 +64,7 @@ test('saved products without image URLs recover photos; failures report only saf
   const failedCard = page.getByTestId('product-card').filter({ has: page.getByRole('heading', { name: boot.session.rounds.at(-1).products[1].name, exact: true }) });
   await failedCard.scrollIntoViewIfNeeded();
   await expect(failedCard.locator('.product-illustration')).toBeVisible();
-  await expect(failedCard.getByText('AI illustration · not a product photo')).toBeVisible();
+  await expect(failedCard.locator('.product-illustration-label')).toHaveCount(0);
   const illustration = failedCard.locator('.product-illustration img');
   await expect.poll(() => illustration.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   await expect.poll(() => reports.some(event => event.kind === 'image_unavailable')).toBe(true);
@@ -84,14 +84,66 @@ test('saved products without image URLs recover photos; failures report only saf
   expect(JSON.stringify(reports)).not.toContain('secret');
 });
 
-test('static illustration failure retains the SVG fallback and disclosure', async ({ page }) => {
+test('wrist watches use watch artwork, including missing offer categories @mobile-smoke', async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  const round = boot.session.rounds.at(-1);
+  round.context.config.category = 'wrist watches';
+  boot.session.config.category = 'wrist watches';
+  for (const [index, product] of round.products.entries()) {
+    product.name = index === 0 ? 'Omega Speedmaster' : 'Seiko Presage';
+    product.imageUrl = null;
+    for (const offer of product.offers) { offer.category = index === 0 ? 'wrist watches' : ''; offer.mode = 'fixture'; }
+  }
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.goto('/');
+  const cards = page.getByTestId('product-card');
+  await expect(cards.first()).toBeVisible();
+  for (const index of [0, 1]) {
+    const image = cards.nth(index).locator('.product-illustration img');
+    await cards.nth(index).scrollIntoViewIfNeeded();
+    await expect(image).toHaveAttribute('src', '/illustrations/watch.webp');
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  }
+  await expect(page.getByText('AI illustration · not a product photo', { exact: true })).toHaveCount(0);
+});
+
+test('saved model artwork is validated, reused after reload and used in Buy @mobile-smoke', async ({ page }) => {
+  const boot = await discoveryBootstrap(page.request);
+  const round = boot.session.rounds.at(-1);
+  const model = '@cf/ibm-granite/granite-4.0-h-micro';
+  for (const [index, product] of round.products.entries()) {
+    product.name = index === 0 ? 'Speedmaster' : `Presage ${index}`;
+    product.imageUrl = null;
+    product.illustration = { slug: index === 1 ? '../private' : 'watch', model };
+    for (const offer of product.offers) { offer.category = 'Relojes'; offer.mode = 'fixture'; }
+  }
+  boot.session.config.category = 'Relojes';
+  round.context.config.category = 'Relojes';
+  await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
+  await page.goto('/');
+  const cards = page.getByTestId('product-card');
+  const chosenCard = cards.filter({ has: page.getByRole('heading', { name: 'Speedmaster', exact: true }) });
+  const invalidCard = cards.filter({ has: page.getByRole('heading', { name: 'Presage 1', exact: true }) });
+  await expect(chosenCard.locator('.product-illustration img')).toHaveAttribute('src', '/illustrations/watch.webp');
+  await expect(invalidCard.locator('.product-illustration img')).toHaveAttribute('src', '/illustrations/generic.webp');
+  await page.reload();
+  await expect(chosenCard.locator('.product-illustration img')).toHaveAttribute('src', '/illustrations/watch.webp');
+  const selected = round.products[0];
+  boot.session.stage = 'buy';
+  boot.session.selectedProductId = selected.id;
+  boot.session.sellerSearch = { id: 'saved-search', productId: selected.id, status: 'complete', offers: [], sources: [], summary: '' };
+  await page.reload();
+  await expect(page.locator('.buy-intro .product-illustration img')).toHaveAttribute('src', '/illustrations/watch.webp');
+});
+
+test('static illustration failure retains the SVG fallback without a caption', async ({ page }) => {
   const boot = await discoveryBootstrap(page.request);
   await page.route('**/api/bootstrap', route => route.fulfill({ json: boot }));
   await page.route('**/illustrations/*.webp', route => route.fulfill({ status: 404 }));
   await page.goto('/');
   const card = page.getByTestId('product-card').first();
   await expect(card.locator('.product-glyph')).toBeVisible();
-  await expect(card.getByText('AI illustration · not a product photo')).toBeVisible();
+  await expect(card.locator('.product-illustration-label')).toHaveCount(0);
 });
 
 test('additional product types use local Meta illustrations without runtime generation', async ({ page }) => {
@@ -110,7 +162,7 @@ test('additional product types use local Meta illustrations without runtime gene
   const illustration = card.locator('.product-illustration img');
   await expect(illustration).toHaveAttribute('src', '/illustrations/security-camera.webp');
   await expect.poll(() => illustration.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(384);
-  await expect(card.getByText('AI illustration · not a product photo')).toBeVisible();
+  await expect(card.locator('.product-illustration-label')).toHaveCount(0);
   expect(remoteRequests).toEqual([]);
 });
 
@@ -131,7 +183,7 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   // The step is persisted by an async PATCH; wait before reloading so the restored stage is Configure.
   await expect(page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Configure/ })).toHaveAttribute('aria-current', 'step');
   await page.reload();
-  await expect(page.getByLabel('Budget ceiling')).toHaveValue('700');
+  await expect(page.getByLabel('Maximum price amount')).toHaveValue('700');
   await expect(page.locator('.heading-aside')).toHaveCount(0);
   await page.getByLabel('My budget is a hard limit').check();
   await page.getByRole('button', { name: 'Find products' }).click();
@@ -281,12 +333,12 @@ test('configuration helper and unstructured requirements keep manual changes', a
   await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await page.getByLabel('Budget ceiling').fill('650');
+  await page.getByLabel('Maximum price amount').fill('650');
   await page.getByLabel('Add a requirement').fill('A matte screen');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByLabel('Additional requirements').fill('Keep my manually edited budget');
   await page.getByRole('button', { name: 'Update brief' }).click();
-  await expect(page.getByLabel('Budget ceiling')).toHaveValue('650');
+  await expect(page.getByLabel('Maximum price amount')).toHaveValue('650');
   await expect(page.getByText('A matte screen', { exact: true })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);

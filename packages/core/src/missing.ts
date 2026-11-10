@@ -52,7 +52,10 @@ export function explainMissing(session: ShoppingSession, query: string): Missing
   const pages = round.sources.length;
   // The scripted demo checks a synthetic catalog, not web pages.
   const demo = round.products.some(p => p.offers.some(o => o.mode === 'fixture'));
-  const searched = `${demo ? 'Checked the synthetic demo catalog' : `Searched ${pages} ${pages === 1 ? 'page' : 'pages'}`} for ${config.category ?? 'products'}${config.country ? ` in ${config.country}` : ''}, prices in ${config.currency}${config.budgetMax !== null ? `, budget ${config.budgetHard ? 'up to' : 'around'} ${config.budgetMax}` : ''}.`;
+  const budget = config.budgetMin != null
+    ? `, ${config.budgetHard ? 'price range' : 'preferred price range'} ${config.budgetMin}${config.budgetMax !== null ? ` – ${config.budgetMax}` : ' and above'}`
+    : config.budgetMax !== null ? `, budget ${config.budgetHard ? 'up to' : 'around'} ${config.budgetMax}` : '';
+  const searched = `${demo ? 'Checked the synthetic demo catalog' : `Searched ${pages} ${pages === 1 ? 'page' : 'pages'}`} for ${config.category ?? 'products'}${config.country ? ` in ${config.country}` : ''}, prices in ${config.currency}${budget}.`;
   if (round.status === 'queued' || round.status === 'running') return answer('unknown', null, 'The search is still running. Ask again when it finishes.', [], [], searched);
 
   const ranked = new Set(round.ranking?.ranked.map(r => r.offerId) ?? []);

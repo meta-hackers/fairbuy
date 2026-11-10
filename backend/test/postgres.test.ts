@@ -18,6 +18,35 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL persistence, ownersh
   const owner = `test-${randomUUID()}`; const ids: string[] = [];
   beforeAll(async () => { store = new PostgresStore(url); second = new PostgresStore(url); await Promise.all([store.migrate(), second.migrate()]); });
   afterAll(async () => { for (const id of ids) await store.purge(id); await Promise.all([store.close(), second.close()]); });
+  it('persists both price bounds in immutable session and discovery revisions', async () => {
+    const service = new ShoppingService(store, new DemoAIProvider(), 'demo');
+    const created = await service.create(owner); ids.push(created.id);
+    try {
+      const asked = await service.message(created.id, owner, 'ask', 'Laptop for coding in Italy, budget €700');
+      await service.configure(created.id, owner, { ...asked.config, budgetMin: 400, budgetMax: 700, budgetHard: true });
+      expect((await second.get(created.id, owner)).config).toMatchObject({ budgetMin: 400, budgetMax: 700 });
+      await service.discover(created.id, owner);
+      expect((await second.get(created.id, owner)).rounds.at(-1)?.context.config).toMatchObject({ budgetMin: 400, budgetMax: 700 });
+      expect((await second.history(created.id)).some(revision => revision.session.config.budgetMin === 400)).toBe(true);
+    } finally {
+      // Discovery enqueues a job. Remove it before later tests claim from the shared queue.
+      await store.purge(created.id);
+    }
+  });
+  it('preserves optional artwork choices in product snapshots across connections', async () => {
+    const ai = new DemoAIProvider();
+    const service = new ShoppingService(store, ai, 'demo');
+    const created = await service.create(owner); ids.push(created.id);
+    try {
+      await service.message(created.id, owner, 'ask', 'Laptop for coding in Italy, budget €700');
+      const queued = await service.discover(created.id, owner);
+      const round = queued.rounds.at(-1)!;
+      const product = (await ai.discover(round.context)).products[0];
+      const illustration = { slug: 'laptop', model: '@cf/ibm-granite/granite-4.0-h-micro' };
+      await store.append(created.id, owner, session => { session.rounds.at(-1)!.products = [{ ...product, illustration }]; });
+      expect((await second.get(created.id, owner)).rounds.at(-1)!.products[0].illustration).toEqual(illustration);
+    } finally { await store.purge(created.id); }
+  });
   it('persists diagnostic traces across connections, deduplicates clients, keeps older data visible and cascades session purge', async () => {
     const service = new ShoppingService(store, new DemoAIProvider(), 'demo');
     const session = await service.create(owner); ids.push(session.id);
