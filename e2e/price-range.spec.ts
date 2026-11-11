@@ -10,6 +10,7 @@ test('two price handles persist, respect each other and clear optional limits @m
   const maximum = page.getByRole('slider', { name: 'Maximum price', exact: true });
   await expect(minimum).toHaveValue('0');
   await expect(maximum).toHaveValue('700');
+  await expect(page.getByRole('group', { name: 'Price range', exact: true }).getByRole('spinbutton')).toHaveCount(0);
   // Exercise pointer dragging on desktop and touch-capable mobile layouts.
   await minimum.scrollIntoViewIfNeeded();
   const bounds = (await minimum.boundingBox())!;
@@ -18,10 +19,10 @@ test('two price handles persist, respect each other and clear optional limits @m
   await page.mouse.move(bounds.x + bounds.width / 4, bounds.y + bounds.height / 2, { steps: 8 });
   await page.mouse.up();
   expect(Number(await minimum.inputValue())).toBeGreaterThan(0);
-  await page.getByLabel('Minimum price amount').fill('400');
+  await minimum.press('Home');
   await minimum.focus();
   await minimum.press('ArrowRight');
-  await expect(minimum).toHaveValue('401');
+  await expect(minimum).toHaveValue('1');
   await maximum.focus();
   await maximum.press('ArrowLeft');
   await expect(maximum).toHaveValue('699');
@@ -29,22 +30,26 @@ test('two price handles persist, respect each other and clear optional limits @m
   await expect(minimum).toHaveValue('699');
   await maximum.press('Home');
   await expect(maximum).toHaveValue('699');
-  await page.getByLabel('Minimum price amount').fill('400');
-  await page.getByLabel('Maximum price amount').fill('700');
+  await minimum.press('Home');
+  await minimum.press('ArrowRight');
+  await maximum.press('ArrowRight');
   await page.getByLabel('My budget is a hard limit').check();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
   await page.getByRole('button', { name: 'Find products' }).click();
   await expect(page.getByTestId('product-card').first()).toBeVisible();
   await page.reload();
   const boot = await (await page.request.get('/api/bootstrap')).json();
-  expect(boot.session.config).toMatchObject({ budgetMin: 400, budgetMax: 700, budgetHard: true });
-  expect(boot.session.rounds.at(-1).context.config).toMatchObject({ budgetMin: 400, budgetMax: 700 });
+  expect(boot.session.config).toMatchObject({ budgetMin: 1, budgetMax: 700, budgetHard: true });
+  expect(boot.session.rounds.at(-1).context.config).toMatchObject({ budgetMin: 1, budgetMax: 700 });
   await page.getByRole('button', { name: 'Edit brief' }).click();
-  await expect(minimum).toHaveValue('400');
+  await expect(minimum).toHaveValue('1');
   await expect(maximum).toHaveValue('700');
   await page.getByRole('button', { name: 'Clear limits' }).click();
-  await expect(page.getByLabel('Minimum price amount')).toHaveValue('');
-  await expect(page.getByLabel('Maximum price amount')).toHaveValue('');
+  await expect(minimum).toHaveValue('0');
+  await expect(maximum).toHaveAttribute('aria-valuetext', 'No maximum');
+  await page.getByRole('button', { name: 'Widen slider range' }).click();
+  await expect(maximum).toHaveAttribute('max', '14000');
+  await expect(maximum).toHaveAttribute('aria-valuetext', 'No maximum');
 });
 
 test('unverified product cards omit the redundant status and price chips', async ({ page }) => {

@@ -20,7 +20,13 @@ function Dots() {
 export default function InstantClassifier({ text, enabled }: { text: string; enabled: boolean }) {
   const preview = useInstantClassifier(text, enabled);
   if (!enabled || text.trim().length < 3) return null;
-  const hints = preview.result ? instantHints(preview.result) : [];
+  const seen = new Set<string>();
+  const hints = (preview.result ? instantHints(preview.result) : []).filter(hint => {
+    const key = hint.text.trim().toLocaleLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 3);
   const question = preview.result?.clarification ?? null;
   if (!preview.pending && !hints.length && !question) return null;
   return (

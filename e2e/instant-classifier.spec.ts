@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('debounces typing, shows every validated hint, and never makes the brief ready', { tag: '@mobile-smoke' }, async ({ page }) => {
+test('debounces typing, shows concise hints, and never makes the brief ready', { tag: '@mobile-smoke' }, async ({ page }) => {
   let calls = 0;
   await page.route('**/api/instant-classifier', async route => { calls++; await route.fulfill({ json: washingMachine }); });
   await page.goto('/');
@@ -53,6 +53,24 @@ test('debounces typing, shows every validated hint, and never makes the brief re
   await page.clock.fastForward(1000);
   expect(calls).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false);
+});
+
+test('limits draft hints to three distinct chips while keeping clarification', { tag: '@mobile-smoke' }, async ({ page }) => {
+  await page.route('**/api/instant-classifier', route => route.fulfill({ json: {
+    ...washingMachine,
+    requirements: [
+      { label: 'Washing machine', hard: false, evidence: 'washing machine' },
+      { label: 'washing machine', hard: false, evidence: 'washing machine' },
+      { label: 'Quiet', hard: false, evidence: 'quiet' },
+      { label: 'Compact', hard: false, evidence: 'compact' },
+    ],
+  } }));
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Your message' }).fill('A quiet compact washing machine under CHF 700');
+  const chips = page.locator('.instant-classifier-chips li');
+  await expect(chips).toHaveText(['Category Washing machine', 'Budget CHF 700 · firm', 'Requirement Quiet']);
+  await expect(page.locator('.instant-classifier-question')).toHaveText(washingMachine.clarification);
+  await expect(page.getByRole('button', { name: 'Continue to Configure' })).toBeDisabled();
 });
 
 test('ignores stale responses and shows a clarification on its own', async ({ page }) => {
