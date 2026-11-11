@@ -183,7 +183,7 @@ test('Ask → Configure → Discovery ↔ Learn → Buy persists across reload',
   // The step is persisted by an async PATCH; wait before reloading so the restored stage is Configure.
   await expect(page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Configure/ })).toHaveAttribute('aria-current', 'step');
   await page.reload();
-  await expect(page.getByLabel('Maximum price amount')).toHaveValue('700');
+  await expect(page.getByRole('slider', { name: 'Maximum price', exact: true })).toHaveValue('700');
   await expect(page.locator('.heading-aside')).toHaveCount(0);
   await page.getByLabel('My budget is a hard limit').check();
   await page.getByRole('button', { name: 'Find products' }).click();
@@ -238,8 +238,8 @@ test('discovery shows the first product while searching and preserves partial re
   await page.route(`**/api/sessions/${complete.id}`, route => route.fulfill({ json: current }));
   await page.goto('/');
   await expect(page.getByTestId('product-card')).toHaveCount(1);
-  await expect(page.getByText('1 option ready to explore. More on the way.')).toBeVisible();
-  await expect(page.getByText('Searching for at least 4 distinct products', { exact: false })).toBeVisible();
+  await expect(page.locator('.discovery-toolbar')).toContainText('1 option · searching');
+  await expect(page.getByText('You can compare results as they arrive.')).toBeVisible();
   const spinner = page.locator('.search-progress .spinner');
   await expect(spinner).toBeVisible();
   // Check actual rotation, not just the presence of an animation declaration.
@@ -251,7 +251,7 @@ test('discovery shows the first product while searching and preserves partial re
   await expect.poll(() => spinner.evaluate(element => getComputedStyle(element).transform)).not.toBe(transform);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(spinner).toHaveCSS('animation-name', 'none');
-  await expect(page.getByText('Searching for at least 4 distinct products', { exact: false })).toBeVisible();
+  await expect(page.getByText('You can compare results as they arrive.')).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(page.getByRole('button', { name: 'Purchase options' })).toBeDisabled();
   await page.getByLabel('Steer your results').fill('Include Moulinex products too');
@@ -333,12 +333,12 @@ test('configuration helper and unstructured requirements keep manual changes', a
   await page.getByRole('textbox', { name: 'Your message' }).fill('Laptop for coding in Italy, budget €700');
   await page.getByRole('button', { name: 'Send message' }).click();
   await page.getByRole('button', { name: 'Continue to Configure' }).click();
-  await page.getByLabel('Maximum price amount').fill('650');
+  await page.getByRole('slider', { name: 'Maximum price', exact: true }).press('ArrowLeft');
   await page.getByLabel('Add a requirement').fill('A matte screen');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByLabel('Additional requirements').fill('Keep my manually edited budget');
   await page.getByRole('button', { name: 'Update brief' }).click();
-  await expect(page.getByLabel('Maximum price amount')).toHaveValue('650');
+  await expect(page.getByRole('slider', { name: 'Maximum price', exact: true })).toHaveValue('699');
   await expect(page.getByText('A matte screen', { exact: true })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);

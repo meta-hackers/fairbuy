@@ -7,11 +7,10 @@ export default function Brief({ session }: { session: ShoppingSession | null }) 
     ['Shopping in', [config?.city, config?.country].filter(Boolean).join(', ')],
   ];
   return <aside className="brief panel">
-    <div className="eyebrow">THE BIG PICTURE</div><h2>Your brief, taking shape.</h2>
-    <p className="muted">A few good details make all the difference.</p>
+    <h2>Your brief</h2>
     <dl>{entries.map(([label, value]) => <div key={label}><dt>{label}</dt><dd className={value ? '' : 'unknown'}>{value || 'Let’s find out'}</dd></div>)}</dl>
     {!!config?.requirements.length && <div className="brief-requirements">{config.requirements.slice(0, 5).map((r, i) => <span className="tag" key={i}>{r.label}</span>)}</div>}
-    <div className={`brief-status ${session?.ready ? 'is-ready' : ''}`}><span aria-hidden="true">{session?.ready ? '✓' : '◌'}</span>{session?.ready ? 'Ready for your review' : 'No rush. We’ll get it right.'}</div>
+    <div className={`brief-status ${session?.ready ? 'is-ready' : ''}`}><span aria-hidden="true">{session?.ready ? '✓' : '◌'}</span>{session?.ready ? 'Ready for your review' : 'Details to complete'}</div>
     {!!session?.missing.length && !session.ready && <p className="micro">Still useful to know: {session.missing.join(' · ')}</p>}
   </aside>;
 }

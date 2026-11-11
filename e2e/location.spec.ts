@@ -19,14 +19,14 @@ test('requests location on arrival, seeds Ask and preserves edited locations acr
   await expect(page.getByLabel('Country', { exact: true })).toHaveValue('CH');
   await expect(page.getByLabel('City / region')).toHaveValue('Zurich');
   await expect(page.getByRole('combobox', { name: 'Currency', exact: true })).toHaveValue('CHF');
-  await page.getByLabel('Maximum price amount').fill('800');
+  await page.getByRole('slider', { name: 'Maximum price', exact: true }).press('ArrowLeft');
   await location.getByRole('button', { name: 'Change location' }).click();
   await page.getByLabel('Shopping country').selectOption('GB');
   await expect(page.getByLabel('Shopping city')).toHaveValue('');
   await expect(page.getByLabel('Shopping currency')).toHaveValue('GBP');
   await page.getByLabel('Shopping city').fill('London');
   await location.getByRole('button', { name: 'Save location' }).click();
-  await expect(page.getByLabel('Maximum price amount')).toHaveValue('800');
+  await expect(page.getByRole('slider', { name: 'Maximum price', exact: true })).toHaveValue('999');
   await page.getByRole('combobox', { name: 'Currency', exact: true }).selectOption('USD');
   await page.getByRole('navigation', { name: 'Shopping steps' }).getByRole('button', { name: /Ask/ }).click();
   // Navigate() persists the stage with an async PATCH and only then renders the

@@ -53,7 +53,9 @@ export function createApp(service: ShoppingService, config: Settings, locations 
   };
   app.disable('x-powered-by');
   if (config.NODE_ENV === 'production') app.set('trust proxy', 1); // Render's single edge proxy
-  app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
+  // HTTP development/preview hosts must not upgrade assets to a nonexistent TLS server.
+  app.use(helmet({ strictTransportSecurity: config.NODE_ENV === 'production' ? undefined : false,
+    contentSecurityPolicy: { directives: { 'upgrade-insecure-requests': config.NODE_ENV === 'production' ? [] : null, 'img-src': ["'self'", 'data:'], 'connect-src': ["'self'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"] } } }));
   app.get('/healthz', (_req, res) => {
     // Liveness: the process is running and serving HTTP. Never touches the DB
     // so Render does not kill a cold-starting instance during migration.

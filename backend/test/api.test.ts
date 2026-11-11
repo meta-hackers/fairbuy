@@ -21,6 +21,22 @@ function setup(extra: Record<string, string> = {}) {
   const app = createApp(service, config);
   return { app, store, service };
 }
+describe('transport security headers', () => {
+  it.each(['test', 'development', 'production'])('uses HTTPS-only policies only in production (%s)', async NODE_ENV => {
+    const { app } = setup({ NODE_ENV, DATABASE_URL: 'postgres://unused:unused@localhost/unused' });
+    const response = await request(app).get('/healthz').expect(200);
+    const policy = response.headers['content-security-policy'];
+    expect(policy).toContain("script-src 'self'");
+    if (NODE_ENV === 'production') {
+      expect(policy).toContain('upgrade-insecure-requests');
+      expect(response.headers['strict-transport-security']).toContain('max-age=');
+    } else {
+      expect(policy).not.toContain('upgrade-insecure-requests');
+      expect(response.headers['strict-transport-security']).toBeUndefined();
+    }
+  });
+});
+
 describe('product image recovery and browser diagnostics', () => {
   it('correlates proxy, recovery and browser failures while enforcing search ownership', async () => {
     const { app, store, service } = setup(); const client = request.agent(app); const other = request.agent(app);

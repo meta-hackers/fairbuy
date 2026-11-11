@@ -32,6 +32,7 @@ AI extraction is not independent verification; prices, stock and seller claims m
 ## Documentation
 
 - [Shopping flow](docs/Flow.md)
+- [Shopping copy inventory](docs/UX_COPY.md)
 - [Architecture and AI session lifecycle](docs/Architecture.md)
 - [Instant classifier setup and model limitations](docs/INSTANT_CLASSIFIER.md)
 - [Local development, demo and testing](docs/DEVELOPMENT.md)

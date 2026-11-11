@@ -10,7 +10,7 @@ export default function Configure({ config, onChange, onSearch, busy }: {
   const update = (patch: Partial<ShoppingConfig>) => onChange({ ...config, ...patch });
   const valid = !!(config.category?.trim() && config.purpose?.trim() && config.country?.match(/^[A-Z]{2}$/) && (config.budgetMax === null || config.budgetMax > 0));
   return <section className="panel config-panel" aria-label="Shopping configuration">
-    <div className="section-heading"><div><div className="eyebrow">YOUR SEARCH, YOUR TERMS</div><h2>A brief that feels like you.</h2></div><span className="step-mark">02</span></div>
+    <div className="section-heading"><h2>Search details</h2></div>
     <fieldset disabled={busy} className="plain-fieldset">
       <div className="field-grid"><label>Product category<input value={config.category ?? ''} maxLength={100} onChange={e => update({ category: e.target.value || null })} placeholder="e.g. laptop" /></label>
         <label>Country<CountrySelect ariaLabel="Country" value={config.country ?? ''} describedBy="country-hint" onChange={country => update({ country: country || null, city: null, currency: currencyForCountry(country) ?? config.currency })} /><span className="micro" id="country-hint">Its local currency is selected when supported.</span></label></div>
@@ -30,6 +30,6 @@ export default function Configure({ config, onChange, onSearch, busy }: {
         <label className="sr-only" htmlFor="custom-requirement">Add a requirement</label><input id="custom-requirement" value={custom} maxLength={300} onChange={e => setCustom(e.target.value)} placeholder="Anything else? Add a preference…" /><button className="button secondary" disabled={!custom.trim() || config.requirements.length >= 20}>Add</button>
       </form>
     </fieldset>
-    <div className="config-bottom"><p className="micro">You’re in control. AI research starts only when you’re ready.</p><button className="button primary" onClick={onSearch} disabled={busy || !valid}>Find products <span aria-hidden="true">→</span></button></div>
+    <div className="config-bottom"><button className="button primary" onClick={onSearch} disabled={busy || !valid}>Find products <span aria-hidden="true">→</span></button></div>
   </section>;
 }

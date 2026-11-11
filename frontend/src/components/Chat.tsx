@@ -67,11 +67,11 @@ export default function Chat({ messages, busy, onSend, compact = false, disabled
     if (await onSend(sent)) setText('');
   };
   return <section className={`chat ${compact ? 'chat--compact' : ''}`} aria-label={compact ? 'Configure assistant' : 'Ask assistant'}>
-    {compact && <div className="chat-heading"><span className="spark" aria-hidden="true">✳</span><strong>A little help, if you need it.</strong><span className="micro">Configure assistant</span></div>}
+    {compact && <div className="chat-heading"><span className="spark" aria-hidden="true">✳</span><strong>Update in your own words</strong></div>}
     <div className="chat-log" role="log" aria-label="Conversation" aria-live="polite">
       {!messages.length && <div className="chat-welcome">
-        <p>{compact ? '“I need it to fit in my carry-on.”' : 'What are you looking for?'}</p>
-        <span>{compact ? 'Add a detail in your own words. I’ll help update your brief.' : 'Tell me what you have in mind, what you’ll use it for, and anything that matters. We’ll figure out the details together.'}</span>
+        <p>{compact ? 'e.g. “It needs to fit in my carry-on.”' : 'What are you looking for?'}</p>
+        {!compact && <span>Include what you’ll use it for and your budget.</span>}
       </div>}
       {messages.map((message, i) => <div className={`message message--${message.role}`} key={i}>
         <span className="message-role">{message.role === 'user' ? 'You' : 'FairBuy'}</span><p>{message.content}</p>
