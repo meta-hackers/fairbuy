@@ -12,25 +12,25 @@ Add `INSTANT_CLASSIFIER_PROVIDER=cloudflare`, `CLOUDFLARE_ACCOUNT_ID` and a rest
 
 ## Model choices
 
-FairBuy uses Cloudflare Workers AI only for the optional, provisional draft preview. The default is `@cf/meta/llama-3.1-8b-instruct-fp8-fast`. The 1B model is not supported: Cloudflare rejects its JSON Schema requests with error `5025`. The main Ask, Configure, and Discovery models are separate and unchanged.
+FairBuy uses Cloudflare Workers AI only for the optional, provisional draft preview. The default and only accepted ID is `@cf/meta/llama-3.1-8b-instruct-fp8-fast`. It still responded on November 17, 2026 and accepted the classifier's `response_format: { type: "json_schema", json_schema: ... }` request. The main Ask, Configure, and Discovery models are separate and unchanged.
 
-| Supported `INSTANT_CLASSIFIER_MODEL` | Neurons / 1M input tokens | Neurons / 1M output tokens | Use |
-| --- | ---: | ---: | --- |
-| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | 4,119 | 34,868 | Server default: faster 8B classifier; fewer input neurons than 3B, more output neurons. |
-| `@cf/meta/llama-3.1-8b-instruct-fp8` | 13,778 | 26,128 | Alternative: more input neurons, fewer output neurons than the fast variant; supports the classifier's JSON Schema requests. |
-| `@cf/meta/llama-3.2-3b-instruct` | 4,625 | 30,475 | Fallback; supports the classifier's JSON Schema requests. |
+| Supported `INSTANT_CLASSIFIER_MODEL` | Neurons / 1M input tokens | Neurons / 1M output tokens | Published price / 1M tokens | Use |
+| --- | ---: | ---: | --- | --- |
+| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | 4,119 | 34,868 | $0.045 input, $0.384 output | Server default and only allowlisted model. |
 
-Rates are from [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) (October 2026); check the current rates before comparing costs. Actual usage depends on input and output length. Test classification quality with representative drafts before choosing another model.
+Rates are from [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) (page updated November 12, 2026). A direct request with 58 prompt tokens and 126 completion tokens reported `4.63` neurons. Actual usage depends on input and output length.
 
-## Why the 1B model cannot be used
+### November 2026 deprecation
 
-The instant classifier requires structured output via `response_format: { type: "json_schema", json_schema: ... }`. Direct API tests on November 1, 2026 confirmed these constraints for `@cf/meta/llama-3.2-1b-instruct`:
+Cloudflare's [November 5, 2026 changelog](https://developers.cloudflare.com/changelog/post/2026-11-05-planned-model-deprecations/) retires 24 Workers AI models on November 20, 2026, including `@cf/meta/llama-3.1-8b-instruct-fp8`, `@cf/meta/llama-3.2-3b-instruct` and `@cf/meta/llama-3.2-1b-instruct`. They were removed from the allowlist on November 17, 2026. The changelog says retired models will fail with HTTP `410 Gone` and error code `5028`. The fast 8B model above is not on that list and was still returning successful responses on November 17.
 
-- With JSON Schema, Cloudflare returns HTTP `403`, error code `5025`: `This model doesn't support JSON Schema.` This is a model/request incompatibility, not an authentication failure or exhausted quota.
-- Without `response_format`, the model responds successfully (HTTP `200`), but the test returned prose and a Markdown code block rather than a strict JSON response. Prompting for JSON alone does not enforce the classifier's schema.
-- Removing structured output is not a drop-in fix: the classifier still needs schema validation and exact evidence grounding. Do not bypass those checks to accommodate 1B.
+Cloudflare's pricing page still lists the fast 8B model's rates, but its individual model documentation page returned 404 and it did not appear in the account's model search results on November 17. It remains the only model measured that day that works with this classifier, so the risk of a later removal is documented in the pull request rather than hidden by switching to an untested replacement.
 
-The 1B model is therefore excluded from the configuration allowlist despite its lower neuron cost. Use the default 8B model. Any alternative must be tested with that same request contract before deployment.
+## Why the older 1B, 3B and non-fast 8B models are gone
+
+The instant classifier requires structured output via `response_format: { type: "json_schema", json_schema: ... }`. Earlier tests on November 1, 2026 found that `@cf/meta/llama-3.2-1b-instruct` rejected that request with HTTP `403`, error code `5025` (`This model doesn't support JSON Schema.`), and returned prose without `response_format`. The 3B and non-fast 8B models accepted the request, but Cloudflare retires them on November 20, 2026.
+
+Removing structured output is not a drop-in fix: the classifier still needs schema validation and exact evidence grounding. Do not bypass those checks. Any alternate model must be tested with the same request contract and must return the parsed JSON in `result.response` before it can enter the allowlist.
 
 ## Evaluation
 
@@ -53,27 +53,31 @@ node --env-file=.env --import tsx backend/eval/instant-classifier.eval.ts [model
 
 Set `EVAL_VERBOSE=1` to print the raw model output for each failed draft.
 
-Results of November 2, 2026, one run each at temperature 0:
+Results of November 17, 2026, one run each at temperature 0, on the same account and prompt. Candidates were supplied as command-line overrides; the allowlist itself was not widened.
 
-| Model | Prompt | Checks passed | Invented | Dropped by grounding | Median latency |
-| --- | --- | ---: | ---: | ---: | ---: |
-| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | before | 53/69 (77%) | 0 | 12 | 1,120 ms |
-| `@cf/meta/llama-3.2-3b-instruct` | before | 49/68 (72%) | 1 | 9 | 673 ms |
-| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | after | **60/69 (87%)** | **0** | **2** | 746 ms |
-| `@cf/meta/llama-3.2-3b-instruct` | after | 57/69 (83%) | 1 | 11 | 811 ms |
+| Model | Available | `json_schema` request | Checks passed | Invented | Dropped | Median latency | Outcome |
+| --- | --- | --- | ---: | ---: | ---: | ---: | --- |
+| `@cf/meta/llama-3.1-8b-instruct-fp8-fast` | Yes, HTTP 200 | Accepted; JSON returned in `result.response` | **60/69 (87%)** | **0** | **2** | **732 ms** | Keep as default |
+| `@cf/google/gemma-4-26b-a4b-it` | Yes, HTTP 200 | Accepted but not honored; response arrived in `choices[0].message`, not `result.response` | 0/0 (all 16 calls failed) | 0 (no valid output) | 0 (no valid output) | - | Reject |
+| `@cf/qwen/qwen3.8-27b` | Yes, HTTP 200 | Accepted but not honored; response arrived in `choices[0].message`, not `result.response` | 0/0 (all 16 calls failed) | 0 (no valid output) | 0 (no valid output) | - | Reject |
+| `@cf/deepseek-ai/deepseek-v4.1-flash-1017` | No; HTTP 403, error `5035`, requires Workers Paid | Not reached | 0/0 (all 16 calls failed) | 0 (no valid output) | 0 (no valid output) | - | Reject |
 
-Findings that changed the prompt and grounding:
+The gemma and qwen models did not return error `5025`, so they do not reject the schema outright. They returned an OpenAI-style `choices` payload with no `result.response`, spent output tokens on reasoning, and did not stay inside the schema. Fifteen of the sixteen eval calls hit the classifier's 8-second timeout and one returned unparseable data. Direct probes took roughly 7 to 12 seconds with a 600-token cap; raising the cap to 2,000 took about 34 to 36 seconds and still did not produce the classifier's response shape. The DeepSeek model is listed as requiring Workers Paid, so it could not be evaluated on this account without changing billing. Published rates are $0.10/$0.30 per million input/output tokens for gemma (`9,091`/`27,273` neurons), $0.45/$3.20 for qwen (`40,909`/`290,909` neurons) and $0.30/$1.20 for DeepSeek (`27,273`/`109,091` neurons). None is usable here without a code path that the repo does not have.
+
+A final single-model rerun after the code change repeated 60/69 (87%), 0 invented, 2 dropped and a median of 713 ms.
+
+Earlier November 2, 2026 findings still explain the prompt and grounding:
 
 - **Translated labels:** the models translated labels into English ("Laptop" for *portatile*, "Washing machine" for *Waschmaschine*). Grounding then dropped them, because the label shared no word with its quote. The prompt now asks for labels in the draft's own language.
 - **Examples read as chat history:** the few-shot examples were sent as earlier chat turns, so the model answered "laptop" with "You previously mentioned you do not want a laptop". The examples are now part of the system prompt, labelled as separate drafts.
 - **Missing currency:** both models often left the currency empty for "500 euro" or "400 €". Grounding now fills it only when the budget quote names exactly one currency unmistakably; `$` and `¥` alone stay empty.
 
-**Recommendation:** keep the 8B fast model as the default. It passed more checks, invented nothing, and lost almost nothing to grounding. The 3B model still translates labels and invented a category for "something for my kitchen".
+**Recommendation:** keep `@cf/meta/llama-3.1-8b-instruct-fp8-fast` as the default and the only allowlisted ID. It passed the most checks, invented nothing and lost little to grounding. The three suggested replacements either do not return the classifier's response shape, exceed the preview timeout or require a paid Workers plan. Widening the allowlist to them would have made configuration valid while every preview failed.
 
 Remaining 8B misses are mostly requirements folded into the category ("Windows laptop", "Bici da corsa in carbonio"), some sizes it did not extract, and a clarification instead of a category for the one-word draft "laptop". A single run per model is a small sample: rerun the script after any prompt or model change.
 
 ## Applying model changes
 
-To enable the preview, set `INSTANT_CLASSIFIER_PROVIDER=cloudflare` and provide server-only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Set `INSTANT_CLASSIFIER_MODEL` to one of the IDs above to override the default in the server's `.env` or the Render service environment; don't put credentials in frontend variables. The existing Render service environment and `.env.example` select the fast 8B model. Manage production values directly on the Render service. See [deployment configuration](DEPLOYMENT.md#optional-cloudflare-instant-classifier).
+To enable the preview, set `INSTANT_CLASSIFIER_PROVIDER=cloudflare` and provide server-only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. `INSTANT_CLASSIFIER_MODEL` must be `@cf/meta/llama-3.1-8b-instruct-fp8-fast`; the server refuses to start if a retired ID is still configured. Don't put credentials in frontend variables. The existing Render service environment and `.env.example` already select the fast 8B model. Manage production values directly on the Render service. See [deployment configuration](DEPLOYMENT.md#optional-cloudflare-instant-classifier).
 
 Model settings are currently read at application startup. Updating a Render environment variable requires a restart/redeploy and takes effect only when the new instance is live; hot reload or a database-backed runtime override is not implemented.

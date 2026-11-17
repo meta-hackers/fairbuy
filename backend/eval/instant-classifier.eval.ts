@@ -99,5 +99,5 @@ async function evaluate(base: Settings, model: Settings['INSTANT_CLASSIFIER_MODE
 }
 
 const base = settings({ ...process.env, NODE_ENV: 'test', FAIRBUY_MODE: 'live', INSTANT_CLASSIFIER_PROVIDER: 'cloudflare' });
-const models = (process.argv.slice(2).length ? process.argv.slice(2) : ['@cf/meta/llama-3.1-8b-instruct-fp8-fast', '@cf/meta/llama-3.2-3b-instruct']) as Settings['INSTANT_CLASSIFIER_MODEL'][];
+const models = (process.argv.slice(2).length ? process.argv.slice(2) : ['@cf/meta/llama-3.1-8b-instruct-fp8-fast']) as Settings['INSTANT_CLASSIFIER_MODEL'][];
 for (const model of models) await evaluate(base, model);
