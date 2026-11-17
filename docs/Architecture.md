@@ -28,7 +28,7 @@ flowchart LR
 
 ## Instant classifier
 
-In live mode, configured Cloudflare credentials enable a disclosed Ask preview. After a 600 ms pause, a 3–3000 character draft is sent through a same-origin, app-password-protected endpoint to a fixed Cloudflare Workers AI endpoint. Only the draft is sent, never the session/transcript/location or main Meta key. The default Meta Llama 3.2 3B Instruct is an ordinary non-reasoning model, requested with temperature zero, JSON Schema and 600 maximum output tokens. A few synthetic extraction examples improve abstention and explicit/implicit distinction. No web tools or reasoning parameters are sent.
+In live mode, configured Cloudflare credentials enable a disclosed Ask preview. After a 600 ms pause, a 3–3000 character draft is sent through a same-origin, app-password-protected endpoint to a fixed Cloudflare Workers AI endpoint. Only the draft is sent, never the session/transcript/location or main Meta key. The default Meta Llama 3.1 8B Instruct FP8 Fast is an ordinary non-reasoning model, requested with temperature zero, JSON Schema and 600 maximum output tokens. A few synthetic extraction examples improve abstention and explicit/implicit distinction. No web tools or reasoning parameters are sent.
 
 Schema validation and exact input quotes are required for hints. Additional validation rejects invented budget amounts and unmentioned conditions/currencies; these checks do not prove semantic correctness. Short provisional chips and clarification remain editable through the message, never mutate `ShoppingConfig`, mark a session ready, rank products or create an expected price. The existing Ask model processes the submitted text independently.
 

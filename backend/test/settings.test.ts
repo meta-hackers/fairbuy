@@ -72,12 +72,12 @@ describe('optional instant classifier settings', () => {
     expect(config.CLOUDFLARE_API_TOKEN).toBe('');
     expect(config.ASK_MODEL).toBe('muse-spark-1.3-contributor');
   });
-  it('only accepts the intended non-reasoning Meta models and a valid account ID', () => {
+  it('only accepts the tested Meta model that survives the November 2026 deprecation and a valid account ID', () => {
     expect(() => settings({ INSTANT_CLASSIFIER_MODEL: 'muse-spark-1.3' })).toThrow();
-    expect(() => settings({ INSTANT_CLASSIFIER_MODEL: '@cf/meta/llama-3.2-1b-instruct' })).toThrow();
-    for (const model of ['@cf/meta/llama-3.2-3b-instruct', '@cf/meta/llama-3.1-8b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct-fp8']) {
-      expect(settings({ INSTANT_CLASSIFIER_MODEL: model }).INSTANT_CLASSIFIER_MODEL).toBe(model);
+    for (const model of ['@cf/meta/llama-3.2-1b-instruct', '@cf/meta/llama-3.2-3b-instruct', '@cf/meta/llama-3.1-8b-instruct-fp8']) {
+      expect(() => settings({ INSTANT_CLASSIFIER_MODEL: model })).toThrow();
     }
+    expect(settings({ INSTANT_CLASSIFIER_MODEL: '@cf/meta/llama-3.1-8b-instruct-fp8-fast' }).INSTANT_CLASSIFIER_MODEL).toBe('@cf/meta/llama-3.1-8b-instruct-fp8-fast');
     expect(() => settings({ CLOUDFLARE_ACCOUNT_ID: 'invalid/account' })).toThrow();
     expect(settings({ INSTANT_CLASSIFIER_PROVIDER: 'cloudflare', CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32) }).INSTANT_CLASSIFIER_PROVIDER).toBe('cloudflare');
   });
